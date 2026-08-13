@@ -1,0 +1,243 @@
+package com.floating.stopwatch
+
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.provider.Settings
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
+import com.floating.stopwatch.data.SettingsRepository
+import com.floating.stopwatch.domain.HapticController
+import com.floating.stopwatch.domain.StopwatchEngine
+import com.floating.stopwatch.service.StopwatchService
+import com.floating.stopwatch.ui.MainViewModel
+import com.floating.stopwatch.ui.screens.MainScreen
+import com.floating.stopwatch.ui.screens.SettingsScreen
+import com.floating.stopwatch.ui.theme.LuxuryColors
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+
+class MainActivity : ComponentActivity() {
+
+    private lateinit var settingsRepository: SettingsRepository
+    private lateinit var mainViewModel: MainViewModel
+    private lateinit var hapticController: HapticController
+
+    // Foldable postures window tracker
+    private var foldingFeatureState = mutableStateOf<FoldingFeature?>(null)
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        settingsRepository = SettingsRepository(applicationContext)
+        mainViewModel = MainViewModel(StopwatchService.getEngine())
+        hapticController = HapticController(applicationContext)
+
+        // Track fold/hinge updates
+        lifecycleScope.launch {
+            WindowInfoTracker.getOrCreate(this@MainActivity)
+                .windowLayoutInfo(this@MainActivity)
+                .collectLatest { layoutInfo ->
+                    val folding = layoutInfo.displayFeatures
+                        .filterIsInstance<FoldingFeature>()
+                        .firstOrNull()
+                    foldingFeatureState.value = folding
+                }
+        }
+
+        setContent {
+            var currentScreen by remember { mutableStateOf("Main") }
+
+            val mainSize by settingsRepository.mainSize.collectAsState(initial = 1.0f)
+            val showCentisecondsMain by settingsRepository.showCentisecondsMain.collectAsState(initial = true)
+            val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
+            val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
+            val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
+
+            val accentColor = if (colorPreset == "Custom") {
+                try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
+            } else {
+                LuxuryColors.fromName(colorPreset)
+            }
+
+            // Standard permission verification state flow for Alert Overlay
+            var hasOverlayPermission by remember {
+                mutableStateOf(
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Settings.canDrawOverlays(this@MainActivity)
+                    } else {
+                        true
+                    }
+                )
+            }
+
+            LaunchedEffect(Unit) {
+                // Backgrounding triggers or launches overlay service automatic trigger
+                if (hasOverlayPermission) {
+                    startFloatingService()
+                }
+            }
+
+            if (!hasOverlayPermission) {
+                OverlayPermissionExplanationScreen(
+                    onGrantClick = {
+                        requestOverlayPermission()
+                    },
+                    onSkipClick = {
+                        hasOverlayPermission = true
+                    }
+                )
+            } else {
+                when (currentScreen) {
+                    "Main" -> {
+                        MainScreen(
+                            viewModel = mainViewModel,
+                            hapticController = hapticController,
+                            hapticIntensity = hapticIntensity,
+                            showCentiseconds = showCentisecondsMain,
+                            mainSize = mainSize,
+                            accentColor = accentColor,
+                            onNavigateToSettings = { currentScreen = "Settings" }
+                        )
+                    }
+                    "Settings" -> {
+                        SettingsScreen(
+                            settingsRepository = settingsRepository,
+                            onBack = { currentScreen = "Main" }
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun requestOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivityForResult(intent, 1024)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1024) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    startFloatingService()
+                }
+            }
+        }
+    }
+
+    private fun startFloatingService() {
+        val intent = Intent(this, StopwatchService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // verify permission status live
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Settings.canDrawOverlays(this)) {
+                startFloatingService()
+            }
+        }
+    }
+}
+
+@Composable
+fun OverlayPermissionExplanationScreen(
+    onGrantClick: () -> Unit,
+    onSkipClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LuxuryColors.WarmBlack)
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "FLOATING OVERLAY",
+                style = TextStyle(
+                    color = LuxuryColors.CreamyWhite,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraLight,
+                    letterSpacing = 4.sp
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "The premium Luxury Minimal Stopwatch can float directly on top of your other active applications for real-time tracking. This requires the 'Display over other apps' system permission.",
+                style = TextStyle(
+                    color = LuxuryColors.WarmGray,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Light,
+                    lineHeight = 20.sp
+                ),
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = onGrantClick,
+                colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.AccentGold),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Text(
+                    text = "GRANT PERMISSION",
+                    color = LuxuryColors.WarmBlack,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "SKIP AND OPEN IN-APP TIMER",
+                style = TextStyle(
+                    color = LuxuryColors.WarmGray,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 1.sp
+                ),
+                modifier = Modifier
+                    .clickable { onSkipClick() }
+                    .padding(8.dp)
+            )
+        }
+    }
+}

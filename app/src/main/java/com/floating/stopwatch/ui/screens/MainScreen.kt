@@ -20,6 +20,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.RepeatMode
+import android.content.Intent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -325,13 +326,47 @@ fun MainScreen(
                             .padding(bottom = 16.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "SESSION INSIGHTS",
-                                color = currentGrayColor,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "SESSION INSIGHTS",
+                                    color = currentGrayColor,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.sp
+                                )
+                                // Share Card CTA Button (P1 - Item 9)
+                                val context = androidx.compose.ui.platform.LocalContext.current
+                                Text(
+                                    text = "SHARE CARD",
+                                    color = accentColor,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                    modifier = Modifier
+                                        .clickable {
+                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(Intent.EXTRA_SUBJECT, "Stopwatch Premium Session")
+                                                putExtra(
+                                                    Intent.EXTRA_TEXT,
+                                                    "🏆 STOPWATCH PREMIUM SESSION CARD 🏆\n" +
+                                                    "------------------------------\n" +
+                                                    "• Average Lap Time: $formattedAvg\n" +
+                                                    (if (fastestLap != null) "• Fastest Cycle: Lap ${fastestLap.lapIndex} (${fastestLap.lapTimeMs / 1000f}s)\n" else "") +
+                                                    "• Total Laps Count: ${laps.size}\n" +
+                                                    "------------------------------\n" +
+                                                    "Luxury Minimalist Stopwatch System"
+                                                )
+                                            }
+                                            context.startActivity(Intent.createChooser(shareIntent, "Share Premium Session Info"))
+                                        }
+                                        .padding(4.dp)
+                                )
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

@@ -80,6 +80,13 @@ class StopwatchService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Secure safety check: If overlay permission is not granted, abort immediately to prevent BadTokenException crash
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
+            stopSelf()
+            return
+        }
+
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         settingsRepository = SettingsRepository(applicationContext)
         hapticController = HapticController(applicationContext)

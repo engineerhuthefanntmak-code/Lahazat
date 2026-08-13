@@ -106,8 +106,8 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(hasOverlayPermission) {
-                // Backgrounding triggers or launches overlay service automatic trigger
-                if (hasOverlayPermission) {
+                // Backgrounding triggers or launches overlay service automatic trigger ONLY if permission is explicitly verified
+                if (hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this@MainActivity)) {
                     startFloatingService()
                 }
             }
@@ -167,6 +167,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startFloatingService() {
+        // Double check canDrawOverlays before launching intent defensively
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            return
+        }
         val intent = Intent(this, StopwatchService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(intent)

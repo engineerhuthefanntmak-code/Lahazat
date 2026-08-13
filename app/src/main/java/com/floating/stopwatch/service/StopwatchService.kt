@@ -210,7 +210,7 @@ class StopwatchService : Service() {
             }
         }
 
-        // Layout parameters using wrap_content dynamically to map to the minimal size of digit layout bounds (Section 2 - Item 1)
+        // Layout parameters using specific dimension bounds mapping to 170dp x 56dp (P2 - secure layout without clipping)
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
@@ -219,8 +219,8 @@ class StopwatchService : Service() {
         }
 
         params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            170.dpToPx(),
+            56.dpToPx(),
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
@@ -319,7 +319,7 @@ class StopwatchService : Service() {
 
         Column(
             modifier = Modifier
-                .wrapContentSize()
+                .fillMaxSize()
                 .then(bgModifier)
                 .pointerInput(Unit) {
                     detectDragGestures(
@@ -352,7 +352,7 @@ class StopwatchService : Service() {
                 TimeDisplay(
                     elapsedTimeMs = elapsedTimeMs,
                     showCentiseconds = showCentiseconds,
-                    baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 28.sp),
+                    baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 22.sp), // slightly smaller to comfortably fit inside 170dp x 56dp bounds without clipping (Item P2)
                     scaleFactor = size,
                     modifier = Modifier.padding(vertical = 4.dp)
                 )

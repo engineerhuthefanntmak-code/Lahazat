@@ -16,6 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -120,6 +124,23 @@ fun MainScreen(
             )
         }
 
+        // Breathing pulse animation when stopwatch is at 0 for more than 5 seconds
+        val isAtZeroForFiveSecs = elapsedTimeMs == 0L && state == StopwatchState.Ready
+        val infiniteTransition = rememberInfiniteTransition(label = "PulseAtZero")
+        val breathingScale by if (isAtZeroForFiveSecs) {
+            infiniteTransition.animateFloat(
+                initialValue = 1.0f,
+                targetValue = 1.03f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "BreathingScale"
+            )
+        } else {
+            remember { mutableStateOf(1.0f) }
+        }
+
         // Center Stopwatch display
         Column(
             modifier = Modifier
@@ -133,7 +154,7 @@ fun MainScreen(
                 baseStyle = TextStyle(color = currentTextColor, fontSize = 54.sp),
                 scaleFactor = mainSize,
                 modifier = Modifier
-                    .scale(scalePulse)
+                    .scale(scalePulse * breathingScale)
                     .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
             )
 

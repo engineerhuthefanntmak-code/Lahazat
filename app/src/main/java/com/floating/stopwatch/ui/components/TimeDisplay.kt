@@ -13,6 +13,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.runtime.getValue
+import com.floating.stopwatch.ui.theme.LuxuryColors
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -63,17 +66,28 @@ fun TimeDisplay(
 
     val showHours = hours > 0
 
+    val totalSecondsForFlash = elapsedTimeMs / 1000
+    val isFullMinute = elapsedTimeMs > 0 && totalSecondsForFlash % 60 == 0L && (elapsedTimeMs % 1000) < 600
+
+    val animatedFlashColor by animateColorAsState(
+        targetValue = if (isFullMinute) LuxuryColors.AccentGold else baseStyle.color,
+        animationSpec = tween(durationMillis = 200),
+        label = "MinuteFlash"
+    )
+
     val scaledMainSize = (baseStyle.fontSize.value * scaleFactor).sp
     val mainDigitStyle = baseStyle.copy(
         fontSize = scaledMainSize,
         fontFamily = FontFamily.Monospace,
-        fontWeight = FontWeight.Bold
+        fontWeight = FontWeight.Bold,
+        color = animatedFlashColor
     )
 
     val centiSize = (scaledMainSize.value * 0.58f).sp
     val centiDigitStyle = mainDigitStyle.copy(
         fontSize = centiSize,
-        fontWeight = FontWeight.Normal
+        fontWeight = FontWeight.Normal,
+        color = animatedFlashColor.copy(alpha = 0.7f)
     )
 
     Row(

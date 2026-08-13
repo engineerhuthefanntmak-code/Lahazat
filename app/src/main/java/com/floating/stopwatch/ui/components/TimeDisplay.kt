@@ -3,6 +3,7 @@ package com.floating.stopwatch.ui.components
 import androidx.compose.animation.*
 import androidx.compose.animation.core.EaseOutQuint
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,25 +78,26 @@ fun TimeDisplay(
 
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.Bottom
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.End // Forces RTL Layout display structure for numerical flows
     ) {
-        if (showHours) {
-            RollingDigit(digit = hourStr[0], style = mainDigitStyle)
-            RollingDigit(digit = hourStr[1], style = mainDigitStyle)
-            Text(text = ":", style = mainDigitStyle)
+        if (showCentiseconds) {
+            RollingDigit(digit = centiStr[1], style = centiDigitStyle)
+            RollingDigit(digit = centiStr[0], style = centiDigitStyle)
+            Text(text = ".", style = centiDigitStyle)
         }
 
-        RollingDigit(digit = minuteStr[0], style = mainDigitStyle)
-        RollingDigit(digit = minuteStr[1], style = mainDigitStyle)
+        RollingDigit(digit = secondStr[1], style = mainDigitStyle)
+        RollingDigit(digit = secondStr[0], style = mainDigitStyle)
         Text(text = ":", style = mainDigitStyle)
 
-        RollingDigit(digit = secondStr[0], style = mainDigitStyle)
-        RollingDigit(digit = secondStr[1], style = mainDigitStyle)
+        RollingDigit(digit = minuteStr[1], style = mainDigitStyle)
+        RollingDigit(digit = minuteStr[0], style = mainDigitStyle)
 
-        if (showCentiseconds) {
-            Text(text = ".", style = centiDigitStyle)
-            RollingDigit(digit = centiStr[0], style = centiDigitStyle)
-            RollingDigit(digit = centiStr[1], style = centiDigitStyle)
+        if (showHours) {
+            Text(text = ":", style = mainDigitStyle)
+            RollingDigit(digit = hourStr[1], style = mainDigitStyle)
+            RollingDigit(digit = hourStr[0], style = mainDigitStyle)
         }
     }
 }

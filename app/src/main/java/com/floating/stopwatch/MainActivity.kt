@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
             val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
             val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
             val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
+            val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
 
             val accentColor = if (colorPreset == "Custom") {
                 try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -131,6 +132,7 @@ class MainActivity : ComponentActivity() {
                             showCentiseconds = showCentisecondsMain,
                             mainSize = mainSize,
                             accentColor = accentColor,
+                            themeMode = themeMode,
                             onNavigateToSettings = { currentScreen = "Settings" }
                         )
                     }

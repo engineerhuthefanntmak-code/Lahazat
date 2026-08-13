@@ -36,6 +36,7 @@ fun SettingsScreen(
     val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
     val experienceLevel by settingsRepository.experienceLevel.collectAsState(initial = "Premium")
     val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
+    val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
 
     // Custom RGB/HSV helper state for the color preset configuration
     var customR by remember { mutableFloatStateOf(201f) }
@@ -166,6 +167,33 @@ fun SettingsScreen(
                     onCheckedChange = { scope.launch { settingsRepository.setShowCentisecondsFloating(it) } },
                     colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
                 )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Display Theme Mode Setting (Midnight / Warm Paper / Obsidian Dark)
+            Text(
+                text = "ILLUMINATION STYLE MODE",
+                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            val themeModes = listOf("Midnight", "Warm Paper", "Obsidian Dark")
+            themeModes.forEach { mode ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { scope.launch { settingsRepository.setThemeMode(mode) } }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = (themeMode == mode),
+                        onClick = { scope.launch { settingsRepository.setThemeMode(mode) } },
+                        colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(text = mode, color = LuxuryColors.CreamyWhite, fontSize = 14.sp)
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

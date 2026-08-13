@@ -43,6 +43,7 @@ fun MainScreen(
     showCentiseconds: Boolean,
     mainSize: Float,
     accentColor: Color,
+    themeMode: String,
     onNavigateToSettings: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
@@ -64,17 +65,34 @@ fun MainScreen(
         label = "Pulse"
     )
 
+    // Layout configuration based on the illumination Mode
+    val currentBgColor = when (themeMode) {
+        "Midnight" -> Color(0xFF000000)
+        "Warm Paper" -> Color(0xFFF7F5F0)
+        else -> LuxuryColors.WarmBlack
+    }
+
+    val currentTextColor = when (themeMode) {
+        "Warm Paper" -> Color(0xFF1C1A17)
+        else -> LuxuryColors.CreamyWhite
+    }
+
+    val currentGrayColor = when (themeMode) {
+        "Warm Paper" -> Color(0xFF6B6661)
+        else -> LuxuryColors.WarmGray
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(LuxuryColors.WarmBlack)
+            .background(currentBgColor)
             .padding(24.dp)
     ) {
         // Settings click triggers navigation
         Text(
             text = "SETTINGS",
             style = TextStyle(
-                color = LuxuryColors.WarmGray,
+                color = currentGrayColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Light,
                 letterSpacing = 2.sp
@@ -94,7 +112,7 @@ fun MainScreen(
             Text(
                 text = "STOPWATCH",
                 style = TextStyle(
-                    color = LuxuryColors.CreamyWhite,
+                    color = currentTextColor,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.ExtraLight,
                     letterSpacing = 4.sp
@@ -112,7 +130,7 @@ fun MainScreen(
             TimeDisplay(
                 elapsedTimeMs = elapsedTimeMs,
                 showCentiseconds = showCentiseconds,
-                baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 54.sp),
+                baseStyle = TextStyle(color = currentTextColor, fontSize = 54.sp),
                 scaleFactor = mainSize,
                 modifier = Modifier
                     .scale(scalePulse)
@@ -124,7 +142,7 @@ fun MainScreen(
             Text(
                 text = state.name.uppercase(),
                 style = TextStyle(
-                    color = LuxuryColors.WarmGray,
+                    color = currentGrayColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Light,
                     letterSpacing = 3.sp
@@ -166,13 +184,13 @@ fun MainScreen(
                     modifier = Modifier.fillMaxSize(),
                     shape = CircleShape,
                     color = Color.Transparent,
-                    border = BorderStroke(1.dp, LuxuryColors.WarmGray)
+                    border = BorderStroke(1.dp, currentGrayColor)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = if (state == StopwatchState.Paused) "RESET" else "LAP",
                             style = TextStyle(
-                                color = LuxuryColors.CreamyWhite,
+                                color = currentTextColor,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Light,
                                 letterSpacing = 1.sp
@@ -248,8 +266,8 @@ fun MainScreen(
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState,
-            containerColor = LuxuryColors.WarmBlack,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = LuxuryColors.WarmGray) }
+            containerColor = currentBgColor,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = currentGrayColor) }
         ) {
             Column(
                 modifier = Modifier
@@ -259,7 +277,7 @@ fun MainScreen(
                 Text(
                     text = "LAP TIMES",
                     style = TextStyle(
-                        color = LuxuryColors.CreamyWhite,
+                        color = currentTextColor,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.ExtraLight,
                         letterSpacing = 4.sp
@@ -271,8 +289,8 @@ fun MainScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(laps.reversed()) { lap ->
-                        LapRowItem(lap = lap)
-                        Divider(color = LuxuryColors.WarmGray.copy(alpha = 0.2f))
+                        LapRowItem(lap = lap, textColor = currentTextColor, grayColor = currentGrayColor)
+                        Divider(color = currentGrayColor.copy(alpha = 0.2f))
                     }
                 }
             }
@@ -281,7 +299,7 @@ fun MainScreen(
 }
 
 @Composable
-fun LapRowItem(lap: Lap) {
+fun LapRowItem(lap: Lap, textColor: Color, grayColor: Color) {
     val totalSeconds = lap.cumulativeTimeMs / 1000
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
@@ -310,7 +328,7 @@ fun LapRowItem(lap: Lap) {
             Text(
                 text = "LAP ${lap.lapIndex}",
                 style = TextStyle(
-                    color = LuxuryColors.CreamyWhite,
+                    color = textColor,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -318,7 +336,7 @@ fun LapRowItem(lap: Lap) {
             Text(
                 text = formattedCum,
                 style = TextStyle(
-                    color = LuxuryColors.WarmGray,
+                    color = grayColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Light
                 )
@@ -329,7 +347,7 @@ fun LapRowItem(lap: Lap) {
             Text(
                 text = formattedLap,
                 style = TextStyle(
-                    color = LuxuryColors.CreamyWhite,
+                    color = textColor,
                     fontSize = 14.sp,
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                     fontWeight = FontWeight.SemiBold

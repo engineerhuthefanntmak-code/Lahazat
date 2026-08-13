@@ -22,7 +22,10 @@ class SettingsRepository(private val context: Context) {
         val FLOATING_Y = floatPreferencesKey("floating_y")
         val EXPERIENCE_LEVEL = stringPreferencesKey("experience_level")
         val HAPTIC_INTENSITY = stringPreferencesKey("haptic_intensity")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
     }
+
+    val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "Midnight" }
 
     val mainSize: Flow<Float> = context.dataStore.data.map { it[MAIN_SIZE] ?: 1.0f }
     val floatingSize: Flow<Float> = context.dataStore.data.map { it[FLOATING_SIZE] ?: 0.5f }
@@ -81,5 +84,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setHapticIntensity(intensity: String) {
         context.dataStore.edit { it[HAPTIC_INTENSITY] = intensity }
+    }
+
+    suspend fun setThemeMode(mode: String) {
+        context.dataStore.edit { it[THEME_MODE] = mode }
     }
 }

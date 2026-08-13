@@ -37,6 +37,7 @@ fun SettingsScreen(
     val experienceLevel by settingsRepository.experienceLevel.collectAsState(initial = "Premium")
     val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
     val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
+    val biometricLock by settingsRepository.biometricLock.collectAsState(initial = false)
 
     // Custom RGB/HSV helper state for the color preset configuration
     var customR by remember { mutableFloatStateOf(201f) }
@@ -147,6 +148,24 @@ fun SettingsScreen(
                 Switch(
                     checked = showCentisecondsMain,
                     onCheckedChange = { scope.launch { settingsRepository.setShowCentisecondsMain(it) } },
+                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "BIOMETRIC APP PRIVACY LOCK",
+                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                )
+                Switch(
+                    checked = biometricLock,
+                    onCheckedChange = { scope.launch { settingsRepository.setBiometricLock(it) } },
                     colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
                 )
             }

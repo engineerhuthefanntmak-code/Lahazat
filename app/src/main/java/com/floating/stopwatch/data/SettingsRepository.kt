@@ -23,7 +23,10 @@ class SettingsRepository(private val context: Context) {
         val EXPERIENCE_LEVEL = stringPreferencesKey("experience_level")
         val HAPTIC_INTENSITY = stringPreferencesKey("haptic_intensity")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val BIOMETRIC_LOCK = booleanPreferencesKey("biometric_lock")
     }
+
+    val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: false }
 
     val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "Midnight" }
 
@@ -88,5 +91,9 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setThemeMode(mode: String) {
         context.dataStore.edit { it[THEME_MODE] = mode }
+    }
+
+    suspend fun setBiometricLock(enabled: Boolean) {
+        context.dataStore.edit { it[BIOMETRIC_LOCK] = enabled }
     }
 }

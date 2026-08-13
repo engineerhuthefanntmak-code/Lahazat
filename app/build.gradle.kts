@@ -64,6 +64,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.datastore.preferences)
+    implementation("androidx.biometric:biometric-ktx:1.2.0-alpha05")
     implementation(libs.androidx.window)
     implementation(libs.kotlinx.coroutines.android)
 

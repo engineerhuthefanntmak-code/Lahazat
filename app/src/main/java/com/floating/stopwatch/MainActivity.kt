@@ -33,8 +33,10 @@ import com.floating.stopwatch.ui.screens.SettingsScreen
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
 
-class MainActivity : ComponentActivity() {
+class MainActivity : androidx.fragment.app.FragmentActivity() {
 
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var mainViewModel: MainViewModel
@@ -69,6 +71,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var currentScreen by remember { mutableStateOf("Main") }
+            var isUnlockedByBiometrics by remember { mutableStateOf(false) }
 
             val mainSize by settingsRepository.mainSize.collectAsState(initial = 1.0f)
             val showCentisecondsMain by settingsRepository.showCentisecondsMain.collectAsState(initial = true)
@@ -76,6 +79,8 @@ class MainActivity : ComponentActivity() {
             val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
             val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
             val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
+
+            val biometricLock by settingsRepository.biometricLock.collectAsState(initial = false)
 
             val accentColor = if (colorPreset == "Custom") {
                 try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -113,7 +118,44 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            if (!hasOverlayPermission) {
+            if (biometricLock && !isUnlockedByBiometrics) {
+                // Biometric Privacy Lock Active
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(LuxuryColors.WarmBlack)
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "BIOMETRIC LOCKED",
+                            style = TextStyle(
+                                color = LuxuryColors.CreamyWhite,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraLight,
+                                letterSpacing = 3.sp
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                triggerBiometricAuthentication(this@MainActivity) {
+                                    isUnlockedByBiometrics = true
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.AccentGold)
+                        ) {
+                            Text("UNLOCK APPLICATION", color = LuxuryColors.WarmBlack)
+                        }
+                    }
+                }
+                LaunchedEffect(Unit) {
+                    triggerBiometricAuthentication(this@MainActivity) {
+                        isUnlockedByBiometrics = true
+                    }
+                }
+            } else if (!hasOverlayPermission) {
                 OverlayPermissionExplanationScreen(
                     onGrantClick = {
                         requestOverlayPermission()
@@ -165,6 +207,30 @@ class MainActivity : ComponentActivity() {
                     startFloatingService()
                 }
             }
+        }
+    }
+
+    private fun triggerBiometricAuthentication(activity: androidx.fragment.app.FragmentActivity, onAuthenticated: () -> Unit) {
+        val executor = ContextCompat.getMainExecutor(activity)
+        val biometricPrompt = BiometricPrompt(activity, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    onAuthenticated()
+                }
+            })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Premium Biometric Lock")
+            .setSubtitle("Authenticate to view premium stopwatch insights")
+            .setNegativeButtonText("Cancel")
+            .build()
+
+        try {
+            biometricPrompt.authenticate(promptInfo)
+        } catch (e: Exception) {
+            // Safe fallback if biometric hardware is not set up / ready
+            onAuthenticated()
         }
     }
 

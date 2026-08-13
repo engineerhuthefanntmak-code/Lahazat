@@ -131,6 +131,8 @@ class StopwatchService : Service() {
 
                 val mainSize by settingsRepository.mainSize.collectAsState(initial = 1.0f)
                 val floatingSize by settingsRepository.floatingSize.collectAsState(initial = 0.5f)
+                val floatingWidth by settingsRepository.floatingWidth.collectAsState(initial = 170.0f)
+                val floatingHeight by settingsRepository.floatingHeight.collectAsState(initial = 56.0f)
                 val showCentisecondsFloating by settingsRepository.showCentisecondsFloating.collectAsState(initial = true)
                 val stylePreset by settingsRepository.stylePreset.collectAsState(initial = "Glass Premium")
                 val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
@@ -152,6 +154,14 @@ class StopwatchService : Service() {
                     if (initialX != -1.0f && initialY != -1.0f && params != null) {
                         params?.x = initialX.roundToInt()
                         params?.y = initialY.roundToInt()
+                        windowManager.updateViewLayout(composeView, params)
+                    }
+                }
+
+                LaunchedEffect(floatingWidth, floatingHeight) {
+                    if (params != null) {
+                        params?.width = floatingWidth.toInt().dpToPx()
+                        params?.height = floatingHeight.toInt().dpToPx()
                         windowManager.updateViewLayout(composeView, params)
                     }
                 }

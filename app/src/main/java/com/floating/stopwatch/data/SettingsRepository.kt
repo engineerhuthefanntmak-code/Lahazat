@@ -13,6 +13,8 @@ class SettingsRepository(private val context: Context) {
     companion object {
         val MAIN_SIZE = floatPreferencesKey("main_size")
         val FLOATING_SIZE = floatPreferencesKey("floating_size")
+        val FLOATING_WIDTH = floatPreferencesKey("floating_width")
+        val FLOATING_HEIGHT = floatPreferencesKey("floating_height")
         val SHOW_CENTISECONDS_MAIN = booleanPreferencesKey("show_centiseconds_main")
         val SHOW_CENTISECONDS_FLOATING = booleanPreferencesKey("show_centiseconds_floating")
         val STYLE_PRESET = stringPreferencesKey("style_preset")
@@ -32,6 +34,8 @@ class SettingsRepository(private val context: Context) {
 
     val mainSize: Flow<Float> = context.dataStore.data.map { it[MAIN_SIZE] ?: 1.0f }
     val floatingSize: Flow<Float> = context.dataStore.data.map { it[FLOATING_SIZE] ?: 0.5f }
+    val floatingWidth: Flow<Float> = context.dataStore.data.map { it[FLOATING_WIDTH] ?: 170.0f }
+    val floatingHeight: Flow<Float> = context.dataStore.data.map { it[FLOATING_HEIGHT] ?: 56.0f }
 
     val showCentisecondsMain: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_MAIN] ?: true }
     val showCentisecondsFloating: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_FLOATING] ?: true }
@@ -52,6 +56,14 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setFloatingSize(size: Float) {
         context.dataStore.edit { it[FLOATING_SIZE] = size }
+    }
+
+    suspend fun setFloatingWidth(width: Float) {
+        context.dataStore.edit { it[FLOATING_WIDTH] = width }
+    }
+
+    suspend fun setFloatingHeight(height: Float) {
+        context.dataStore.edit { it[FLOATING_HEIGHT] = height }
     }
 
     suspend fun setShowCentisecondsMain(show: Boolean) {

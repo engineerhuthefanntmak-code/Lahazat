@@ -113,22 +113,45 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Floating size Slider (0.0 to 1.0)
+            // Floating Width Slider (120 to 280 dp) - Independent control
+            val floatingWidth by settingsRepository.floatingWidth.collectAsState(initial = 170.0f)
+            val floatingHeight by settingsRepository.floatingHeight.collectAsState(initial = 56.0f)
+
             Text(
-                text = "FLOATING OVERLAY SIZE",
+                text = "FLOATING OVERLAY WIDTH",
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
             )
             Slider(
-                value = floatingSize,
-                onValueChange = { scope.launch { settingsRepository.setFloatingSize(it) } },
-                valueRange = 0.1f..1.0f,
+                value = floatingWidth,
+                onValueChange = { scope.launch { settingsRepository.setFloatingWidth(it) } },
+                valueRange = 120.0f..280.0f,
                 colors = SliderDefaults.colors(
                     thumbColor = LuxuryColors.AccentGold,
                     activeTrackColor = LuxuryColors.AccentGold
                 )
             )
             Text(
-                text = "Value: ${String.format("%.2f", floatingSize)} (Odometer breakpoints dynamic size scale)",
+                text = "Width: ${floatingWidth.toInt()}dp (Limits: 120dp to 280dp)",
+                style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            // Floating Height Slider (48 to 80 dp) - Independent control
+            Text(
+                text = "FLOATING OVERLAY HEIGHT",
+                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
+            )
+            Slider(
+                value = floatingHeight,
+                onValueChange = { scope.launch { settingsRepository.setFloatingHeight(it) } },
+                valueRange = 48.0f..80.0f,
+                colors = SliderDefaults.colors(
+                    thumbColor = LuxuryColors.AccentGold,
+                    activeTrackColor = LuxuryColors.AccentGold
+                )
+            )
+            Text(
+                text = "Height: ${floatingHeight.toInt()}dp (Limits: 48dp to 80dp)",
                 style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
                 modifier = Modifier.padding(bottom = 24.dp)
             )

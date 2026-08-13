@@ -156,20 +156,9 @@ class StopwatchService : Service() {
                     }
                 }
 
-                // Dual gestures layout: movement vs resizing controls
-                var isResizingMode by remember { mutableStateOf(false) }
-
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onLongPress = {
-                                    hapticController.trigger(hapticIntensity, "Lap")
-                                    isResizingMode = !isResizingMode
-                                }
-                            )
-                        }
                 ) {
                     // Actual themed Container
                     ThemedOverlayContainer(
@@ -181,7 +170,6 @@ class StopwatchService : Service() {
                         accentColor = accentColor,
                         experienceLevel = experienceLevel,
                         size = floatingSize,
-                        isResizingMode = isResizingMode,
                         onMovementDrag = { dx, dy ->
                             params?.let {
                                 it.x += dx.roundToInt()
@@ -218,23 +206,6 @@ class StopwatchService : Service() {
                             }
                         }
                     )
-
-                    // 4 corner handles overlay if in resizing mode
-                    if (isResizingMode) {
-                        CornerResizingHandles(
-                            currentSize = floatingSize,
-                            onResize = { newSize ->
-                                val clamped = newSize.coerceIn(0.1f, 1.0f)
-                                serviceScope.launch {
-                                    settingsRepository.setFloatingSize(clamped)
-                                }
-                                updateWindowSizeParams(clamped)
-                            },
-                            onResizeRelease = {
-                                isResizingMode = false
-                            }
-                        )
-                    }
                 }
             }
         }
@@ -260,15 +231,6 @@ class StopwatchService : Service() {
         }
 
         windowManager.addView(composeView, params)
-    }
-
-    private fun updateWindowSizeParams(size: Float) {
-        // compute scaling window size
-        val widthDp = 220 + (180 * size)
-        val heightDp = 130 + (120 * size)
-        params?.width = widthDp.toInt().dpToPx()
-        params?.height = heightDp.toInt().dpToPx()
-        windowManager.updateViewLayout(composeView, params)
     }
 
     private fun smartEdgeSnapAndClamp(lp: WindowManager.LayoutParams) {
@@ -315,86 +277,6 @@ class StopwatchService : Service() {
     }
 
     @Composable
-    fun CornerResizingHandles(
-        currentSize: Float,
-        onResize: (Float) -> Unit,
-        onResizeRelease: () -> Unit
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            val handleSize = 24.dp
-            val handleColor = LuxuryColors.AccentGold
-
-            // Top-Left Resize Handle
-            Box(
-                modifier = Modifier
-                    .size(handleSize)
-                    .align(Alignment.TopStart)
-                    .background(handleColor, RoundedCornerShape(topStart = 8.dp))
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragEnd = { onResizeRelease() },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onResize(currentSize - dragAmount.x * 0.005f)
-                            }
-                        )
-                    }
-            )
-
-            // Top-Right Resize Handle
-            Box(
-                modifier = Modifier
-                    .size(handleSize)
-                    .align(Alignment.TopEnd)
-                    .background(handleColor, RoundedCornerShape(topEnd = 8.dp))
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragEnd = { onResizeRelease() },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onResize(currentSize + dragAmount.x * 0.005f)
-                            }
-                        )
-                    }
-            )
-
-            // Bottom-Left Resize Handle
-            Box(
-                modifier = Modifier
-                    .size(handleSize)
-                    .align(Alignment.BottomStart)
-                    .background(handleColor, RoundedCornerShape(bottomStart = 8.dp))
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragEnd = { onResizeRelease() },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onResize(currentSize - dragAmount.x * 0.005f)
-                            }
-                        )
-                    }
-            )
-
-            // Bottom-Right Resize Handle
-            Box(
-                modifier = Modifier
-                    .size(handleSize)
-                    .align(Alignment.BottomEnd)
-                    .background(handleColor, RoundedCornerShape(bottomEnd = 8.dp))
-                    .pointerInput(Unit) {
-                        detectDragGestures(
-                            onDragEnd = { onResizeRelease() },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                onResize(currentSize + dragAmount.x * 0.005f)
-                            }
-                        )
-                    }
-            )
-        }
-    }
-
-    @Composable
     fun ThemedOverlayContainer(
         state: StopwatchState,
         elapsedTimeMs: Long,
@@ -404,7 +286,6 @@ class StopwatchService : Service() {
         accentColor: Color,
         experienceLevel: String,
         size: Float,
-        isResizingMode: Boolean,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
         onAction: (String) -> Unit
@@ -455,7 +336,7 @@ class StopwatchService : Service() {
         ) {
             if (size >= 0.4f) {
                 Text(
-                    text = if (isResizingMode) "RESIZING MODE" else "FLOATING WIDGET",
+                    text = "FLOATING WIDGET",
                     style = TextStyle(
                         color = LuxuryColors.WarmGray,
                         fontSize = (10 * size).coerceAtLeast(8f).sp,

@@ -296,7 +296,7 @@ fun MainScreen(
                     .padding(24.dp)
             ) {
                 Text(
-                    text = "LAP TIMES",
+                    text = "LAP TIMES & INSIGHTS",
                     style = TextStyle(
                         color = currentTextColor,
                         fontSize = 16.sp,
@@ -308,6 +308,50 @@ fun MainScreen(
 
                 val fastestLap = if (laps.size >= 2) laps.minByOrNull { it.lapTimeMs } else null
                 val slowestLap = if (laps.size >= 2) laps.maxByOrNull { it.lapTimeMs } else null
+
+                // Performance Session Insights (P1 - Item 6)
+                if (laps.isNotEmpty()) {
+                    val avgLapTime = laps.map { it.lapTimeMs }.average().toLong()
+                    val avgMins = (avgLapTime / 1000) / 60
+                    val avgSecs = (avgLapTime / 1000) % 60
+                    val avgCents = (avgLapTime % 1000) / 10
+                    val formattedAvg = String.format("%02d:%02d.%02d", avgMins, avgSecs, avgCents)
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = currentGrayColor.copy(alpha = 0.1f)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "SESSION INSIGHTS",
+                                color = currentGrayColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(text = "AVERAGE LAP", color = currentGrayColor, fontSize = 11.sp)
+                                    Text(text = formattedAvg, color = currentTextColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                                if (fastestLap != null) {
+                                    Column {
+                                        Text(text = "FASTEST LAP", color = Color(0xFF4AC98F), fontSize = 11.sp)
+                                        val fS = fastestLap.lapTimeMs / 1000
+                                        Text(text = "LAP ${fastestLap.lapIndex} (${fS}s)", color = currentTextColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth()

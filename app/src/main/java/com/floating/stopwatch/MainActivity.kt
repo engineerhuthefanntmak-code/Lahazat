@@ -50,16 +50,21 @@ class MainActivity : ComponentActivity() {
         mainViewModel = MainViewModel(StopwatchService.getEngine())
         hapticController = HapticController(applicationContext)
 
-        // Track fold/hinge updates
+        // Track fold/hinge updates with explicit safe fallbacks in case Jetpack WindowManager throws on traditional non-foldable devices
         lifecycleScope.launch {
-            WindowInfoTracker.getOrCreate(this@MainActivity)
-                .windowLayoutInfo(this@MainActivity)
-                .collectLatest { layoutInfo ->
-                    val folding = layoutInfo.displayFeatures
-                        .filterIsInstance<FoldingFeature>()
-                        .firstOrNull()
-                    foldingFeatureState.value = folding
-                }
+            try {
+                WindowInfoTracker.getOrCreate(this@MainActivity)
+                    .windowLayoutInfo(this@MainActivity)
+                    .collectLatest { layoutInfo ->
+                        val folding = layoutInfo.displayFeatures
+                            .filterIsInstance<FoldingFeature>()
+                            .firstOrNull()
+                        foldingFeatureState.value = folding
+                    }
+            } catch (e: Exception) {
+                // Fallback gracefully: ignore exception and set folding to null (traditional posture layout)
+                foldingFeatureState.value = null
+            }
         }
 
         setContent {

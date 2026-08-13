@@ -88,7 +88,19 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            LaunchedEffect(Unit) {
+            // Monitor state update correctly on resumed/activity context focus change
+            DisposableEffect(Unit) {
+                onResumeCallback = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        hasOverlayPermission = Settings.canDrawOverlays(this@MainActivity)
+                    }
+                }
+                onDispose {
+                    onResumeCallback = null
+                }
+            }
+
+            LaunchedEffect(hasOverlayPermission) {
                 // Backgrounding triggers or launches overlay service automatic trigger
                 if (hasOverlayPermission) {
                     startFloatingService()
@@ -158,8 +170,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // Live update when activity is resumed
+    private var onResumeCallback: (() -> Unit)? = null
+
     override fun onResume() {
         super.onResume()
+        onResumeCallback?.invoke()
         // verify permission status live
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (Settings.canDrawOverlays(this)) {

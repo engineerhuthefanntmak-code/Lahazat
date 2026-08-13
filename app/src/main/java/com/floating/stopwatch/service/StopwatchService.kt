@@ -529,7 +529,7 @@ class StopwatchService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Floating Stopwatch Active")
             .setContentText("Tap to return to Main screen.")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_stopwatch)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()

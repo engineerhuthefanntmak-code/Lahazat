@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.getValue
 import com.floating.stopwatch.ui.theme.LuxuryColors
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -80,7 +81,12 @@ fun TimeDisplay(
         fontSize = scaledMainSize,
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Bold,
-        color = animatedFlashColor
+        color = animatedFlashColor,
+        shadow = androidx.compose.ui.graphics.Shadow(
+            color = Color.Black.copy(alpha = 0.35f),
+            offset = androidx.compose.ui.geometry.Offset(2f, 2f),
+            blurRadius = 4f
+        )
     )
 
     val centiSize = (scaledMainSize.value * 0.58f).sp

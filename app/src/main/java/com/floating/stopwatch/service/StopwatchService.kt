@@ -210,7 +210,7 @@ class StopwatchService : Service() {
             }
         }
 
-        // Layout parameters
+        // Layout parameters using wrap_content dynamically to map to the minimal size of digit layout bounds (Section 2 - Item 1)
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
@@ -219,8 +219,8 @@ class StopwatchService : Service() {
         }
 
         params = WindowManager.LayoutParams(
-            320.dpToPx(),
-            200.dpToPx(),
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
@@ -314,12 +314,12 @@ class StopwatchService : Service() {
                 )
                 Modifier.background(titaniumBrush, RoundedCornerShape(cornerRadius))
             }
-            else -> Modifier.background(Color.Black.copy(alpha = 0.15f), RoundedCornerShape(cornerRadius))
+            else -> Modifier.background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(cornerRadius))
         }
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .wrapContentSize()
                 .then(bgModifier)
                 .pointerInput(Unit) {
                     detectDragGestures(
@@ -334,34 +334,35 @@ class StopwatchService : Service() {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (size >= 0.4f) {
-                Text(
-                    text = "FLOATING WIDGET",
-                    style = TextStyle(
-                        color = LuxuryColors.WarmGray,
-                        fontSize = (10 * size).coerceAtLeast(8f).sp,
-                        fontWeight = FontWeight.ExtraLight,
-                        letterSpacing = 2.sp
-                    )
+            // MERGED LUXURY MINIMAL DISPLAY ONLY - ELIMINATING ANY EXTRA TEXT LABEL (Section 2 - Item 2)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                // State Indicator Dot
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(if (state == StopwatchState.Running) Color(0xFF4AC98F) else Color(0xFFC94A4A))
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Stopwatch main display text
+                TimeDisplay(
+                    elapsedTimeMs = elapsedTimeMs,
+                    showCentiseconds = showCentiseconds,
+                    baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 28.sp),
+                    scaleFactor = size,
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Stopwatch main display text
-            TimeDisplay(
-                elapsedTimeMs = elapsedTimeMs,
-                showCentiseconds = showCentiseconds,
-                baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 28.sp),
-                scaleFactor = size,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
 
             // Buttons / Control area matching experience level configuration & size breakpoints
             if (size >= 0.7f && experienceLevel == "Full Control") {
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.wrapContentWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -377,6 +378,8 @@ class StopwatchService : Service() {
                             fontWeight = FontWeight.Bold
                         )
                     }
+
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     Button(
                         onClick = { onAction(if (state == StopwatchState.Running) "Lap" else "Reset") },

@@ -306,11 +306,23 @@ fun MainScreen(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
+                val fastestLap = if (laps.size >= 2) laps.minByOrNull { it.lapTimeMs } else null
+                val slowestLap = if (laps.size >= 2) laps.maxByOrNull { it.lapTimeMs } else null
+
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(laps.reversed()) { lap ->
-                        LapRowItem(lap = lap, textColor = currentTextColor, grayColor = currentGrayColor)
+                        val lapColor = when {
+                            fastestLap != null && lap.lapIndex == fastestLap.lapIndex -> Color(0xFF4AC98F) // elegant green
+                            slowestLap != null && lap.lapIndex == slowestLap.lapIndex -> Color(0xFFC94A4A) // subtle red
+                            else -> currentTextColor
+                        }
+                        LapRowItem(
+                            lap = lap,
+                            textColor = lapColor,
+                            grayColor = currentGrayColor
+                        )
                         Divider(color = currentGrayColor.copy(alpha = 0.2f))
                     }
                 }

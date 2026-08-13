@@ -53,6 +53,9 @@ import com.floating.stopwatch.ui.theme.LuxuryColors
 import com.floating.stopwatch.domain.HapticController
 import kotlinx.coroutines.*
 import kotlin.math.roundToInt
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 class StopwatchService : Service() {
 
@@ -77,6 +80,7 @@ class StopwatchService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private lateinit var hapticController: HapticController
+    private var overlayLifecycleOwner: ComposeOverlayLifecycleOwner? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -106,7 +110,19 @@ class StopwatchService : Service() {
     }
 
     private fun initOverlayWindow() {
+        val owner = ComposeOverlayLifecycleOwner().apply {
+            onCreate()
+            onStart()
+            onResume()
+        }
+        overlayLifecycleOwner = owner
+
         composeView = ComposeView(this).apply {
+            // Bind manually configured Lifecycle, ViewModelStore and SavedStateRegistry owners defensively
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+
             setContent {
                 val engine = getEngine()
                 val state by engine.state.collectAsState()
@@ -549,6 +565,15 @@ class StopwatchService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
+
+        // Destruct and clear overlay lifecycle state
+        overlayLifecycleOwner?.apply {
+            onPause()
+            onStop()
+            onDestroy()
+        }
+        overlayLifecycleOwner = null
+
         composeView?.let {
             try {
                 windowManager.removeView(it)

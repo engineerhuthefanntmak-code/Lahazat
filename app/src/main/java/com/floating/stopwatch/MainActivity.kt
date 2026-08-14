@@ -118,6 +118,11 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 }
             }
 
+            // Handle safe Back press to return to MainScreen instead of exiting the entire application (Section 2 - Item 5)
+            androidx.activity.compose.BackHandler(enabled = currentScreen == "Settings") {
+                currentScreen = "Main"
+            }
+
             if (biometricLock && !isUnlockedByBiometrics) {
                 // Biometric Privacy Lock Active
                 Box(

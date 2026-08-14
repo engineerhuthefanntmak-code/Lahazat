@@ -182,46 +182,21 @@ fun SettingsScreen(
                             if (widgetType == "countdown") {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(
-                                    text = "COUNTDOWN FOCUS DURATION",
+                                    text = "CUSTOM FOCUS DURATION (HOURS : MINS : SECS)",
                                     color = LuxuryColors.WarmGray,
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
                                     letterSpacing = 1.sp
                                 )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    listOf(60, 300, 1500, 3600).forEach { seconds ->
-                                        val label = when (seconds) {
-                                            60 -> "1 MIN"
-                                            300 -> "5 MIN"
-                                            1500 -> "25 MIN"
-                                            else -> "1 HR"
-                                        }
-                                        Box(
-                                            modifier = Modifier
-                                                .border(
-                                                    width = 1.dp,
-                                                    color = if (countdownDuration == seconds) LuxuryColors.AccentGold else Color.Gray.copy(alpha = 0.3f),
-                                                    shape = RoundedCornerShape(6.dp)
-                                                )
-                                                .clickable {
-                                                    scope.launch {
-                                                        settingsRepository.setWidgetCountdownDuration(i, seconds)
-                                                        settingsRepository.setWidgetValue(i, seconds * 1000L)
-                                                    }
-                                                }
-                                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(
-                                                text = label,
-                                                color = if (countdownDuration == seconds) LuxuryColors.AccentGold else LuxuryColors.WarmGray,
-                                                fontSize = 10.sp
-                                            )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                CountdownDurationPicker(
+                                    totalSeconds = countdownDuration,
+                                    onDurationChanged = { newSecs ->
+                                        scope.launch {
+                                            settingsRepository.setWidgetCountdownDuration(i, newSecs)
+                                            settingsRepository.setWidgetValue(i, newSecs * 1000L)
                                         }
                                     }
-                                }
+                                )
                             }
 
                             Spacer(modifier = Modifier.height(12.dp))
@@ -791,6 +766,84 @@ fun SettingsScreen(
                         fontSize = 11.sp
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun CountdownDurationPicker(
+    totalSeconds: Int,
+    onDurationChanged: (Int) -> Unit
+) {
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TimeUnitBox("HOURS", hours, max = 23) { newHours ->
+            val validHours = newHours.coerceIn(0, 23)
+            val newTotal = validHours * 3600 + minutes * 60 + seconds
+            if (newTotal > 0) onDurationChanged(newTotal)
+        }
+        Text(":", color = LuxuryColors.WarmGray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        TimeUnitBox("MINS", minutes, max = 59) { newMins ->
+            val validMins = newMins.coerceIn(0, 59)
+            val newTotal = hours * 3600 + validMins * 60 + seconds
+            if (newTotal > 0) onDurationChanged(newTotal)
+        }
+        Text(":", color = LuxuryColors.WarmGray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        TimeUnitBox("SECS", seconds, max = 59) { newSecs ->
+            val validSecs = newSecs.coerceIn(0, 59)
+            val newTotal = hours * 3600 + minutes * 60 + validSecs
+            if (newTotal > 0) onDurationChanged(newTotal)
+        }
+    }
+}
+
+@Composable
+fun TimeUnitBox(
+    label: String,
+    value: Int,
+    max: Int,
+    onValueChange: (Int) -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = label, color = LuxuryColors.WarmGray, fontSize = 9.sp, letterSpacing = 1.sp)
+        Spacer(modifier = Modifier.height(2.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .border(1.dp, LuxuryColors.WarmGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .clickable { onValueChange(if (value > 0) value - 1 else max) }
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text("-", color = LuxuryColors.AccentGold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(
+                text = String.format("%02d", value),
+                color = LuxuryColors.CreamyWhite,
+                fontSize = 14.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 6.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .clickable { onValueChange(if (value < max) value + 1 else 0) }
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text("+", color = LuxuryColors.AccentGold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

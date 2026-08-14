@@ -198,6 +198,16 @@ class StopwatchService : Service() {
                 }
             }
 
+            // Sync countdown duration changes dynamically
+            serviceScope.launch {
+                settingsRepository.getWidgetCountdownDuration(i).collectLatest { seconds ->
+                    widgetStates[i].countdownDuration.value = seconds
+                    if (widgetStates[i].type.value == "countdown" && !widgetStates[i].running.value) {
+                        widgetStates[i].elapsedOrValue.value = seconds * 1000L
+                    }
+                }
+            }
+
             // Sync type changes dynamically
             serviceScope.launch {
                 settingsRepository.getWidgetType(i).collectLatest { type ->

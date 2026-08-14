@@ -32,6 +32,7 @@ class SettingsRepository(private val context: Context) {
         val MESH_GRADIENT_ENABLED = booleanPreferencesKey("mesh_gradient_enabled")
         val LAYOUT_ORIENTATION = stringPreferencesKey("layout_orientation")
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
+        val FLOATING_PADDING = floatPreferencesKey("floating_padding")
     }
 
     val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: false }
@@ -49,6 +50,8 @@ class SettingsRepository(private val context: Context) {
     val meshGradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[MESH_GRADIENT_ENABLED] ?: true }
     val layoutOrientation: Flow<String> = context.dataStore.data.map { it[LAYOUT_ORIENTATION] ?: "horizontal" }
     val activeWidgetsCount: Flow<Int> = context.dataStore.data.map { it[ACTIVE_WIDGETS_COUNT] ?: 1 }
+
+    val floatingPadding: Flow<Float> = context.dataStore.data.map { it[FLOATING_PADDING] ?: 6.0f }
 
     val showCentisecondsMain: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_MAIN] ?: true }
     val showCentisecondsFloating: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_FLOATING] ?: true }
@@ -140,6 +143,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setLayoutOrientation(orientation: String) {
         context.dataStore.edit { it[LAYOUT_ORIENTATION] = orientation }
+    }
+
+    suspend fun setFloatingPadding(padding: Float) {
+        context.dataStore.edit { it[FLOATING_PADDING] = padding }
     }
 
     suspend fun setActiveWidgetsCount(count: Int) {

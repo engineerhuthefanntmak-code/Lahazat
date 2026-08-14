@@ -144,6 +144,7 @@ class StopwatchService : Service() {
                 val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
                 val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
                 val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
+                val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
 
                 val accentColor = if (colorPreset == "Custom") {
                     try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -191,6 +192,7 @@ class StopwatchService : Service() {
                         fontSizeScale = fontSizeScale,
                         gradientEnabled = gradientEnabled,
                         layoutOrientation = layoutOrientation,
+                        paddingDpValue = floatingPadding,
                         onMovementDrag = { dx, dy ->
                             params?.let {
                                 it.x += dx.roundToInt()
@@ -314,6 +316,7 @@ class StopwatchService : Service() {
         fontSizeScale: Float,
         gradientEnabled: Boolean,
         layoutOrientation: String,
+        paddingDpValue: Float,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
         onAction: (String) -> Unit
@@ -325,6 +328,13 @@ class StopwatchService : Service() {
             "sharp" -> 0.dp
             else -> 16.dp // standard rounded
         }
+
+        // Clip-prevention safety padding: curved shapes like circular, capsule, glass require minimum offset boundaries to protect text elements.
+        val shapeDependentMinPadding = when (shapePreset) {
+            "circle", "capsule", "glass" -> 4.0f
+            else -> 1.0f
+        }
+        val safePadding = paddingDpValue.coerceAtLeast(shapeDependentMinPadding)
 
         var showMenu by remember { mutableStateOf(false) }
 
@@ -373,7 +383,7 @@ class StopwatchService : Service() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(safePadding.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (showMenu) {

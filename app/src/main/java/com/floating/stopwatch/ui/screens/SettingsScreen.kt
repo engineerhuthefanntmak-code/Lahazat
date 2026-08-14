@@ -117,9 +117,10 @@ fun SettingsScreen(
             val floatingWidth by settingsRepository.floatingWidth.collectAsState(initial = 170.0f)
             val floatingHeight by settingsRepository.floatingHeight.collectAsState(initial = 56.0f)
             val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
+            val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
 
             Text(
-                text = "FLOATING OVERLAY WIDTH",
+                text = if (shapePreset == "circle") "FLOATING OVERLAY DIAMETER (CIRCLE MODE BOUND)" else "FLOATING OVERLAY WIDTH",
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
             )
             Slider(
@@ -146,27 +147,51 @@ fun SettingsScreen(
 
             // Floating Height Slider (1 to 80 dp) - Independent control (with circle auto-equality constraint)
             Text(
-                text = "FLOATING OVERLAY HEIGHT",
-                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
+                text = if (shapePreset == "circle") "FLOATING OVERLAY HEIGHT (LOCKED TO WIDTH FOR CIRCLE)" else "FLOATING OVERLAY HEIGHT",
+                style = TextStyle(color = if (shapePreset == "circle") LuxuryColors.WarmGray.copy(alpha = 0.5f) else LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
             )
             Slider(
-                value = floatingHeight,
+                value = if (shapePreset == "circle") floatingWidth.coerceAtMost(80.0f) else floatingHeight,
                 onValueChange = {
-                    scope.launch {
-                        settingsRepository.setFloatingHeight(it)
-                        if (shapePreset == "circle") {
-                            settingsRepository.setFloatingWidth(it)
+                    if (shapePreset != "circle") {
+                        scope.launch {
+                            settingsRepository.setFloatingHeight(it)
                         }
                     }
                 },
                 valueRange = 1.0f..80.0f,
+                enabled = shapePreset != "circle",
+                colors = SliderDefaults.colors(
+                    thumbColor = if (shapePreset == "circle") LuxuryColors.WarmGray else LuxuryColors.AccentGold,
+                    activeTrackColor = if (shapePreset == "circle") LuxuryColors.WarmGray.copy(alpha = 0.3f) else LuxuryColors.AccentGold
+                )
+            )
+            Text(
+                text = if (shapePreset == "circle") "Height: ${floatingWidth.coerceAtMost(80.0f).toInt()}dp [Auto-locked to Width]" else "Height: ${floatingHeight.toInt()}dp (Limits: 1dp to 80dp)",
+                style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            // Floating Padding Slider (1 to 32 dp)
+            Text(
+                text = "FLOATING OVERLAY INTERNAL PADDING",
+                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
+            )
+            Slider(
+                value = floatingPadding,
+                onValueChange = {
+                    scope.launch {
+                        settingsRepository.setFloatingPadding(it)
+                    }
+                },
+                valueRange = 1.0f..32.0f,
                 colors = SliderDefaults.colors(
                     thumbColor = LuxuryColors.AccentGold,
                     activeTrackColor = LuxuryColors.AccentGold
                 )
             )
             Text(
-                text = "Height: ${floatingHeight.toInt()}dp (Limits: 1dp to 80dp)",
+                text = "Padding: ${floatingPadding.toInt()}dp (Limits: 1dp to 32dp)",
                 style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
                 modifier = Modifier.padding(bottom = 24.dp)
             )

@@ -112,12 +112,18 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            for (i in 0..4) {
+            for (i in 0..2) {
                 val isWidgetActive by settingsRepository.isWidgetActive(i).collectAsState(initial = i == 0)
-                val widgetType by settingsRepository.getWidgetType(i).collectAsState(initial = "stopwatch")
+                val widgetType by settingsRepository.getWidgetType(i).collectAsState(initial = when (i) { 1 -> "countdown"; 2 -> "counter"; else -> "stopwatch" })
                 val countdownDuration by settingsRepository.getWidgetCountdownDuration(i).collectAsState(initial = 300)
                 val wWidth by settingsRepository.getWidgetWidth(i).collectAsState(initial = 170.0f)
                 val wHeight by settingsRepository.getWidgetHeight(i).collectAsState(initial = 56.0f)
+
+                val defaultTitle = when (i) {
+                    0 -> "STOPWATCH"
+                    1 -> "COUNTDOWN"
+                    else -> "COUNTER"
+                }
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.1f)),
@@ -133,7 +139,7 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "WIDGET #${i + 1} (${widgetType.uppercase()})",
+                                text = "$defaultTitle WIDGET",
                                 color = LuxuryColors.CreamyWhite,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold
@@ -378,24 +384,29 @@ fun SettingsScreen(
                 )
             }
 
-            // New Battery Indicator Toggle
-            val showBatteryIndicator by settingsRepository.showBatteryIndicator.collectAsState(initial = true)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "SHOW BATTERY STATUS INDICATOR",
-                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
-                )
-                Switch(
-                    checked = showBatteryIndicator,
-                    onCheckedChange = { scope.launch { settingsRepository.setShowBatteryIndicator(it) } },
-                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
-                )
+            // Status Indicator Mode Selector
+            val statusIndicatorMode by settingsRepository.statusIndicatorMode.collectAsState(initial = "battery")
+            Text(
+                text = "STATUS INDICATOR MODE",
+                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
+                modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
+            )
+            listOf("battery" to "CIRCULAR BATTERY STATUS", "book" to "OPEN BOOK ICON (📖)", "hidden" to "HIDDEN").forEach { (modeKey, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { scope.launch { settingsRepository.setStatusIndicatorMode(modeKey) } }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = (statusIndicatorMode == modeKey),
+                        onClick = { scope.launch { settingsRepository.setStatusIndicatorMode(modeKey) } },
+                        colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(text = label, color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                }
             }
 
             // Show Centiseconds Toggles
@@ -421,6 +432,8 @@ fun SettingsScreen(
             val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
             val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
             val meshGradientEnabled by settingsRepository.meshGradientEnabled.collectAsState(initial = true)
+            val energyAuraEnabled by settingsRepository.energyAuraEnabled.collectAsState(initial = true)
+            val volumeCounterScreenOffEnabled by settingsRepository.volumeCounterScreenOffEnabled.collectAsState(initial = false)
             val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -509,6 +522,44 @@ fun SettingsScreen(
                 Switch(
                     checked = layoutOrientation == "vertical",
                     onCheckedChange = { scope.launch { settingsRepository.setLayoutOrientation(if (it) "vertical" else "horizontal") } },
+                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                )
+            }
+
+            // Volume Counter Screen Off switch
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "VOLUME KEYS COUNTER (SCREEN OFF / BACKGROUND)",
+                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                )
+                Switch(
+                    checked = volumeCounterScreenOffEnabled,
+                    onCheckedChange = { scope.launch { settingsRepository.setVolumeCounterScreenOffEnabled(it) } },
+                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                )
+            }
+
+            // Energy Aura switch
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "ANIMATED ENERGY AURA EFFECT",
+                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                )
+                Switch(
+                    checked = energyAuraEnabled,
+                    onCheckedChange = { scope.launch { settingsRepository.setEnergyAuraEnabled(it) } },
                     colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
                 )
             }

@@ -30,12 +30,15 @@ class SettingsRepository(private val context: Context) {
         val FONT_SIZE_SCALE = floatPreferencesKey("font_size_scale")
         val GRADIENT_ENABLED = booleanPreferencesKey("gradient_enabled")
         val MESH_GRADIENT_ENABLED = booleanPreferencesKey("mesh_gradient_enabled")
+        val ENERGY_AURA_ENABLED = booleanPreferencesKey("energy_aura_enabled")
+        val VOLUME_COUNTER_SCREEN_OFF_ENABLED = booleanPreferencesKey("volume_counter_screen_off_enabled")
         val LAYOUT_ORIENTATION = stringPreferencesKey("layout_orientation")
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
         val FLOATING_PADDING = floatPreferencesKey("floating_padding")
         val FLOATING_OPACITY = floatPreferencesKey("floating_opacity")
         val GLOWING_BORDER = booleanPreferencesKey("glowing_border")
         val SHOW_BATTERY_INDICATOR = booleanPreferencesKey("show_battery_indicator")
+        val STATUS_INDICATOR_MODE = stringPreferencesKey("status_indicator_mode")
     }
 
     // Dynamic Indexed Preferences for Multi-Widget (up to 5 concurrent widgets)
@@ -44,7 +47,11 @@ class SettingsRepository(private val context: Context) {
     }
 
     fun getWidgetType(index: Int): Flow<String> = context.dataStore.data.map {
-        it[stringPreferencesKey("widget_${index}_type")] ?: "stopwatch"
+        it[stringPreferencesKey("widget_${index}_type")] ?: when (index) {
+            1 -> "countdown"
+            2 -> "counter"
+            else -> "stopwatch"
+        }
     }
 
     fun getWidgetX(index: Int): Flow<Float> = context.dataStore.data.map {
@@ -123,6 +130,8 @@ class SettingsRepository(private val context: Context) {
     val fontSizeScale: Flow<Float> = context.dataStore.data.map { it[FONT_SIZE_SCALE] ?: 1.0f }
     val gradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[GRADIENT_ENABLED] ?: false }
     val meshGradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[MESH_GRADIENT_ENABLED] ?: true }
+    val energyAuraEnabled: Flow<Boolean> = context.dataStore.data.map { it[ENERGY_AURA_ENABLED] ?: true }
+    val volumeCounterScreenOffEnabled: Flow<Boolean> = context.dataStore.data.map { it[VOLUME_COUNTER_SCREEN_OFF_ENABLED] ?: false }
     val layoutOrientation: Flow<String> = context.dataStore.data.map { it[LAYOUT_ORIENTATION] ?: "horizontal" }
     val activeWidgetsCount: Flow<Int> = context.dataStore.data.map { it[ACTIVE_WIDGETS_COUNT] ?: 1 }
 
@@ -130,6 +139,7 @@ class SettingsRepository(private val context: Context) {
     val floatingOpacity: Flow<Float> = context.dataStore.data.map { it[FLOATING_OPACITY] ?: 0.85f }
     val glowingBorder: Flow<Boolean> = context.dataStore.data.map { it[GLOWING_BORDER] ?: false }
     val showBatteryIndicator: Flow<Boolean> = context.dataStore.data.map { it[SHOW_BATTERY_INDICATOR] ?: true }
+    val statusIndicatorMode: Flow<String> = context.dataStore.data.map { it[STATUS_INDICATOR_MODE] ?: "battery" }
 
     val showCentisecondsMain: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_MAIN] ?: true }
     val showCentisecondsFloating: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_FLOATING] ?: true }
@@ -229,6 +239,14 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[MESH_GRADIENT_ENABLED] = enabled }
     }
 
+    suspend fun setEnergyAuraEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[ENERGY_AURA_ENABLED] = enabled }
+    }
+
+    suspend fun setVolumeCounterScreenOffEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[VOLUME_COUNTER_SCREEN_OFF_ENABLED] = enabled }
+    }
+
     suspend fun setLayoutOrientation(orientation: String) {
         context.dataStore.edit { it[LAYOUT_ORIENTATION] = orientation }
     }
@@ -247,6 +265,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setShowBatteryIndicator(enabled: Boolean) {
         context.dataStore.edit { it[SHOW_BATTERY_INDICATOR] = enabled }
+    }
+
+    suspend fun setStatusIndicatorMode(mode: String) {
+        context.dataStore.edit { it[STATUS_INDICATOR_MODE] = mode }
     }
 
     suspend fun setActiveWidgetsCount(count: Int) {

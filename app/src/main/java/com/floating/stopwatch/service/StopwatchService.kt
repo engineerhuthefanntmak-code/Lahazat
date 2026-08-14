@@ -46,6 +46,7 @@ import com.floating.stopwatch.data.SettingsRepository
 import com.floating.stopwatch.domain.HapticController
 import com.floating.stopwatch.domain.StopwatchEngine
 import com.floating.stopwatch.ui.components.TimeDisplay
+import com.floating.stopwatch.ui.components.EnergyAuraEffect
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -88,7 +89,7 @@ class StopwatchService : Service() {
 
     // Multi-Widget context structures
     private val activeOverlays = mutableMapOf<Int, ActiveOverlay>()
-    private val widgetStates = List(5) { index -> WidgetState(index) }
+    private val widgetStates = List(3) { index -> WidgetState(index) }
     private val tickerJobs = mutableMapOf<Int, Job>()
 
     private class ActiveOverlay(
@@ -154,6 +155,16 @@ class StopwatchService : Service() {
         // Monitor and auto-sync active widgets list
         startWidgetLifecycleManager()
 
+        // Screen-off volume button handler for counter
+        serviceScope.launch {
+            combine(
+                settingsRepository.volumeCounterScreenOffEnabled,
+                snapshotFlow { widgetStates.any { it.type.value == "counter" } }
+            ) { enabled, hasCounter -> Pair(enabled, hasCounter) }.collectLatest { (enabled, hasCounter) ->
+                setupMediaSessionForScreenOffVolume(enabled, hasCounter)
+            }
+        }
+
         // Register battery receiver for real-time tracking
         registerReceiver(batteryReceiver, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     }
@@ -167,8 +178,8 @@ class StopwatchService : Service() {
     }
 
     private fun startWidgetLifecycleManager() {
-        // Observe settings for up to 5 widgets and spawn/dismiss them reactively
-        for (i in 0..4) {
+        // Observe settings for up to 3 fixed widgets and spawn/dismiss them reactively
+        for (i in 0..2) {
             serviceScope.launch {
                 settingsRepository.isWidgetActive(i).collectLatest { active ->
                     if (active) {
@@ -277,11 +288,12 @@ class StopwatchService : Service() {
                 val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
                 val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
                 val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
+                val energyAuraEnabled by settingsRepository.energyAuraEnabled.collectAsState(initial = true)
                 val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
                 val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
                 val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
                 val glowingBorder by settingsRepository.glowingBorder.collectAsState(initial = false)
-                val showBatteryIndicator by settingsRepository.showBatteryIndicator.collectAsState(initial = true)
+                val statusIndicatorMode by settingsRepository.statusIndicatorMode.collectAsState(initial = "battery")
                 val currentBatteryPct by batteryPercentage.collectAsState()
 
                 val accentColor = if (colorPreset == "Custom") {
@@ -353,11 +365,12 @@ class StopwatchService : Service() {
                         shapePreset = shapePreset,
                         fontSizeScale = fontSizeScale,
                         gradientEnabled = gradientEnabled,
+                        energyAuraEnabled = energyAuraEnabled,
                         layoutOrientation = layoutOrientation,
                         paddingDpValue = floatingPadding,
                         opacity = floatingOpacity,
                         glowingBorder = glowingBorder,
-                        showBatteryIndicator = showBatteryIndicator,
+                        statusIndicatorMode = statusIndicatorMode,
                         batteryPercentage = currentBatteryPct,
                         onMovementDrag = { dx, dy ->
                             activeOverlays[index]?.let {
@@ -404,17 +417,25 @@ class StopwatchService : Service() {
                                     serviceScope.launch { settingsRepository.setWidgetRunning(index, false) }
                                 }
                                 "Increment" -> {
-                                    hapticController.trigger(hapticIntensity, "Lap")
                                     state.tapCount.value++
-                                    state.elapsedOrValue.value = state.tapCount.value.toLong()
-                                    serviceScope.launch { settingsRepository.setWidgetValue(index, state.tapCount.value.toLong()) }
+                                    val newVal = state.tapCount.value
+                                    state.elapsedOrValue.value = newVal.toLong()
+                                    serviceScope.launch { settingsRepository.setWidgetValue(index, newVal.toLong()) }
+                                    checkCounterMilestoneAndVibrate(newVal)
+                                    if (newVal != 33 && newVal != 66 && newVal != 99 && newVal != 100) {
+                                        hapticController.trigger(hapticIntensity, "Lap")
+                                    }
                                 }
                                 "Decrement" -> {
-                                    hapticController.trigger(hapticIntensity, "Reset")
                                     if (state.tapCount.value > 0) {
                                         state.tapCount.value--
-                                        state.elapsedOrValue.value = state.tapCount.value.toLong()
-                                        serviceScope.launch { settingsRepository.setWidgetValue(index, state.tapCount.value.toLong()) }
+                                        val newVal = state.tapCount.value
+                                        state.elapsedOrValue.value = newVal.toLong()
+                                        serviceScope.launch { settingsRepository.setWidgetValue(index, newVal.toLong()) }
+                                        checkCounterMilestoneAndVibrate(newVal)
+                                        if (newVal != 33 && newVal != 66 && newVal != 99 && newVal != 100) {
+                                            hapticController.trigger(hapticIntensity, "Reset")
+                                        }
                                     }
                                 }
                                 "ToggleVolume" -> {
@@ -454,12 +475,9 @@ class StopwatchService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        val initWidthDp = runBlocking { settingsRepository.getWidgetWidth(index).first() }
-        val initHeightDp = runBlocking { settingsRepository.getWidgetHeight(index).first() }
-
         val params = WindowManager.LayoutParams(
-            initWidthDp.toInt().dpToPx().coerceAtLeast(1),
-            initHeightDp.toInt().dpToPx().coerceAtLeast(1),
+            170.dpToPx().coerceAtLeast(1),
+            56.dpToPx().coerceAtLeast(1),
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
@@ -495,6 +513,83 @@ class StopwatchService : Service() {
 
         activeOverlays[index] = ActiveOverlay(index, owner, composeView, params)
         windowManager.addView(composeView, params)
+    }
+
+    private var mediaSession: android.media.session.MediaSession? = null
+
+    private fun setupMediaSessionForScreenOffVolume(enabled: Boolean, hasActiveCounter: Boolean) {
+        if (enabled && hasActiveCounter) {
+            if (mediaSession == null) {
+                mediaSession = android.media.session.MediaSession(this, "StopwatchVolumeCounterSession").apply {
+                    val volumeProvider = object : android.media.VolumeProvider(
+                        android.media.VolumeProvider.VOLUME_CONTROL_RELATIVE,
+                        100,
+                        50
+                    ) {
+                        override fun onAdjustVolume(direction: Int) {
+                            if (direction > 0) {
+                                handleCounterVolumePress(increment = true)
+                            } else if (direction < 0) {
+                                handleCounterVolumePress(increment = false)
+                            }
+                        }
+                    }
+                    setPlaybackToRemote(volumeProvider)
+                    setCallback(object : android.media.session.MediaSession.Callback() {
+                        override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
+                            val keyEvent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, android.view.KeyEvent::class.java)
+                            } else {
+                                @Suppress("DEPRECATION")
+                                mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
+                            }
+                            if (keyEvent != null && keyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
+                                if (keyEvent.keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
+                                    handleCounterVolumePress(increment = true)
+                                    return true
+                                } else if (keyEvent.keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) {
+                                    handleCounterVolumePress(increment = false)
+                                    return true
+                                }
+                            }
+                            return super.onMediaButtonEvent(mediaButtonIntent)
+                        }
+                    })
+                }
+            }
+            mediaSession?.isActive = true
+        } else {
+            mediaSession?.isActive = false
+        }
+    }
+
+    private fun checkCounterMilestoneAndVibrate(newValue: Int) {
+        if (newValue == 33 || newValue == 66 || newValue == 99 || newValue == 100) {
+            serviceScope.launch {
+                val intensity = settingsRepository.hapticIntensity.first()
+                hapticController.trigger(intensity, "CounterMilestone")
+            }
+        }
+    }
+
+    private fun handleCounterVolumePress(increment: Boolean) {
+        widgetStates.forEach { ws ->
+            if (ws.type.value == "counter") {
+                if (increment) {
+                    ws.tapCount.value++
+                    val newVal = ws.tapCount.value
+                    ws.elapsedOrValue.value = newVal.toLong()
+                    serviceScope.launch { settingsRepository.setWidgetValue(ws.index, newVal.toLong()) }
+                    checkCounterMilestoneAndVibrate(newVal)
+                } else if (ws.tapCount.value > 0) {
+                    ws.tapCount.value--
+                    val newVal = ws.tapCount.value
+                    ws.elapsedOrValue.value = newVal.toLong()
+                    serviceScope.launch { settingsRepository.setWidgetValue(ws.index, newVal.toLong()) }
+                    checkCounterMilestoneAndVibrate(newVal)
+                }
+            }
+        }
     }
 
     private fun dismissWidget(index: Int) {
@@ -622,11 +717,12 @@ class StopwatchService : Service() {
         shapePreset: String,
         fontSizeScale: Float,
         gradientEnabled: Boolean,
+        energyAuraEnabled: Boolean,
         layoutOrientation: String,
         paddingDpValue: Float,
         opacity: Float,
         glowingBorder: Boolean,
-        showBatteryIndicator: Boolean,
+        statusIndicatorMode: String,
         batteryPercentage: Int,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
@@ -711,7 +807,14 @@ class StopwatchService : Service() {
                             Modifier
                         }
                     )
-            )
+            ) {
+                if (energyAuraEnabled) {
+                    EnergyAuraEffect(
+                        isRunning = running,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
 
             // Content
             Box(
@@ -721,130 +824,52 @@ class StopwatchService : Service() {
                 contentAlignment = Alignment.Center
             ) {
                 if (showMenu) {
-                    // Responsive Color Dots Menu
-                    val scaleFactor = (14.dp.value * fontSizeScale).coerceAtLeast(10.0f).dp
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.95f), RoundedCornerShape(finalCornerRadius))
-                            .padding(2.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Start Dot (🟢)
-                        Box(
-                            modifier = Modifier
-                                .size(scaleFactor)
-                                .clip(CircleShape)
-                                .background(Color(0xFF4AC98F))
-                                .clickable {
-                                    if (widgetType != "counter") {
-                                        onAction("Start")
-                                    } else {
-                                        onAction("Increment")
-                                    }
-                                    showMenu = false
+                    LuxuryTextDropdownMenu(
+                        widgetType = widgetType,
+                        fontSizeScale = fontSizeScale,
+                        isVolumeActive = isVolumeActive,
+                        onAction = { action ->
+                            if (action == "Close") {
+                                serviceScope.launch {
+                                    settingsRepository.setWidgetActive(index, false)
                                 }
-                        )
-
-                        // Stop Dot (🟡)
-                        Box(
-                            modifier = Modifier
-                                .size(scaleFactor)
-                                .clip(CircleShape)
-                                .background(Color(0xFFF5A623))
-                                .clickable {
-                                    onAction("Stop")
-                                    showMenu = false
-                                }
-                        )
-
-                        // Reset Dot (🔵)
-                        Box(
-                            modifier = Modifier
-                                .size(scaleFactor)
-                                .clip(CircleShape)
-                                .background(Color(0xFF4A90E2))
-                                .clickable {
-                                    onAction("Reset")
-                                    showMenu = false
-                                }
-                        )
-
-                        // Milestone Pin Dot (🟣)
-                        Box(
-                            modifier = Modifier
-                                .size(scaleFactor)
-                                .clip(CircleShape)
-                                .background(Color(0xFF9013FE))
-                                .clickable {
-                                    onAction("Milestone")
-                                    showMenu = false
-                                }
-                        )
-
-                        // Settings / Open App Dot (⚪)
-                        Box(
-                            modifier = Modifier
-                                .size(scaleFactor)
-                                .clip(CircleShape)
-                                .background(Color(0xFFCCCCCC))
-                                .clickable {
-                                    onAction("OpenApp")
-                                    showMenu = false
-                                }
-                        )
-
-                        // Volume Toggle Dot (🟠) - Only visible/active for counters
-                        if (widgetType == "counter") {
-                            Box(
-                                modifier = Modifier
-                                    .size(scaleFactor)
-                                    .clip(CircleShape)
-                                    .background(if (isVolumeActive) Color(0xFFFF9500) else Color(0xFF5856D6))
-                                    .clickable {
-                                        onAction("ToggleVolume")
-                                        showMenu = false
-                                    }
-                            )
-                        }
-
-                        // Close Dot (🔴)
-                        Box(
-                            modifier = Modifier
-                                .size(scaleFactor)
-                                .clip(CircleShape)
-                                .background(Color(0xFFC94A4A))
-                                .clickable {
-                                    serviceScope.launch {
-                                        settingsRepository.setWidgetActive(index, false)
-                                    }
-                                }
-                        )
-                    }
+                            } else {
+                                onAction(action)
+                            }
+                        },
+                        onDismiss = { showMenu = false }
+                    )
                 } else {
                     // Foreground Values (Stopwatch / Countdown / Tap Counter)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        if (showBatteryIndicator && shapePreset != "circle") {
+                        if (statusIndicatorMode != "hidden" && shapePreset != "circle") {
                             val scaledIconSize = (16.dp.value * fontSizeScale).coerceAtLeast(10.0f).dp
                             val scaledFontSize = (8.sp.value * fontSizeScale).coerceAtLeast(6.0f).sp
-                            Box(
-                                modifier = Modifier
-                                    .size(scaledIconSize)
-                                    .border(
-                                        border = BorderStroke(1.dp, if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A)),
-                                        shape = CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
+
+                            if (statusIndicatorMode == "battery") {
+                                Box(
+                                    modifier = Modifier
+                                        .size(scaledIconSize)
+                                        .border(
+                                            border = BorderStroke(1.dp, if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A)),
+                                            shape = CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "$batteryPercentage%",
+                                        color = if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A),
+                                        fontSize = scaledFontSize,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            } else if (statusIndicatorMode == "book") {
                                 Text(
-                                    text = "$batteryPercentage%",
-                                    color = if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A),
-                                    fontSize = scaledFontSize,
-                                    fontWeight = FontWeight.Bold
+                                    text = "📖",
+                                    fontSize = scaledFontSize * 1.5f
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
@@ -938,5 +963,77 @@ class StopwatchService : Service() {
 
         // Secure unmount and clean up all spawned widget overlay life-cycles
         activeOverlays.keys.toList().forEach { dismissWidget(it) }
+    }
+}
+
+@Composable
+fun LuxuryTextDropdownMenu(
+    widgetType: String,
+    fontSizeScale: Float,
+    isVolumeActive: Boolean,
+    onAction: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val scaleFontSize = (11.sp.value * fontSizeScale).coerceAtLeast(10.0f).sp
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xF20A0A0A)),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
+        modifier = Modifier
+            .wrapContentSize()
+            .padding(2.dp)
+            .shadow(8.dp, RoundedCornerShape(12.dp))
+    ) {
+        Column(
+            modifier = Modifier
+                .width(IntrinsicSize.Max)
+                .padding(vertical = 4.dp, horizontal = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalAlignment = Alignment.Start
+        ) {
+            val options = mutableListOf<Pair<String, String>>()
+            if (widgetType == "counter") {
+                options.add("INCREMENT" to "Increment")
+                options.add("DECREMENT" to "Decrement")
+                options.add((if (isVolumeActive) "DISABLE VOLUME KEYS" else "ENABLE VOLUME KEYS") to "ToggleVolume")
+            } else {
+                options.add("START" to "Start")
+                options.add("STOP" to "Stop")
+                options.add("RESET" to "Reset")
+                options.add("MILESTONE" to "Milestone")
+            }
+            options.add("SETTINGS" to "OpenApp")
+            options.add("HIDE" to "Hide")
+            options.add("CLOSE" to "Close")
+
+            options.forEach { (label, action) ->
+                Text(
+                    text = label,
+                    style = TextStyle(
+                        color = when (label) {
+                            "START", "INCREMENT" -> Color(0xFF4AC98F)
+                            "STOP" -> Color(0xFFF5A623)
+                            "CLOSE" -> Color(0xFFC94A4A)
+                            else -> LuxuryColors.CreamyWhite
+                        },
+                        fontSize = scaleFontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.sp
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (action == "Hide") {
+                                onDismiss()
+                            } else {
+                                onAction(action)
+                                onDismiss()
+                            }
+                        }
+                        .padding(vertical = 3.dp, horizontal = 6.dp)
+                )
+            }
+        }
     }
 }

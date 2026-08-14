@@ -56,6 +56,11 @@ class HapticController(context: Context) {
                     val wave = VibrationEffect.createWaveform(longArrayOf(0, 40, 20, 20, 10, 10), intArrayOf(0, amplitude, 0, (amplitude * 0.5f).toInt(), 0, (amplitude * 0.2f).toInt()), -1)
                     vibrator.vibrate(wave)
                 }
+                "CounterMilestone" -> {
+                    // Distinct achievement vibration pulse (triple rhythmic pulse)
+                    val wave = VibrationEffect.createWaveform(longArrayOf(0, 30, 40, 30, 40, 60), intArrayOf(0, amplitude, 0, amplitude, 0, 255), -1)
+                    vibrator.vibrate(wave)
+                }
                 else -> {
                     vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude))
                 }

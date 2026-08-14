@@ -33,6 +33,8 @@ class SettingsRepository(private val context: Context) {
         val LAYOUT_ORIENTATION = stringPreferencesKey("layout_orientation")
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
         val FLOATING_PADDING = floatPreferencesKey("floating_padding")
+        val FLOATING_OPACITY = floatPreferencesKey("floating_opacity")
+        val GLOWING_BORDER = booleanPreferencesKey("glowing_border")
     }
 
     val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: false }
@@ -52,6 +54,8 @@ class SettingsRepository(private val context: Context) {
     val activeWidgetsCount: Flow<Int> = context.dataStore.data.map { it[ACTIVE_WIDGETS_COUNT] ?: 1 }
 
     val floatingPadding: Flow<Float> = context.dataStore.data.map { it[FLOATING_PADDING] ?: 6.0f }
+    val floatingOpacity: Flow<Float> = context.dataStore.data.map { it[FLOATING_OPACITY] ?: 0.85f }
+    val glowingBorder: Flow<Boolean> = context.dataStore.data.map { it[GLOWING_BORDER] ?: false }
 
     val showCentisecondsMain: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_MAIN] ?: true }
     val showCentisecondsFloating: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_FLOATING] ?: true }
@@ -147,6 +151,14 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setFloatingPadding(padding: Float) {
         context.dataStore.edit { it[FLOATING_PADDING] = padding }
+    }
+
+    suspend fun setFloatingOpacity(opacity: Float) {
+        context.dataStore.edit { it[FLOATING_OPACITY] = opacity }
+    }
+
+    suspend fun setGlowingBorder(enabled: Boolean) {
+        context.dataStore.edit { it[GLOWING_BORDER] = enabled }
     }
 
     suspend fun setActiveWidgetsCount(count: Int) {

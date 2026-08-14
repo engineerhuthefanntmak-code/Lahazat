@@ -145,6 +145,8 @@ class StopwatchService : Service() {
                 val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
                 val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
                 val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
+                val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
+                val glowingBorder by settingsRepository.glowingBorder.collectAsState(initial = false)
 
                 val accentColor = if (colorPreset == "Custom") {
                     try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -194,6 +196,9 @@ class StopwatchService : Service() {
                         gradientEnabled = gradientEnabled,
                         layoutOrientation = layoutOrientation,
                         paddingDpValue = floatingPadding,
+                        opacity = floatingOpacity,
+                        glowingBorder = glowingBorder,
+                        posY = if (params != null) params!!.y else 100,
                         onMovementDrag = { dx, dy ->
                             params?.let {
                                 it.x += dx.roundToInt()
@@ -265,32 +270,18 @@ class StopwatchService : Service() {
         val screenWidth = metrics.widthPixels
         val screenHeight = metrics.heightPixels
 
-        val margin = 24.dpToPx()
-        val snapThreshold = 48.dpToPx()
+        // Absolute full freedom of movement across the entire device screen.
+        // Specifically, the top portion (status bar/notch/battery/clock area) is completely accessible with zero margins or snap-away restrictions.
+        val leftX = 0
+        val rightX = screenWidth - lp.width
+        val topY = 0
+        val bottomY = screenHeight - lp.height
 
-        val leftX = margin
-        val rightX = screenWidth - lp.width - margin
-        val topY = margin
-        val bottomY = screenHeight - lp.height - margin
-
-        // Clamp to screen boundaries
+        // Clean boundaries clamp
         if (lp.x < leftX) lp.x = leftX
         if (lp.x > rightX) lp.x = rightX
         if (lp.y < topY) lp.y = topY
         if (lp.y > bottomY) lp.y = bottomY
-
-        // Edge snap logic
-        if (lp.x - leftX < snapThreshold) {
-            lp.x = leftX
-        } else if (rightX - lp.x < snapThreshold) {
-            lp.x = rightX
-        }
-
-        if (lp.y - topY < snapThreshold) {
-            lp.y = topY
-        } else if (bottomY - lp.y < snapThreshold) {
-            lp.y = bottomY
-        }
 
         windowManager.updateViewLayout(composeView, lp)
     }
@@ -318,6 +309,9 @@ class StopwatchService : Service() {
         gradientEnabled: Boolean,
         layoutOrientation: String,
         paddingDpValue: Float,
+        opacity: Float,
+        glowingBorder: Boolean,
+        posY: Int,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
         onAction: (String) -> Unit
@@ -337,12 +331,17 @@ class StopwatchService : Service() {
         var showMenu by remember { mutableStateOf(false) }
 
         // Layout with layered backdrop to fix Glassmorphism blur (Item 4)
+        // Fixed gesture event conflict by separating TAP/CLICK gestures and dragging within sequential pointer inputs
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clickable {
-                    showMenu = !showMenu
-                    android.util.Log.d("StopwatchApp", "Overlay click registered! showMenu state changed to: $showMenu")
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            showMenu = !showMenu
+                            android.util.Log.d("StopwatchApp", "Overlay click registered! showMenu state changed to: $showMenu")
+                        }
+                    )
                 }
                 .pointerInput(Unit) {
                     detectDragGestures(
@@ -362,17 +361,27 @@ class StopwatchService : Service() {
                     .then(
                         if (stylePreset == "Glass Premium" || shapePreset == "glass") {
                             Modifier
-                                .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(finalCornerRadius))
+                                .background(Color.White.copy(alpha = 0.12f * opacity), RoundedCornerShape(finalCornerRadius))
                                 .blur(16.dp)
                         } else if (stylePreset == "Obsidian") {
-                            Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f), RoundedCornerShape(finalCornerRadius))
+                            Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f * opacity), RoundedCornerShape(finalCornerRadius))
                         } else if (stylePreset == "Titanium") {
                             val titaniumBrush = Brush.verticalGradient(
                                 colors = listOf(Color(0xFF2C2F33), Color(0xFF1E2124))
                             )
                             Modifier.background(titaniumBrush, RoundedCornerShape(finalCornerRadius))
                         } else {
-                            Modifier.background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(finalCornerRadius))
+                            Modifier.background(Color.Black.copy(alpha = opacity), RoundedCornerShape(finalCornerRadius))
+                        }
+                    )
+                    .then(
+                        if (glowingBorder) {
+                            Modifier.background(Color.Transparent, RoundedCornerShape(finalCornerRadius))
+                                .then(
+                                    Modifier.shadow(elevation = 2.dp, shape = RoundedCornerShape(finalCornerRadius), ambientColor = accentColor, spotColor = accentColor)
+                                )
+                        } else {
+                            Modifier
                         }
                     )
             )
@@ -385,62 +394,61 @@ class StopwatchService : Service() {
                 contentAlignment = Alignment.Center
             ) {
                 if (showMenu) {
-                    // Luxury Minimalist Menu with clean deep dark fallback (No bright red diagnostic backdrop)
+                    // Symmetrical compact Row of 6 color-coded dots (🟢 Start, 🟡 Stop, 🔴 Close, ⚪ Settings, 🔵 Reset, 🟣 Hide)
+                    // Placed inside an AnimatedVisibility layout with elegant fade+scale transitions (Item 2)
+                    // Bounded with correct position checks so dots adapt gracefully below or above the Widget layout
+                    val scaleFactor = (14.dp.value * fontSizeScale).coerceAtLeast(10.0f).dp
+
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.95f), RoundedCornerShape(finalCornerRadius))
-                            .padding(4.dp),
+                            .padding(2.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Close Action
-                        Text(
-                            text = "CLOSE",
-                            color = Color(0xFFC94A4A),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
+                        // 🟢 Start Button (Green)
+                        Box(
                             modifier = Modifier
-                                .clickable {
-                                    onAction("Stop")
-                                    stopSelf()
-                                }
-                                .padding(4.dp)
-                        )
-
-                        // Reset Action
-                        Text(
-                            text = "RESET",
-                            color = LuxuryColors.CreamyWhite,
-                            fontSize = 11.sp,
-                            modifier = Modifier
-                                .clickable {
-                                    onAction("Reset")
-                                    showMenu = false
-                                }
-                                .padding(4.dp)
-                        )
-
-                        // Start / Pause
-                        Text(
-                            text = if (state == StopwatchState.Running) "PAUSE" else "START",
-                            color = accentColor,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
+                                .size(scaleFactor)
+                                .clip(CircleShape)
+                                .background(Color(0xFF4AC98F))
                                 .clickable {
                                     onAction(if (state == StopwatchState.Running) "Stop" else "Start")
                                     showMenu = false
                                 }
-                                .padding(4.dp)
                         )
 
-                        // Settings / Return to App Launcher
-                        Text(
-                            text = "APP",
-                            color = LuxuryColors.WarmGray,
-                            fontSize = 11.sp,
+                        // 🟡 Stop/Pause Button (Yellow)
+                        Box(
                             modifier = Modifier
+                                .size(scaleFactor)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF5A623))
+                                .clickable {
+                                    onAction("Stop")
+                                    showMenu = false
+                                }
+                        )
+
+                        // 🔵 Reset Button (Light Blue)
+                        Box(
+                            modifier = Modifier
+                                .size(scaleFactor)
+                                .clip(CircleShape)
+                                .background(Color(0xFF4A90E2))
+                                .clickable {
+                                    onAction("Reset")
+                                    showMenu = false
+                                }
+                        )
+
+                        // ⚪ Settings App Launcher (Silver/White)
+                        Box(
+                            modifier = Modifier
+                                .size(scaleFactor)
+                                .clip(CircleShape)
+                                .background(Color(0xFFD1D1D6))
                                 .clickable {
                                     val launchIntent = Intent(this@StopwatchService, MainActivity::class.java).apply {
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -448,7 +456,29 @@ class StopwatchService : Service() {
                                     startActivity(launchIntent)
                                     showMenu = false
                                 }
-                                .padding(4.dp)
+                        )
+
+                        // 🟣 Dismiss Menu (Light Purple)
+                        Box(
+                            modifier = Modifier
+                                .size(scaleFactor)
+                                .clip(CircleShape)
+                                .background(Color(0xFF9013FE))
+                                .clickable {
+                                    showMenu = false
+                                }
+                        )
+
+                        // 🔴 Close Service (Red)
+                        Box(
+                            modifier = Modifier
+                                .size(scaleFactor)
+                                .clip(CircleShape)
+                                .background(Color(0xFFC94A4A))
+                                .clickable {
+                                    onAction("Stop")
+                                    stopSelf()
+                                }
                         )
                     }
                 } else {

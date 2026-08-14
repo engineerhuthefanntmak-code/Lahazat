@@ -196,6 +196,51 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
+            // New Backdrop Opacity Slider
+            val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
+            Text(
+                text = "FLOATING BACKDROP OPACITY",
+                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
+            )
+            Slider(
+                value = floatingOpacity,
+                onValueChange = {
+                    scope.launch {
+                        settingsRepository.setFloatingOpacity(it)
+                    }
+                },
+                valueRange = 0.0f..1.0f,
+                colors = SliderDefaults.colors(
+                    thumbColor = LuxuryColors.AccentGold,
+                    activeTrackColor = LuxuryColors.AccentGold
+                )
+            )
+            Text(
+                text = "Opacity: ${(floatingOpacity * 100).toInt()}%",
+                style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            // New Glowing Border Toggle
+            val glowingBorder by settingsRepository.glowingBorder.collectAsState(initial = false)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "GOLDEN GLOWING BORDER",
+                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                )
+                Switch(
+                    checked = glowingBorder,
+                    onCheckedChange = { scope.launch { settingsRepository.setGlowingBorder(it) } },
+                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                )
+            }
+
             // Show Centiseconds Toggles
             Row(
                 modifier = Modifier

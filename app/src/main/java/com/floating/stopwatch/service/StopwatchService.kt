@@ -16,6 +16,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -52,6 +53,9 @@ import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import com.floating.stopwatch.domain.HapticController
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.roundToInt
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
@@ -82,6 +86,23 @@ class StopwatchService : Service() {
     private lateinit var hapticController: HapticController
     private var overlayLifecycleOwner: ComposeOverlayLifecycleOwner? = null
 
+    // Battery level state flow
+    private val _batteryPercentage = MutableStateFlow(100)
+    private val batteryPercentage: StateFlow<Int> = _batteryPercentage.asStateFlow()
+
+    private val batteryReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_BATTERY_CHANGED) {
+                val level = intent.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+                val scale = intent.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1)
+                if (level != -1 && scale != -1) {
+                    val pct = (level * 100 / scale.toFloat()).toInt()
+                    _batteryPercentage.value = pct
+                }
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
 
@@ -99,6 +120,9 @@ class StopwatchService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
 
         initOverlayWindow()
+
+        // Register battery receiver for real-time tracking
+        registerReceiver(batteryReceiver, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -147,6 +171,8 @@ class StopwatchService : Service() {
                 val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
                 val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
                 val glowingBorder by settingsRepository.glowingBorder.collectAsState(initial = false)
+                val showBatteryIndicator by settingsRepository.showBatteryIndicator.collectAsState(initial = true)
+                val currentBatteryPct by batteryPercentage.collectAsState()
 
                 val accentColor = if (colorPreset == "Custom") {
                     try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -198,6 +224,8 @@ class StopwatchService : Service() {
                         paddingDpValue = floatingPadding,
                         opacity = floatingOpacity,
                         glowingBorder = glowingBorder,
+                        showBatteryIndicator = showBatteryIndicator,
+                        batteryPercentage = currentBatteryPct,
                         posY = if (params != null) params!!.y else 100,
                         onMovementDrag = { dx, dy ->
                             params?.let {
@@ -311,6 +339,8 @@ class StopwatchService : Service() {
         paddingDpValue: Float,
         opacity: Float,
         glowingBorder: Boolean,
+        showBatteryIndicator: Boolean,
+        batteryPercentage: Int,
         posY: Int,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
@@ -487,14 +517,26 @@ class StopwatchService : Service() {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        // State Indicator Dot (Only shown if shape is not circle/capsule tight boundaries)
-                        if (shapePreset != "circle") {
+                        // Circular Battery status indicator icon replacing old Green Dot (Item 4)
+                        if (showBatteryIndicator && shapePreset != "circle") {
+                            val scaledIconSize = (16.dp.value * fontSizeScale).coerceAtLeast(10.0f).dp
+                            val scaledFontSize = (8.sp.value * fontSizeScale).coerceAtLeast(6.0f).sp
                             Box(
                                 modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(if (state == StopwatchState.Running) Color(0xFF4AC98F) else Color(0xFFC94A4A))
-                            )
+                                    .size(scaledIconSize)
+                                    .border(
+                                        border = BorderStroke(1.dp, if (state == StopwatchState.Running) Color(0xFF4AC98F) else Color(0xFFC94A4A)),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "$batteryPercentage%",
+                                    color = if (state == StopwatchState.Running) Color(0xFF4AC98F) else Color(0xFFC94A4A),
+                                    fontSize = scaledFontSize,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                             Spacer(modifier = Modifier.width(8.dp))
                         }
 
@@ -558,6 +600,10 @@ class StopwatchService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
+
+        try {
+            unregisterReceiver(batteryReceiver)
+        } catch (e: Exception) { e.printStackTrace() }
 
         // Destruct and clear overlay lifecycle state
         overlayLifecycleOwner?.apply {

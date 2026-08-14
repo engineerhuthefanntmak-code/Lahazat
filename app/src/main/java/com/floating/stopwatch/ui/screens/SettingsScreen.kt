@@ -241,6 +241,26 @@ fun SettingsScreen(
                 )
             }
 
+            // New Battery Indicator Toggle
+            val showBatteryIndicator by settingsRepository.showBatteryIndicator.collectAsState(initial = true)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "SHOW BATTERY STATUS INDICATOR",
+                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                )
+                Switch(
+                    checked = showBatteryIndicator,
+                    onCheckedChange = { scope.launch { settingsRepository.setShowBatteryIndicator(it) } },
+                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                )
+            }
+
             // Show Centiseconds Toggles
             Row(
                 modifier = Modifier

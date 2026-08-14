@@ -35,6 +35,7 @@ class SettingsRepository(private val context: Context) {
         val FLOATING_PADDING = floatPreferencesKey("floating_padding")
         val FLOATING_OPACITY = floatPreferencesKey("floating_opacity")
         val GLOWING_BORDER = booleanPreferencesKey("glowing_border")
+        val SHOW_BATTERY_INDICATOR = booleanPreferencesKey("show_battery_indicator")
     }
 
     val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: false }
@@ -56,6 +57,7 @@ class SettingsRepository(private val context: Context) {
     val floatingPadding: Flow<Float> = context.dataStore.data.map { it[FLOATING_PADDING] ?: 6.0f }
     val floatingOpacity: Flow<Float> = context.dataStore.data.map { it[FLOATING_OPACITY] ?: 0.85f }
     val glowingBorder: Flow<Boolean> = context.dataStore.data.map { it[GLOWING_BORDER] ?: false }
+    val showBatteryIndicator: Flow<Boolean> = context.dataStore.data.map { it[SHOW_BATTERY_INDICATOR] ?: true }
 
     val showCentisecondsMain: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_MAIN] ?: true }
     val showCentisecondsFloating: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_FLOATING] ?: true }
@@ -159,6 +161,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setGlowingBorder(enabled: Boolean) {
         context.dataStore.edit { it[GLOWING_BORDER] = enabled }
+    }
+
+    suspend fun setShowBatteryIndicator(enabled: Boolean) {
+        context.dataStore.edit { it[SHOW_BATTERY_INDICATOR] = enabled }
     }
 
     suspend fun setActiveWidgetsCount(count: Int) {

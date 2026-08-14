@@ -38,6 +38,78 @@ class SettingsRepository(private val context: Context) {
         val SHOW_BATTERY_INDICATOR = booleanPreferencesKey("show_battery_indicator")
     }
 
+    // Dynamic Indexed Preferences for Multi-Widget (up to 5 concurrent widgets)
+    fun isWidgetActive(index: Int): Flow<Boolean> = context.dataStore.data.map {
+        it[booleanPreferencesKey("widget_${index}_active")] ?: (index == 0) // widget 0 is active by default
+    }
+
+    fun getWidgetType(index: Int): Flow<String> = context.dataStore.data.map {
+        it[stringPreferencesKey("widget_${index}_type")] ?: "stopwatch"
+    }
+
+    fun getWidgetX(index: Int): Flow<Float> = context.dataStore.data.map {
+        it[floatPreferencesKey("widget_${index}_x")] ?: (100f + index * 40f)
+    }
+
+    fun getWidgetY(index: Int): Flow<Float> = context.dataStore.data.map {
+        it[floatPreferencesKey("widget_${index}_y")] ?: (200f + index * 80f)
+    }
+
+    fun getWidgetValue(index: Int): Flow<Long> = context.dataStore.data.map {
+        it[longPreferencesKey("widget_${index}_value")] ?: 0L
+    }
+
+    fun isWidgetRunning(index: Int): Flow<Boolean> = context.dataStore.data.map {
+        it[booleanPreferencesKey("widget_${index}_running")] ?: false
+    }
+
+    fun getWidgetWidth(index: Int): Flow<Float> = context.dataStore.data.map {
+        it[floatPreferencesKey("widget_${index}_width")] ?: 170.0f
+    }
+
+    fun getWidgetHeight(index: Int): Flow<Float> = context.dataStore.data.map {
+        it[floatPreferencesKey("widget_${index}_height")] ?: 56.0f
+    }
+
+    fun getWidgetCountdownDuration(index: Int): Flow<Int> = context.dataStore.data.map {
+        it[intPreferencesKey("widget_${index}_countdown_duration")] ?: 300 // 5 minutes default
+    }
+
+    suspend fun setWidgetActive(index: Int, active: Boolean) {
+        context.dataStore.edit { it[booleanPreferencesKey("widget_${index}_active")] = active }
+    }
+
+    suspend fun setWidgetType(index: Int, type: String) {
+        context.dataStore.edit { it[stringPreferencesKey("widget_${index}_type")] = type }
+    }
+
+    suspend fun setWidgetPosition(index: Int, x: Float, y: Float) {
+        context.dataStore.edit {
+            it[floatPreferencesKey("widget_${index}_x")] = x
+            it[floatPreferencesKey("widget_${index}_y")] = y
+        }
+    }
+
+    suspend fun setWidgetValue(index: Int, value: Long) {
+        context.dataStore.edit { it[longPreferencesKey("widget_${index}_value")] = value }
+    }
+
+    suspend fun setWidgetRunning(index: Int, running: Boolean) {
+        context.dataStore.edit { it[booleanPreferencesKey("widget_${index}_running")] = running }
+    }
+
+    suspend fun setWidgetWidth(index: Int, width: Float) {
+        context.dataStore.edit { it[floatPreferencesKey("widget_${index}_width")] = width }
+    }
+
+    suspend fun setWidgetHeight(index: Int, height: Float) {
+        context.dataStore.edit { it[floatPreferencesKey("widget_${index}_height")] = height }
+    }
+
+    suspend fun setWidgetCountdownDuration(index: Int, seconds: Int) {
+        context.dataStore.edit { it[intPreferencesKey("widget_${index}_countdown_duration")] = seconds }
+    }
+
     val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: false }
 
     val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "Midnight" }

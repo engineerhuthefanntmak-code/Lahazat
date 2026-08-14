@@ -1,8 +1,10 @@
 package com.floating.stopwatch.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -51,6 +53,14 @@ fun SettingsScreen(
         }
     }
 
+    // Shape presets, styling and widgets
+    val shapes = listOf("rounded", "capsule", "circle", "sharp", "glass")
+    val themeModes = listOf("Midnight", "Warm Paper", "Obsidian Dark")
+    val presets = listOf("Glass Premium", "Obsidian", "Titanium", "Ultra Minimal")
+    val experienceLevels = listOf("Ultra Minimal", "Premium", "Full Control")
+    val intensities = listOf("Off", "Light", "Medium", "Strong")
+    val colorPresets = listOf("Gold", "Galaxy Blue", "Titanium", "Emerald", "Sapphire", "Violet", "Rose", "Ice", "Amber", "Pure White", "Custom")
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -93,6 +103,132 @@ fun SettingsScreen(
                 .verticalScroll(scrollState)
                 .padding(24.dp)
         ) {
+            // ------------------------------------------------------------
+            // MULTI-WIDGET MANAGER (Section 3 - Items 1, 3, 4)
+            // ------------------------------------------------------------
+            Text(
+                text = "ACTIVE FLOATING WIDGETS MANAGER",
+                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            for (i in 0..4) {
+                val isWidgetActive by settingsRepository.isWidgetActive(i).collectAsState(initial = i == 0)
+                val widgetType by settingsRepository.getWidgetType(i).collectAsState(initial = "stopwatch")
+                val countdownDuration by settingsRepository.getWidgetCountdownDuration(i).collectAsState(initial = 300)
+                val floatingWidth by settingsRepository.getWidgetWidth(i).collectAsState(initial = 170.0f)
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.1f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "WIDGET #${i + 1} (${widgetType.uppercase()})",
+                                color = LuxuryColors.CreamyWhite,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Switch(
+                                checked = isWidgetActive,
+                                onCheckedChange = { scope.launch { settingsRepository.setWidgetActive(i, it) } },
+                                colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                            )
+                        }
+
+                        if (isWidgetActive) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Mode selector
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                listOf("stopwatch", "countdown", "counter").forEach { type ->
+                                    Box(
+                                        modifier = Modifier
+                                            .border(
+                                                width = 1.dp,
+                                                color = if (widgetType == type) LuxuryColors.AccentGold else Color.Gray.copy(alpha = 0.3f),
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable {
+                                                scope.launch {
+                                                    settingsRepository.setWidgetType(i, type)
+                                                    if (type == "countdown") {
+                                                        settingsRepository.setWidgetValue(i, countdownDuration * 1000L)
+                                                    }
+                                                }
+                                            }
+                                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = type.uppercase(),
+                                            color = if (widgetType == type) LuxuryColors.AccentGold else LuxuryColors.WarmGray,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (widgetType == "countdown") {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "COUNTDOWN FOCUS DURATION",
+                                    color = LuxuryColors.WarmGray,
+                                    fontSize = 11.sp,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    listOf(60, 300, 1500, 3600).forEach { seconds ->
+                                        val label = when (seconds) {
+                                            60 -> "1 MIN"
+                                            300 -> "5 MIN"
+                                            1500 -> "25 MIN"
+                                            else -> "1 HR"
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = if (countdownDuration == seconds) LuxuryColors.AccentGold else Color.Gray.copy(alpha = 0.3f),
+                                                    shape = RoundedCornerShape(6.dp)
+                                                )
+                                                .clickable {
+                                                    scope.launch {
+                                                        settingsRepository.setWidgetCountdownDuration(i, seconds)
+                                                        settingsRepository.setWidgetValue(i, seconds * 1000L)
+                                                    }
+                                                }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                color = if (countdownDuration == seconds) LuxuryColors.AccentGold else LuxuryColors.WarmGray,
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Main size Slider (0.0 to 1.0)
             Text(
                 text = "MAIN TIME SIZE SCALE",
@@ -301,7 +437,6 @@ fun SettingsScreen(
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 1.sp),
                 modifier = Modifier.padding(bottom = 6.dp)
             )
-            val shapes = listOf("rounded", "capsule", "circle", "sharp", "glass")
             shapes.forEach { shape ->
                 Row(
                     modifier = Modifier
@@ -459,7 +594,6 @@ fun SettingsScreen(
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            val themeModes = listOf("Midnight", "Warm Paper", "Obsidian Dark")
             themeModes.forEach { mode ->
                 Row(
                     modifier = Modifier
@@ -486,7 +620,6 @@ fun SettingsScreen(
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            val presets = listOf("Glass Premium", "Obsidian", "Titanium", "Ultra Minimal")
             presets.forEach { preset ->
                 Row(
                     modifier = Modifier
@@ -513,7 +646,6 @@ fun SettingsScreen(
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            val experienceLevels = listOf("Ultra Minimal", "Premium", "Full Control")
             experienceLevels.forEach { level ->
                 Row(
                     modifier = Modifier
@@ -540,7 +672,6 @@ fun SettingsScreen(
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            val intensities = listOf("Off", "Light", "Medium", "Strong")
             intensities.forEach { intensity ->
                 Row(
                     modifier = Modifier
@@ -567,7 +698,6 @@ fun SettingsScreen(
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            val colorPresets = listOf("Gold", "Galaxy Blue", "Titanium", "Emerald", "Sapphire", "Violet", "Rose", "Ice", "Amber", "Pure White", "Custom")
             colorPresets.forEach { color ->
                 Row(
                     modifier = Modifier

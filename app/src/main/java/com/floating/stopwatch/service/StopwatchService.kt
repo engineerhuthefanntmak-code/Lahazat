@@ -141,7 +141,15 @@ class StopwatchService : Service() {
         hapticController = HapticController(applicationContext)
 
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                buildNotification(),
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        }
 
         // Monitor and auto-sync active widgets list
         startWidgetLifecycleManager()
@@ -376,12 +384,22 @@ class StopwatchService : Service() {
                                 }
                                 "Milestone" -> {
                                     hapticController.trigger(hapticIntensity, "Lap")
-                                    val currentMilestone = if (type == "countdown") {
-                                        "Focus Session remaining: " + formatDuration(elapsedOrValue)
+                                    if (type == "stopwatch") {
+                                        getEngine().lap()
                                     } else {
-                                        "Time record: " + formatDuration(elapsedOrValue)
+                                        val currentMilestone = if (type == "countdown") {
+                                            "Focus Session remaining: " + formatDuration(elapsedOrValue)
+                                        } else {
+                                            "Time record: " + formatDuration(elapsedOrValue)
+                                        }
+                                        state.milestones.value = state.milestones.value + currentMilestone
                                     }
-                                    state.milestones.value = state.milestones.value + currentMilestone
+                                }
+                                "OpenApp" -> {
+                                    val intent = Intent(this@StopwatchService, MainActivity::class.java).apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    }
+                                    startActivity(intent)
                                 }
                             }
                         }
@@ -430,13 +448,18 @@ class StopwatchService : Service() {
         tickerJobs[index]?.cancel()
         val state = widgetStates[index]
         tickerJobs[index] = serviceScope.launch(Dispatchers.Default) {
+            var lastSavedSec = 0L
             while (true) {
                 if (state.running.value) {
                     if (state.type.value == "stopwatch") {
                         val elapsed = state.elapsedOrValue.value + (SystemClock.elapsedRealtime() - state.baseTime.value)
                         state.elapsedOrValue.value = elapsed
                         state.baseTime.value = SystemClock.elapsedRealtime()
-                        settingsRepository.setWidgetValue(index, elapsed)
+                        val sec = elapsed / 1000
+                        if (sec != lastSavedSec) {
+                            lastSavedSec = sec
+                            settingsRepository.setWidgetValue(index, elapsed)
+                        }
                     } else if (state.type.value == "countdown") {
                         val currentRemaining = state.elapsedOrValue.value - (SystemClock.elapsedRealtime() - state.baseTime.value)
                         state.baseTime.value = SystemClock.elapsedRealtime()
@@ -449,7 +472,11 @@ class StopwatchService : Service() {
                             break
                         } else {
                             state.elapsedOrValue.value = currentRemaining
-                            settingsRepository.setWidgetValue(index, currentRemaining)
+                            val sec = currentRemaining / 1000
+                            if (sec != lastSavedSec) {
+                                lastSavedSec = sec
+                                settingsRepository.setWidgetValue(index, currentRemaining)
+                            }
                         }
                     }
                 }
@@ -686,6 +713,18 @@ class StopwatchService : Service() {
                                 .background(Color(0xFF9013FE))
                                 .clickable {
                                     onAction("Milestone")
+                                    showMenu = false
+                                }
+                        )
+
+                        // Settings / Open App Dot (⚪)
+                        Box(
+                            modifier = Modifier
+                                .size(scaleFactor)
+                                .clip(CircleShape)
+                                .background(Color(0xFFCCCCCC))
+                                .clickable {
+                                    onAction("OpenApp")
                                     showMenu = false
                                 }
                         )

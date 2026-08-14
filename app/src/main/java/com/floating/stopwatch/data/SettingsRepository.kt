@@ -64,11 +64,11 @@ class SettingsRepository(private val context: Context) {
     }
 
     fun getWidgetWidth(index: Int): Flow<Float> = context.dataStore.data.map {
-        it[floatPreferencesKey("widget_${index}_width")] ?: 170.0f
+        it[floatPreferencesKey("widget_${index}_width")] ?: (it[FLOATING_WIDTH] ?: 170.0f)
     }
 
     fun getWidgetHeight(index: Int): Flow<Float> = context.dataStore.data.map {
-        it[floatPreferencesKey("widget_${index}_height")] ?: 56.0f
+        it[floatPreferencesKey("widget_${index}_height")] ?: (it[FLOATING_HEIGHT] ?: 56.0f)
     }
 
     fun getWidgetCountdownDuration(index: Int): Flow<Int> = context.dataStore.data.map {
@@ -153,11 +153,21 @@ class SettingsRepository(private val context: Context) {
     }
 
     suspend fun setFloatingWidth(width: Float) {
-        context.dataStore.edit { it[FLOATING_WIDTH] = width }
+        context.dataStore.edit {
+            it[FLOATING_WIDTH] = width
+            for (i in 0..4) {
+                it[floatPreferencesKey("widget_${i}_width")] = width
+            }
+        }
     }
 
     suspend fun setFloatingHeight(height: Float) {
-        context.dataStore.edit { it[FLOATING_HEIGHT] = height }
+        context.dataStore.edit {
+            it[FLOATING_HEIGHT] = height
+            for (i in 0..4) {
+                it[floatPreferencesKey("widget_${i}_height")] = height
+            }
+        }
     }
 
     suspend fun setShowCentisecondsMain(show: Boolean) {

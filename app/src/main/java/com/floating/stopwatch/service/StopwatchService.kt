@@ -207,6 +207,29 @@ class StopwatchService : Service() {
                     }
                 }
             }
+
+            // Sync width and height changes dynamically
+            serviceScope.launch {
+                combine(
+                    settingsRepository.getWidgetWidth(i),
+                    settingsRepository.getWidgetHeight(i)
+                ) { w, h -> Pair(w, h) }.collectLatest { (wDp, hDp) ->
+                    val overlay = activeOverlays[i]
+                    if (overlay != null && overlay.composeView.isAttachedToWindow) {
+                        val wPx = wDp.toInt().dpToPx().coerceAtLeast(1)
+                        val hPx = hDp.toInt().dpToPx().coerceAtLeast(1)
+                        if (overlay.params.width != wPx || overlay.params.height != hPx) {
+                            overlay.params.width = wPx
+                            overlay.params.height = hPx
+                            try {
+                                windowManager.updateViewLayout(overlay.composeView, overlay.params)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -272,12 +295,18 @@ class StopwatchService : Service() {
 
                 LaunchedEffect(floatingWidth, floatingHeight) {
                     val overlay = activeOverlays[index]
-                    if (overlay != null) {
-                        val w = if (floatingWidth < 1f) 1 else floatingWidth.toInt()
-                        val h = if (floatingHeight < 1f) 1 else floatingHeight.toInt()
-                        overlay.params.width = if (w.dpToPx() < 1) 1 else w.dpToPx()
-                        overlay.params.height = if (h.dpToPx() < 1) 1 else h.dpToPx()
-                        windowManager.updateViewLayout(overlay.composeView, overlay.params)
+                    if (overlay != null && overlay.composeView.isAttachedToWindow) {
+                        val wPx = floatingWidth.toInt().dpToPx().coerceAtLeast(1)
+                        val hPx = floatingHeight.toInt().dpToPx().coerceAtLeast(1)
+                        if (overlay.params.width != wPx || overlay.params.height != hPx) {
+                            overlay.params.width = wPx
+                            overlay.params.height = hPx
+                            try {
+                                windowManager.updateViewLayout(overlay.composeView, overlay.params)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
                     }
                 }
 
@@ -415,9 +444,12 @@ class StopwatchService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        val initWidthDp = runBlocking { settingsRepository.getWidgetWidth(index).first() }
+        val initHeightDp = runBlocking { settingsRepository.getWidgetHeight(index).first() }
+
         val params = WindowManager.LayoutParams(
-            170.dpToPx(),
-            56.dpToPx(),
+            initWidthDp.toInt().dpToPx().coerceAtLeast(1),
+            initHeightDp.toInt().dpToPx().coerceAtLeast(1),
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
@@ -426,6 +458,30 @@ class StopwatchService : Service() {
             x = 100 + index * 40
             y = 200 + index * 80
         }
+
+        composeView.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: android.view.View) {
+                serviceScope.launch {
+                    val wDp = settingsRepository.getWidgetWidth(index).first()
+                    val hDp = settingsRepository.getWidgetHeight(index).first()
+                    val overlay = activeOverlays[index]
+                    if (overlay != null) {
+                        val wPx = wDp.toInt().dpToPx().coerceAtLeast(1)
+                        val hPx = hDp.toInt().dpToPx().coerceAtLeast(1)
+                        if (overlay.params.width != wPx || overlay.params.height != hPx) {
+                            overlay.params.width = wPx
+                            overlay.params.height = hPx
+                            try {
+                                windowManager.updateViewLayout(overlay.composeView, overlay.params)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    }
+                }
+            }
+            override fun onViewDetachedFromWindow(v: android.view.View) {}
+        })
 
         activeOverlays[index] = ActiveOverlay(index, owner, composeView, params)
         windowManager.addView(composeView, params)

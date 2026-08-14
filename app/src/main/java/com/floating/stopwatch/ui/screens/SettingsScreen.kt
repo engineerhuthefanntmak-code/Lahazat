@@ -116,7 +116,8 @@ fun SettingsScreen(
                 val isWidgetActive by settingsRepository.isWidgetActive(i).collectAsState(initial = i == 0)
                 val widgetType by settingsRepository.getWidgetType(i).collectAsState(initial = "stopwatch")
                 val countdownDuration by settingsRepository.getWidgetCountdownDuration(i).collectAsState(initial = 300)
-                val floatingWidth by settingsRepository.getWidgetWidth(i).collectAsState(initial = 170.0f)
+                val wWidth by settingsRepository.getWidgetWidth(i).collectAsState(initial = 170.0f)
+                val wHeight by settingsRepository.getWidgetHeight(i).collectAsState(initial = 56.0f)
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.1f)),
@@ -222,6 +223,31 @@ fun SettingsScreen(
                                     }
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "WIDTH: ${wWidth.toInt()}dp",
+                                color = LuxuryColors.WarmGray,
+                                fontSize = 10.sp
+                            )
+                            Slider(
+                                value = wWidth,
+                                onValueChange = { scope.launch { settingsRepository.setWidgetWidth(i, it) } },
+                                valueRange = 1.0f..320.0f,
+                                colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold, activeTrackColor = LuxuryColors.AccentGold)
+                            )
+
+                            Text(
+                                text = "HEIGHT: ${wHeight.toInt()}dp",
+                                color = LuxuryColors.WarmGray,
+                                fontSize = 10.sp
+                            )
+                            Slider(
+                                value = wHeight,
+                                onValueChange = { scope.launch { settingsRepository.setWidgetHeight(i, it) } },
+                                valueRange = 1.0f..120.0f,
+                                colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold, activeTrackColor = LuxuryColors.AccentGold)
+                            )
                         }
                     }
                 }

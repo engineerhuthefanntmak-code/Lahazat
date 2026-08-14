@@ -113,9 +113,10 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Floating Width Slider (120 to 280 dp) - Independent control
+            // Floating Width Slider (1 to 280 dp) - Independent control (with circle auto-equality constraint)
             val floatingWidth by settingsRepository.floatingWidth.collectAsState(initial = 170.0f)
             val floatingHeight by settingsRepository.floatingHeight.collectAsState(initial = 56.0f)
+            val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
 
             Text(
                 text = "FLOATING OVERLAY WIDTH",
@@ -123,35 +124,49 @@ fun SettingsScreen(
             )
             Slider(
                 value = floatingWidth,
-                onValueChange = { scope.launch { settingsRepository.setFloatingWidth(it) } },
-                valueRange = 120.0f..280.0f,
+                onValueChange = {
+                    scope.launch {
+                        settingsRepository.setFloatingWidth(it)
+                        if (shapePreset == "circle") {
+                            settingsRepository.setFloatingHeight(it)
+                        }
+                    }
+                },
+                valueRange = 1.0f..280.0f,
                 colors = SliderDefaults.colors(
                     thumbColor = LuxuryColors.AccentGold,
                     activeTrackColor = LuxuryColors.AccentGold
                 )
             )
             Text(
-                text = "Width: ${floatingWidth.toInt()}dp (Limits: 120dp to 280dp)",
+                text = "Width: ${floatingWidth.toInt()}dp (Limits: 1dp to 280dp)",
                 style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Floating Height Slider (48 to 80 dp) - Independent control
+            // Floating Height Slider (1 to 80 dp) - Independent control (with circle auto-equality constraint)
             Text(
                 text = "FLOATING OVERLAY HEIGHT",
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
             )
             Slider(
                 value = floatingHeight,
-                onValueChange = { scope.launch { settingsRepository.setFloatingHeight(it) } },
-                valueRange = 48.0f..80.0f,
+                onValueChange = {
+                    scope.launch {
+                        settingsRepository.setFloatingHeight(it)
+                        if (shapePreset == "circle") {
+                            settingsRepository.setFloatingWidth(it)
+                        }
+                    }
+                },
+                valueRange = 1.0f..80.0f,
                 colors = SliderDefaults.colors(
                     thumbColor = LuxuryColors.AccentGold,
                     activeTrackColor = LuxuryColors.AccentGold
                 )
             )
             Text(
-                text = "Height: ${floatingHeight.toInt()}dp (Limits: 48dp to 80dp)",
+                text = "Height: ${floatingHeight.toInt()}dp (Limits: 1dp to 80dp)",
                 style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
                 modifier = Modifier.padding(bottom = 24.dp)
             )
@@ -176,7 +191,6 @@ fun SettingsScreen(
             }
 
             // Custom UI customization keys (Item 3, 4, 5, 6, 10, 11)
-            val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
             val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
             val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
             val meshGradientEnabled by settingsRepository.meshGradientEnabled.collectAsState(initial = true)
@@ -202,13 +216,29 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { scope.launch { settingsRepository.setShapePreset(shape) } }
+                        .clickable {
+                            scope.launch {
+                                settingsRepository.setShapePreset(shape)
+                                if (shape == "circle") {
+                                    // Make sure width and height are synchronized for circular look
+                                    settingsRepository.setFloatingHeight(floatingWidth)
+                                }
+                            }
+                        }
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
                         selected = (shapePreset == shape),
-                        onClick = { scope.launch { settingsRepository.setShapePreset(shape) } },
+                        onClick = {
+                            scope.launch {
+                                settingsRepository.setShapePreset(shape)
+                                if (shape == "circle") {
+                                    // Make sure width and height are synchronized for circular look
+                                    settingsRepository.setFloatingHeight(floatingWidth)
+                                }
+                            }
+                        },
                         colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold)
                     )
                     Spacer(modifier = Modifier.width(12.dp))

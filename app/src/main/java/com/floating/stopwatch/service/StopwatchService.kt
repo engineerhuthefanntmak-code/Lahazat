@@ -165,8 +165,10 @@ class StopwatchService : Service() {
 
                 LaunchedEffect(floatingWidth, floatingHeight) {
                     if (params != null) {
-                        params?.width = floatingWidth.toInt().dpToPx()
-                        params?.height = floatingHeight.toInt().dpToPx()
+                        val w = if (floatingWidth < 1f) 1 else floatingWidth.toInt()
+                        val h = if (floatingHeight < 1f) 1 else floatingHeight.toInt()
+                        params?.width = w.dpToPx()
+                        params?.height = h.dpToPx()
                         windowManager.updateViewLayout(composeView, params)
                     }
                 }
@@ -237,8 +239,11 @@ class StopwatchService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        // Initialize with values fetched from settings or fallback defaults
+        val initialWidth = 170
+
         params = WindowManager.LayoutParams(
-            170.dpToPx(),
+            initialWidth.dpToPx(),
             56.dpToPx(),
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -473,7 +478,9 @@ class StopwatchService : Service() {
 
     private fun Int.dpToPx(): Int {
         val density = applicationContext.resources.displayMetrics.density
-        return (this * density).toInt()
+        // Ensure minimum pixel size is 1 to prevent WindowManager crashing with invalid/non-positive bounds
+        val px = (this * density).toInt()
+        return if (px < 1) 1 else px
     }
 
     private fun createNotificationChannel() {

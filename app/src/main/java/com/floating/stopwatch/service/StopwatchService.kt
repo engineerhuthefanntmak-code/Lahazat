@@ -333,12 +333,9 @@ class StopwatchService : Service() {
             modifier = Modifier
                 .fillMaxSize()
                 .then(bgModifier)
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            showMenu = !showMenu
-                        }
-                    )
+                .clickable {
+                    showMenu = !showMenu
+                    android.util.Log.d("StopwatchApp", "Overlay click registered! showMenu state changed to: $showMenu")
                 }
                 .pointerInput(Unit) {
                     detectDragGestures(
@@ -357,7 +354,7 @@ class StopwatchService : Service() {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.92f), RoundedCornerShape(cornerRadius))
+                        .background(Color(0xFFCC1111), RoundedCornerShape(cornerRadius)) // bright red temporary test backdrop to verify visibility 100% (Diagnostic Item 5)
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
@@ -365,8 +362,8 @@ class StopwatchService : Service() {
                     // Close Action
                     Text(
                         text = "CLOSE",
-                        color = Color(0xFFC94A4A),
-                        fontSize = 10.sp,
+                        color = Color.White,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
                             .clickable {
@@ -379,8 +376,8 @@ class StopwatchService : Service() {
                     // Reset Action
                     Text(
                         text = "RESET",
-                        color = LuxuryColors.CreamyWhite,
-                        fontSize = 10.sp,
+                        color = Color.White,
+                        fontSize = 11.sp,
                         modifier = Modifier
                             .clickable {
                                 onAction("Reset")
@@ -392,8 +389,8 @@ class StopwatchService : Service() {
                     // Start / Pause
                     Text(
                         text = if (state == StopwatchState.Running) "PAUSE" else "START",
-                        color = accentColor,
-                        fontSize = 10.sp,
+                        color = Color.White,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
                             .clickable {
@@ -406,8 +403,8 @@ class StopwatchService : Service() {
                     // Settings / Return to App Launcher
                     Text(
                         text = "APP",
-                        color = LuxuryColors.WarmGray,
-                        fontSize = 10.sp,
+                        color = Color.White,
+                        fontSize = 11.sp,
                         modifier = Modifier
                             .clickable {
                                 val launchIntent = Intent(this@StopwatchService, MainActivity::class.java).apply {

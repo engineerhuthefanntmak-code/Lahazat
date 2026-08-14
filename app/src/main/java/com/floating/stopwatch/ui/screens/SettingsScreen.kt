@@ -172,7 +172,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Floating Padding Slider (1 to 32 dp)
+            // Floating Padding Slider (0 to 32 dp)
             Text(
                 text = "FLOATING OVERLAY INTERNAL PADDING",
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
@@ -184,14 +184,14 @@ fun SettingsScreen(
                         settingsRepository.setFloatingPadding(it)
                     }
                 },
-                valueRange = 1.0f..32.0f,
+                valueRange = 0.0f..32.0f,
                 colors = SliderDefaults.colors(
                     thumbColor = LuxuryColors.AccentGold,
                     activeTrackColor = LuxuryColors.AccentGold
                 )
             )
             Text(
-                text = "Padding: ${floatingPadding.toInt()}dp (Limits: 1dp to 32dp)",
+                text = "Padding: ${floatingPadding.toInt()}dp (Limits: 0dp to 32dp)",
                 style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
                 modifier = Modifier.padding(bottom = 24.dp)
             )

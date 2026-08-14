@@ -166,10 +166,11 @@ class StopwatchService : Service() {
 
                 LaunchedEffect(floatingWidth, floatingHeight) {
                     if (params != null) {
+                        // Keep WindowManager layout bounds strictly >= 1px to prevent empty non-interactive processes
                         val w = if (floatingWidth < 1f) 1 else floatingWidth.toInt()
                         val h = if (floatingHeight < 1f) 1 else floatingHeight.toInt()
-                        params?.width = w.dpToPx()
-                        params?.height = h.dpToPx()
+                        params?.width = if (w.dpToPx() < 1) 1 else w.dpToPx()
+                        params?.height = if (h.dpToPx() < 1) 1 else h.dpToPx()
                         windowManager.updateViewLayout(composeView, params)
                     }
                 }
@@ -329,12 +330,9 @@ class StopwatchService : Service() {
             else -> 16.dp // standard rounded
         }
 
-        // Clip-prevention safety padding: curved shapes like circular, capsule, glass require minimum offset boundaries to protect text elements.
-        val shapeDependentMinPadding = when (shapePreset) {
-            "circle", "capsule", "glass" -> 4.0f
-            else -> 1.0f
-        }
-        val safePadding = paddingDpValue.coerceAtLeast(shapeDependentMinPadding)
+        // Clip-prevention safety padding: curved shapes like circular, capsule, glass are allowed down to 0dp if the user desires.
+        // We enforce a minimum of 0dp, but keep it strictly crash-free.
+        val safePadding = paddingDpValue.coerceAtLeast(0.0f)
 
         var showMenu by remember { mutableStateOf(false) }
 
@@ -488,9 +486,9 @@ class StopwatchService : Service() {
 
     private fun Int.dpToPx(): Int {
         val density = applicationContext.resources.displayMetrics.density
-        // Ensure minimum pixel size is 1 to prevent WindowManager crashing with invalid/non-positive bounds
+        // Ensure minimum pixel size is 1 to prevent WindowManager crashing with invalid/non-positive bounds (or 0 for zero measurements)
         val px = (this * density).toInt()
-        return if (px < 1) 1 else px
+        return if (px < 0) 0 else px
     }
 
     private fun createNotificationChannel() {

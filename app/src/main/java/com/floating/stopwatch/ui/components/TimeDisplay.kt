@@ -5,6 +5,7 @@ import androidx.compose.animation.core.EaseOutQuint
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -52,7 +53,9 @@ fun TimeDisplay(
     showCentiseconds: Boolean,
     modifier: Modifier = Modifier,
     baseStyle: TextStyle,
-    scaleFactor: Float = 1.0f
+    scaleFactor: Float = 1.0f,
+    gradientGoldEnabled: Boolean = false,
+    isVertical: Boolean = false
 ) {
     val totalSeconds = elapsedTimeMs / 1000
     val hours = totalSeconds / 3600
@@ -70,8 +73,9 @@ fun TimeDisplay(
     val totalSecondsForFlash = elapsedTimeMs / 1000
     val isFullMinute = elapsedTimeMs > 0 && totalSecondsForFlash % 60 == 0L && (elapsedTimeMs % 1000) < 600
 
+    val baseTextColor = if (gradientGoldEnabled) LuxuryColors.AccentGold else baseStyle.color
     val animatedFlashColor by animateColorAsState(
-        targetValue = if (isFullMinute) LuxuryColors.AccentGold else baseStyle.color,
+        targetValue = if (isFullMinute) LuxuryColors.AccentGold else baseTextColor,
         animationSpec = tween(durationMillis = 200),
         label = "MinuteFlash"
     )
@@ -96,28 +100,58 @@ fun TimeDisplay(
         color = animatedFlashColor.copy(alpha = 0.7f)
     )
 
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.End // Forces RTL Layout display structure for numerical flows
-    ) {
-        if (showCentiseconds) {
-            RollingDigit(digit = centiStr[1], style = centiDigitStyle)
-            RollingDigit(digit = centiStr[0], style = centiDigitStyle)
-            Text(text = ".", style = centiDigitStyle)
+    if (isVertical) {
+        // Vertical layout presentation option (Section 2 - Item 6)
+        Column(
+            modifier = modifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (showHours) {
+                Row {
+                    RollingDigit(digit = hourStr[0], style = mainDigitStyle)
+                    RollingDigit(digit = hourStr[1], style = mainDigitStyle)
+                }
+            }
+            Row {
+                RollingDigit(digit = minuteStr[0], style = mainDigitStyle)
+                RollingDigit(digit = minuteStr[1], style = mainDigitStyle)
+            }
+            Row {
+                RollingDigit(digit = secondStr[0], style = mainDigitStyle)
+                RollingDigit(digit = secondStr[1], style = mainDigitStyle)
+            }
+            if (showCentiseconds) {
+                Row {
+                    RollingDigit(digit = centiStr[0], style = centiDigitStyle)
+                    RollingDigit(digit = centiStr[1], style = centiDigitStyle)
+                }
+            }
         }
+    } else {
+        Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.End // Forces RTL Layout display structure for numerical flows
+        ) {
+            if (showCentiseconds) {
+                RollingDigit(digit = centiStr[1], style = centiDigitStyle)
+                RollingDigit(digit = centiStr[0], style = centiDigitStyle)
+                Text(text = ".", style = centiDigitStyle)
+            }
 
-        RollingDigit(digit = secondStr[1], style = mainDigitStyle)
-        RollingDigit(digit = secondStr[0], style = mainDigitStyle)
-        Text(text = ":", style = mainDigitStyle)
-
-        RollingDigit(digit = minuteStr[1], style = mainDigitStyle)
-        RollingDigit(digit = minuteStr[0], style = mainDigitStyle)
-
-        if (showHours) {
+            RollingDigit(digit = secondStr[1], style = mainDigitStyle)
+            RollingDigit(digit = secondStr[0], style = mainDigitStyle)
             Text(text = ":", style = mainDigitStyle)
-            RollingDigit(digit = hourStr[1], style = mainDigitStyle)
-            RollingDigit(digit = hourStr[0], style = mainDigitStyle)
+
+            RollingDigit(digit = minuteStr[1], style = mainDigitStyle)
+            RollingDigit(digit = minuteStr[0], style = mainDigitStyle)
+
+            if (showHours) {
+                Text(text = ":", style = mainDigitStyle)
+                RollingDigit(digit = hourStr[1], style = mainDigitStyle)
+                RollingDigit(digit = hourStr[0], style = mainDigitStyle)
+            }
         }
     }
 }

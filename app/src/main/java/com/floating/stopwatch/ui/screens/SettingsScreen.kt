@@ -175,6 +175,126 @@ fun SettingsScreen(
                 )
             }
 
+            // Custom UI customization keys (Item 3, 4, 5, 6, 10, 11)
+            val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
+            val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
+            val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
+            val meshGradientEnabled by settingsRepository.meshGradientEnabled.collectAsState(initial = true)
+            val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Widget Customization Settings section header
+            Text(
+                text = "PREMIUM OVERLAY CUSTOMIZATION",
+                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            // Shape Presets Dropdown/Options (Item 4)
+            Text(
+                text = "SHAPE PRESET",
+                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 1.sp),
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            val shapes = listOf("rounded", "capsule", "circle", "sharp", "glass")
+            shapes.forEach { shape ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { scope.launch { settingsRepository.setShapePreset(shape) } }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = (shapePreset == shape),
+                        onClick = { scope.launch { settingsRepository.setShapePreset(shape) } },
+                        colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(text = shape.uppercase(), color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Font size scale control (Item 6)
+            Text(
+                text = "FONT SIZE SCALE",
+                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
+            )
+            Slider(
+                value = fontSizeScale,
+                onValueChange = { scope.launch { settingsRepository.setFontSizeScale(it) } },
+                valueRange = 0.5f..1.5f,
+                colors = SliderDefaults.colors(
+                    thumbColor = LuxuryColors.AccentGold,
+                    activeTrackColor = LuxuryColors.AccentGold
+                )
+            )
+            Text(
+                text = "Size Scale: ${String.format("%.2f", fontSizeScale)}",
+                style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Layout Orientation switch (Item 10)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "VERTICAL DISPLAY ORIENTATION",
+                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                )
+                Switch(
+                    checked = layoutOrientation == "vertical",
+                    onCheckedChange = { scope.launch { settingsRepository.setLayoutOrientation(if (it) "vertical" else "horizontal") } },
+                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                )
+            }
+
+            // Mesh Gradient switch (Item 7)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "ANIMATED MESH GRADIENT BACKDROP",
+                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                )
+                Switch(
+                    checked = meshGradientEnabled,
+                    onCheckedChange = { scope.launch { settingsRepository.setMeshGradientEnabled(it) } },
+                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                )
+            }
+
+            // Gradient Text colors switch (Item 5)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "GRADIENT GOLD DIGITS",
+                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
+                )
+                Switch(
+                    checked = gradientEnabled,
+                    onCheckedChange = { scope.launch { settingsRepository.setGradientEnabled(it) } },
+                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                )
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

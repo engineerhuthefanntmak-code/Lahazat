@@ -140,6 +140,11 @@ class StopwatchService : Service() {
                 val experienceLevel by settingsRepository.experienceLevel.collectAsState(initial = "Premium")
                 val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
 
+                val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
+                val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
+                val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
+                val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
+
                 val accentColor = if (colorPreset == "Custom") {
                     try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
                 } else {
@@ -180,6 +185,10 @@ class StopwatchService : Service() {
                         accentColor = accentColor,
                         experienceLevel = experienceLevel,
                         size = floatingSize,
+                        shapePreset = shapePreset,
+                        fontSizeScale = fontSizeScale,
+                        gradientEnabled = gradientEnabled,
+                        layoutOrientation = layoutOrientation,
                         onMovementDrag = { dx, dy ->
                             params?.let {
                                 it.x += dx.roundToInt()
@@ -296,17 +305,21 @@ class StopwatchService : Service() {
         accentColor: Color,
         experienceLevel: String,
         size: Float,
+        shapePreset: String,
+        fontSizeScale: Float,
+        gradientEnabled: Boolean,
+        layoutOrientation: String,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
         onAction: (String) -> Unit
     ) {
-        // Design values mapped directly to continuous size breakpoints
-        // size < 0.15 -> digits only, no background, no buttons
-        // 0.15–0.4 -> digits + minimal background
-        // 0.4–0.7 -> digits + status label + background
-        // > 0.7 -> full details: digits + status + buttons + lap count
-
-        val cornerRadius = (12.dp.value * size).coerceAtLeast(6f).dp
+        // Shapes presets customizations mapping (Item 3, 4)
+        val finalCornerRadius = when (shapePreset) {
+            "capsule" -> 32.dp
+            "circle" -> 99.dp
+            "sharp" -> 0.dp
+            else -> 16.dp // standard rounded
+        }
 
         var showMenu by remember { mutableStateOf(false) }
 
@@ -334,19 +347,19 @@ class StopwatchService : Service() {
                 modifier = Modifier
                     .fillMaxSize()
                     .then(
-                        if (stylePreset == "Glass Premium") {
+                        if (stylePreset == "Glass Premium" || shapePreset == "glass") {
                             Modifier
-                                .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(cornerRadius))
+                                .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(finalCornerRadius))
                                 .blur(16.dp)
                         } else if (stylePreset == "Obsidian") {
-                            Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f), RoundedCornerShape(cornerRadius))
+                            Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f), RoundedCornerShape(finalCornerRadius))
                         } else if (stylePreset == "Titanium") {
                             val titaniumBrush = Brush.verticalGradient(
                                 colors = listOf(Color(0xFF2C2F33), Color(0xFF1E2124))
                             )
-                            Modifier.background(titaniumBrush, RoundedCornerShape(cornerRadius))
+                            Modifier.background(titaniumBrush, RoundedCornerShape(finalCornerRadius))
                         } else {
-                            Modifier.background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(cornerRadius))
+                            Modifier.background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(finalCornerRadius))
                         }
                     )
             )
@@ -363,7 +376,7 @@ class StopwatchService : Service() {
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.95f), RoundedCornerShape(cornerRadius))
+                            .background(Color.Black.copy(alpha = 0.95f), RoundedCornerShape(finalCornerRadius))
                             .padding(4.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
@@ -426,26 +439,30 @@ class StopwatchService : Service() {
                         )
                     }
                 } else {
-                    // Normal Minimalist View (RTL support, Status Indicators and crisp text bounds)
+                    // Normal Minimalist View (RTL support, Status Indicators and crisp text bounds with vertical/horizontal mapping)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        // State Indicator Dot
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(if (state == StopwatchState.Running) Color(0xFF4AC98F) else Color(0xFFC94A4A))
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        // State Indicator Dot (Only shown if shape is not circle/capsule tight boundaries)
+                        if (shapePreset != "circle") {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(if (state == StopwatchState.Running) Color(0xFF4AC98F) else Color(0xFFC94A4A))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
 
-                        // Stopwatch main display text
+                        // Stopwatch main display text (with explicit orientation checks - Section 2 - Item 6 & 10)
                         TimeDisplay(
                             elapsedTimeMs = elapsedTimeMs,
                             showCentiseconds = showCentiseconds,
                             baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 22.sp),
-                            scaleFactor = size,
+                            scaleFactor = fontSizeScale, // completely decoupled scale control (Item 6)
+                            gradientGoldEnabled = gradientEnabled, // gradient gold check (Item 5)
+                            isVertical = layoutOrientation == "vertical", // vertical orientation check (Item 10)
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }

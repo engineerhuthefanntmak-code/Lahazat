@@ -26,6 +26,12 @@ class SettingsRepository(private val context: Context) {
         val HAPTIC_INTENSITY = stringPreferencesKey("haptic_intensity")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val BIOMETRIC_LOCK = booleanPreferencesKey("biometric_lock")
+        val SHAPE_PRESET = stringPreferencesKey("shape_preset")
+        val FONT_SIZE_SCALE = floatPreferencesKey("font_size_scale")
+        val GRADIENT_ENABLED = booleanPreferencesKey("gradient_enabled")
+        val MESH_GRADIENT_ENABLED = booleanPreferencesKey("mesh_gradient_enabled")
+        val LAYOUT_ORIENTATION = stringPreferencesKey("layout_orientation")
+        val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
     }
 
     val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: false }
@@ -36,6 +42,13 @@ class SettingsRepository(private val context: Context) {
     val floatingSize: Flow<Float> = context.dataStore.data.map { it[FLOATING_SIZE] ?: 0.5f }
     val floatingWidth: Flow<Float> = context.dataStore.data.map { it[FLOATING_WIDTH] ?: 170.0f }
     val floatingHeight: Flow<Float> = context.dataStore.data.map { it[FLOATING_HEIGHT] ?: 56.0f }
+
+    val shapePreset: Flow<String> = context.dataStore.data.map { it[SHAPE_PRESET] ?: "rounded" }
+    val fontSizeScale: Flow<Float> = context.dataStore.data.map { it[FONT_SIZE_SCALE] ?: 1.0f }
+    val gradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[GRADIENT_ENABLED] ?: false }
+    val meshGradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[MESH_GRADIENT_ENABLED] ?: true }
+    val layoutOrientation: Flow<String> = context.dataStore.data.map { it[LAYOUT_ORIENTATION] ?: "horizontal" }
+    val activeWidgetsCount: Flow<Int> = context.dataStore.data.map { it[ACTIVE_WIDGETS_COUNT] ?: 1 }
 
     val showCentisecondsMain: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_MAIN] ?: true }
     val showCentisecondsFloating: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_FLOATING] ?: true }
@@ -107,5 +120,29 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setBiometricLock(enabled: Boolean) {
         context.dataStore.edit { it[BIOMETRIC_LOCK] = enabled }
+    }
+
+    suspend fun setShapePreset(preset: String) {
+        context.dataStore.edit { it[SHAPE_PRESET] = preset }
+    }
+
+    suspend fun setFontSizeScale(scale: Float) {
+        context.dataStore.edit { it[FONT_SIZE_SCALE] = scale }
+    }
+
+    suspend fun setGradientEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[GRADIENT_ENABLED] = enabled }
+    }
+
+    suspend fun setMeshGradientEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[MESH_GRADIENT_ENABLED] = enabled }
+    }
+
+    suspend fun setLayoutOrientation(orientation: String) {
+        context.dataStore.edit { it[LAYOUT_ORIENTATION] = orientation }
+    }
+
+    suspend fun setActiveWidgetsCount(count: Int) {
+        context.dataStore.edit { it[ACTIVE_WIDGETS_COUNT] = count }
     }
 }

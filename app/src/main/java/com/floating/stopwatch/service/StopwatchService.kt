@@ -327,10 +327,19 @@ class StopwatchService : Service() {
             else -> Modifier.background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(cornerRadius))
         }
 
-        Column(
+        var showMenu by remember { mutableStateOf(false) }
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .then(bgModifier)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            showMenu = !showMenu
+                        }
+                    )
+                }
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = { onMovementRelease() },
@@ -340,79 +349,100 @@ class StopwatchService : Service() {
                         }
                     )
                 }
-                .padding(horizontal = 10.dp, vertical = 6.dp), // tight minimalist wrapping padding (Item 2)
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
         ) {
-            // MERGED LUXURY MINIMAL DISPLAY ONLY - ELIMINATING ANY EXTRA TEXT LABEL (Section 2 - Item 2)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                // State Indicator Dot
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(if (state == StopwatchState.Running) Color(0xFF4AC98F) else Color(0xFFC94A4A))
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Stopwatch main display text
-                TimeDisplay(
-                    elapsedTimeMs = elapsedTimeMs,
-                    showCentiseconds = showCentiseconds,
-                    baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 22.sp), // slightly smaller to comfortably fit inside 170dp x 56dp bounds without clipping (Item P2)
-                    scaleFactor = size,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
-
-            // Buttons / Control area matching experience level configuration & size breakpoints
-            if (size >= 0.7f && experienceLevel == "Full Control") {
-                Spacer(modifier = Modifier.height(10.dp))
+            if (showMenu) {
+                // Luxury Minimalist Menu overlay inside the exact same Layout context to guarantee stability and prevent any BadToken crashes (Item 2)
                 Row(
-                    modifier = Modifier.wrapContentWidth(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.92f), RoundedCornerShape(cornerRadius))
+                        .padding(4.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = { onAction(if (state == StopwatchState.Running) "Stop" else "Start") },
-                        colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = if (state == StopwatchState.Running) "STOP" else "START",
-                            color = LuxuryColors.WarmBlack,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    // Close Action
+                    Text(
+                        text = "CLOSE",
+                        color = Color(0xFFC94A4A),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clickable {
+                                onAction("Stop")
+                                stopSelf()
+                            }
+                            .padding(4.dp)
+                    )
 
+                    // Reset Action
+                    Text(
+                        text = "RESET",
+                        color = LuxuryColors.CreamyWhite,
+                        fontSize = 10.sp,
+                        modifier = Modifier
+                            .clickable {
+                                onAction("Reset")
+                                showMenu = false
+                            }
+                            .padding(4.dp)
+                    )
+
+                    // Start / Pause
+                    Text(
+                        text = if (state == StopwatchState.Running) "PAUSE" else "START",
+                        color = accentColor,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clickable {
+                                onAction(if (state == StopwatchState.Running) "Stop" else "Start")
+                                showMenu = false
+                            }
+                            .padding(4.dp)
+                    )
+
+                    // Settings / Return to App Launcher
+                    Text(
+                        text = "APP",
+                        color = LuxuryColors.WarmGray,
+                        fontSize = 10.sp,
+                        modifier = Modifier
+                            .clickable {
+                                val launchIntent = Intent(this@StopwatchService, MainActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(launchIntent)
+                                showMenu = false
+                            }
+                            .padding(4.dp)
+                    )
+                }
+            } else {
+                // Normal Minimalist View
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    // State Indicator Dot
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(if (state == StopwatchState.Running) Color(0xFF4AC98F) else Color(0xFFC94A4A))
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    Button(
-                        onClick = { onAction(if (state == StopwatchState.Running) "Lap" else "Reset") },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        border = BorderStroke(1.dp, LuxuryColors.WarmGray),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = if (state == StopwatchState.Running) "LAP" else "RESET",
-                            color = LuxuryColors.CreamyWhite,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Light
-                        )
-                    }
+                    // Stopwatch main display text
+                    TimeDisplay(
+                        elapsedTimeMs = elapsedTimeMs,
+                        showCentiseconds = showCentiseconds,
+                        baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 22.sp),
+                        scaleFactor = size,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
                 }
-            } else if (size >= 0.7f && experienceLevel == "Premium" && state == StopwatchState.Running) {
-                // simple quick controls
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "LAPS COUNT: $lapsCount",
-                    style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp),
-                    modifier = Modifier.clickable { onAction("Lap") }
-                )
             }
         }
     }

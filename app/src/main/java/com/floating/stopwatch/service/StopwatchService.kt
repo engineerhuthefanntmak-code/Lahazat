@@ -220,11 +220,13 @@ class StopwatchService : Service() {
                             val value = settingsRepository.getWidgetValue(i).first()
                             val running = settingsRepository.isWidgetRunning(i).first()
 
+                            android.util.Log.d("CounterWidget", "Widget #$i type=$type restored initial value=$value from DataStore")
                             widgetStates[i].type.value = type
                             widgetStates[i].elapsedOrValue.value = value
                             widgetStates[i].running.value = running
                             if (type == "counter") {
                                 widgetStates[i].tapCount.value = value.toInt()
+                                android.util.Log.d("CounterWidget", "Widget #$i tapCount initialized to ${widgetStates[i].tapCount.value}")
                             }
 
                             spawnWidget(i)
@@ -263,12 +265,17 @@ class StopwatchService : Service() {
                 }
             }
 
-            // Sync width and height changes dynamically
+            // Sync width and height changes dynamically (respecting unified overlay sizes)
             serviceScope.launch {
                 combine(
+                    settingsRepository.unifiedSizeEnabled,
+                    settingsRepository.unifiedWidth,
+                    settingsRepository.unifiedHeight,
                     settingsRepository.getWidgetWidth(i),
                     settingsRepository.getWidgetHeight(i)
-                ) { w, h -> Pair(w, h) }.collectLatest { (wDp, hDp) ->
+                ) { isUnified, uW, uH, wDp, hDp ->
+                    if (isUnified) Pair(uW, uH) else Pair(wDp, hDp)
+                }.collectLatest { (wDp, hDp) ->
                     val overlay = activeOverlays[i]
                     if (overlay != null && overlay.composeView.isAttachedToWindow) {
                         val wPx = wDp.toInt().dpToPx().coerceAtLeast(1)
@@ -1026,70 +1033,65 @@ fun LuxuryTextDropdownMenu(
     onAction: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val scaleFontSize = (11.sp.value * fontSizeScale).coerceAtLeast(10.0f).sp
+    val scaleFontSize = (10.sp.value * fontSizeScale).coerceAtLeast(9.0f).sp
 
-    androidx.compose.ui.window.Popup(
-        alignment = Alignment.Center,
-        onDismissRequest = onDismiss
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xF20A0A0A)),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
+        modifier = Modifier
+            .wrapContentSize()
+            .padding(2.dp)
+            .shadow(8.dp, RoundedCornerShape(12.dp))
     ) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xF20A0A0A)),
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
+        Column(
             modifier = Modifier
-                .wrapContentSize()
-                .padding(2.dp)
-                .shadow(8.dp, RoundedCornerShape(12.dp))
+                .width(IntrinsicSize.Max)
+                .padding(vertical = 4.dp, horizontal = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalAlignment = Alignment.Start
         ) {
-            Column(
-                modifier = Modifier
-                    .width(IntrinsicSize.Max)
-                    .padding(vertical = 4.dp, horizontal = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                val options = mutableListOf<Pair<String, String>>()
-                if (widgetType == "counter") {
-                    options.add("INCREMENT" to "Increment")
-                    options.add("DECREMENT" to "Decrement")
-                    options.add((if (isVolumeActive) "DISABLE VOLUME KEYS" else "ENABLE VOLUME KEYS") to "ToggleVolume")
-                } else {
-                    options.add("START" to "Start")
-                    options.add("STOP" to "Stop")
-                    options.add("RESET" to "Reset")
-                    options.add("MILESTONE" to "Milestone")
-                }
-                options.add("SETTINGS" to "OpenApp")
-                options.add("HIDE" to "Hide")
-                options.add("CLOSE" to "Close")
+            val options = mutableListOf<Pair<String, String>>()
+            if (widgetType == "counter") {
+                options.add("INCREMENT" to "Increment")
+                options.add("DECREMENT" to "Decrement")
+                options.add((if (isVolumeActive) "DISABLE VOLUME" else "ENABLE VOLUME") to "ToggleVolume")
+            } else {
+                options.add("START" to "Start")
+                options.add("STOP" to "Stop")
+                options.add("RESET" to "Reset")
+                options.add("MILESTONE" to "Milestone")
+            }
+            options.add("SETTINGS" to "OpenApp")
+            options.add("HIDE" to "Hide")
+            options.add("CLOSE" to "Close")
 
-                options.forEach { (label, action) ->
-                    Text(
-                        text = label,
-                        style = TextStyle(
-                            color = when (label) {
-                                "START", "INCREMENT" -> Color(0xFF4AC98F)
-                                "STOP" -> Color(0xFFF5A623)
-                                "CLOSE" -> Color(0xFFC94A4A)
-                                else -> LuxuryColors.CreamyWhite
-                            },
-                            fontSize = scaleFontSize,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 1.sp
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if (action == "Hide") {
-                                    onDismiss()
-                                } else {
-                                    onAction(action)
-                                    onDismiss()
-                                }
+            options.forEach { (label, action) ->
+                Text(
+                    text = label,
+                    style = TextStyle(
+                        color = when (label) {
+                            "START", "INCREMENT" -> Color(0xFF4AC98F)
+                            "STOP" -> Color(0xFFF5A623)
+                            "CLOSE" -> Color(0xFFC94A4A)
+                            else -> LuxuryColors.CreamyWhite
+                        },
+                        fontSize = scaleFontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.sp
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (action == "Hide") {
+                                onDismiss()
+                            } else {
+                                onAction(action)
+                                onDismiss()
                             }
-                            .padding(vertical = 3.dp, horizontal = 6.dp)
-                    )
-                }
+                        }
+                        .padding(vertical = 3.dp, horizontal = 6.dp)
+                )
             }
         }
     }

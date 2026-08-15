@@ -40,6 +40,39 @@ class SettingsRepository(private val context: Context) {
         val GLOWING_BORDER = booleanPreferencesKey("glowing_border")
         val SHOW_BATTERY_INDICATOR = booleanPreferencesKey("show_battery_indicator")
         val STATUS_INDICATOR_MODE = stringPreferencesKey("status_indicator_mode")
+        val UNIFIED_SIZE_ENABLED = booleanPreferencesKey("unified_size_enabled")
+        val UNIFIED_WIDTH = floatPreferencesKey("unified_width")
+        val UNIFIED_HEIGHT = floatPreferencesKey("unified_height")
+    }
+
+    val unifiedSizeEnabled: Flow<Boolean> = context.dataStore.data.map { it[UNIFIED_SIZE_ENABLED] ?: false }
+    val unifiedWidth: Flow<Float> = context.dataStore.data.map { it[UNIFIED_WIDTH] ?: 170.0f }
+    val unifiedHeight: Flow<Float> = context.dataStore.data.map { it[UNIFIED_HEIGHT] ?: 56.0f }
+
+    suspend fun setUnifiedSizeEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[UNIFIED_SIZE_ENABLED] = enabled }
+    }
+
+    suspend fun setUnifiedWidth(width: Float) {
+        context.dataStore.edit {
+            it[UNIFIED_WIDTH] = width
+            if (it[UNIFIED_SIZE_ENABLED] == true) {
+                for (i in 0..4) {
+                    it[floatPreferencesKey("widget_${i}_width")] = width
+                }
+            }
+        }
+    }
+
+    suspend fun setUnifiedHeight(height: Float) {
+        context.dataStore.edit {
+            it[UNIFIED_HEIGHT] = height
+            if (it[UNIFIED_SIZE_ENABLED] == true) {
+                for (i in 0..4) {
+                    it[floatPreferencesKey("widget_${i}_height")] = height
+                }
+            }
+        }
     }
 
     // Dynamic Indexed Preferences for Multi-Widget (up to 5 concurrent widgets)

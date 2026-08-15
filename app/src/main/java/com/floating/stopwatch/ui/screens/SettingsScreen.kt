@@ -237,6 +237,69 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // ------------------------------------------------------------
+            // UNIFIED OVERLAY DIMENSIONS CONTROL
+            // ------------------------------------------------------------
+            val unifiedSizeEnabled by settingsRepository.unifiedSizeEnabled.collectAsState(initial = false)
+            val unifiedWidth by settingsRepository.unifiedWidth.collectAsState(initial = 170.0f)
+            val unifiedHeight by settingsRepository.unifiedHeight.collectAsState(initial = 56.0f)
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.12f)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "UNIFIED SIZE FOR ALL OVERLAYS",
+                            color = LuxuryColors.CreamyWhite,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.sp
+                        )
+                        Switch(
+                            checked = unifiedSizeEnabled,
+                            onCheckedChange = { scope.launch { settingsRepository.setUnifiedSizeEnabled(it) } },
+                            colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
+                        )
+                    }
+
+                    if (unifiedSizeEnabled) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "UNIFIED OVERLAY WIDTH: ${unifiedWidth.toInt()}dp",
+                            color = LuxuryColors.WarmGray,
+                            fontSize = 11.sp
+                        )
+                        Slider(
+                            value = unifiedWidth,
+                            onValueChange = { scope.launch { settingsRepository.setUnifiedWidth(it) } },
+                            valueRange = 1.0f..320.0f,
+                            colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold, activeTrackColor = LuxuryColors.AccentGold)
+                        )
+
+                        Text(
+                            text = "UNIFIED OVERLAY HEIGHT: ${unifiedHeight.toInt()}dp",
+                            color = LuxuryColors.WarmGray,
+                            fontSize = 11.sp
+                        )
+                        Slider(
+                            value = unifiedHeight,
+                            onValueChange = { scope.launch { settingsRepository.setUnifiedHeight(it) } },
+                            valueRange = 1.0f..120.0f,
+                            colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold, activeTrackColor = LuxuryColors.AccentGold)
+                        )
+                    }
+                }
+            }
+
             // Main size Slider (0.0 to 1.0)
             Text(
                 text = "MAIN TIME SIZE SCALE",
@@ -534,7 +597,12 @@ fun SettingsScreen(
                     style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 1.sp),
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                 )
-                val auraTypes = listOf("Ribbons & Sparks", "Lightning", "Fire", "Wave", "Rain", "Smoke", "Stardust", "Pulse Ring", "Glow Mist", "Energy Threads")
+                val auraTypes = listOf(
+                    "Ribbons & Sparks", "Silver Whisper", "Heartbeat Pulse", "Orbital Ring",
+                    "Frost Crystals", "Golden Sands", "Sonic Echo", "Living Shadow", "Silk Threads",
+                    "Moonlight Glow", "Lightning", "Fire", "Wave", "Rain", "Smoke", "Stardust",
+                    "Pulse Ring", "Glow Mist", "Energy Threads", "None/Off"
+                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -545,21 +613,31 @@ fun SettingsScreen(
                     Box {
                         OutlinedButton(
                             onClick = { expandedAuraMenu = true },
-                            border = BorderStroke(1.dp, LuxuryColors.WarmGray.copy(alpha = 0.5f))
+                            border = BorderStroke(1.dp, LuxuryColors.AccentGold),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF0A0A0A))
                         ) {
                             Text(text = auraEffectType, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
                         }
                         DropdownMenu(
                             expanded = expandedAuraMenu,
-                            onDismissRequest = { expandedAuraMenu = false }
+                            onDismissRequest = { expandedAuraMenu = false },
+                            modifier = Modifier.background(Color(0xFF0A0A0A)).border(1.dp, Color(0xFF2C2C2E))
                         ) {
                             auraTypes.forEach { type ->
+                                val isSelected = type == auraEffectType
                                 DropdownMenuItem(
-                                    text = { Text(type, color = LuxuryColors.CreamyWhite) },
+                                    text = {
+                                        Text(
+                                            text = type,
+                                            color = if (isSelected) LuxuryColors.AccentGold else LuxuryColors.CreamyWhite,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
                                     onClick = {
                                         scope.launch { settingsRepository.setAuraEffectType(type) }
                                         expandedAuraMenu = false
-                                    }
+                                    },
+                                    modifier = if (isSelected) Modifier.background(LuxuryColors.AccentGold.copy(alpha = 0.15f)) else Modifier
                                 )
                             }
                         }

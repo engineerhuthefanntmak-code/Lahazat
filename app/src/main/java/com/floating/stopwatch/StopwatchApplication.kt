@@ -42,8 +42,8 @@ class StopwatchApplication : Application() {
                 Log.e("StopwatchApp", "Failed to start CrashReportActivity: ${e.message}")
             }
 
-            // Fallback default system exit
-            System.exit(1)
+            // Pass uncaught exception to system default handler to safely transition to CrashReportActivity
+            defaultHandler?.uncaughtException(thread, throwable)
         }
     }
 }

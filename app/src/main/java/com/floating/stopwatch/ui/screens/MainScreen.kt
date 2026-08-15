@@ -26,10 +26,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.floating.stopwatch.domain.Lap
@@ -198,101 +200,133 @@ fun MainScreen(
                     val minutes = (totalSeconds % 3600) / 60
                     val seconds = totalSeconds % 60
 
-                    Row(
-                        modifier = Modifier.scale(scalePulse * breathingScale),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Hours Drag Zone
-                        Box(
-                            modifier = Modifier.pointerInput(Unit) {
-                                detectDragGestures(
-                                    onDrag = { change, dragAmount ->
-                                        change.consume()
-                                        hDragAcc += dragAmount.y
-                                        if (hDragAcc <= -25f) {
-                                            viewModel.adjustCountdownHours(1)
-                                            hDragAcc = 0f
-                                        } else if (hDragAcc >= 25f) {
-                                            viewModel.adjustCountdownHours(-1)
-                                            hDragAcc = 0f
-                                        }
-                                    },
-                                    onDragEnd = { hDragAcc = 0f }
+                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.scale(scalePulse * breathingScale)
+                        ) {
+                            // 1. Top: Countdown Digits (HH : MM : SS)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                // Hours Drag Zone
+                                Box(
+                                    modifier = Modifier.pointerInput(Unit) {
+                                        detectDragGestures(
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                hDragAcc += dragAmount.y
+                                                if (hDragAcc <= -25f) {
+                                                    viewModel.adjustCountdownHours(1)
+                                                    hDragAcc = 0f
+                                                } else if (hDragAcc >= 25f) {
+                                                    viewModel.adjustCountdownHours(-1)
+                                                    hDragAcc = 0f
+                                                }
+                                            },
+                                            onDragEnd = { hDragAcc = 0f }
+                                        )
+                                    }
+                                ) {
+                                    Text(
+                                        text = String.format("%02d", hours),
+                                        style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                    )
+                                }
+
+                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontWeight = FontWeight.Light))
+
+                                // Minutes Drag Zone
+                                Box(
+                                    modifier = Modifier.pointerInput(Unit) {
+                                        detectDragGestures(
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                mDragAcc += dragAmount.y
+                                                if (mDragAcc <= -25f) {
+                                                    viewModel.adjustCountdownMinutes(1)
+                                                    mDragAcc = 0f
+                                                } else if (mDragAcc >= 25f) {
+                                                    viewModel.adjustCountdownMinutes(-1)
+                                                    mDragAcc = 0f
+                                                }
+                                            },
+                                            onDragEnd = { mDragAcc = 0f }
+                                        )
+                                    }
+                                ) {
+                                    Text(
+                                        text = String.format("%02d", minutes),
+                                        style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                    )
+                                }
+
+                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontWeight = FontWeight.Light))
+
+                                // Seconds Drag Zone
+                                Box(
+                                    modifier = Modifier.pointerInput(Unit) {
+                                        detectDragGestures(
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                sDragAcc += dragAmount.y
+                                                if (sDragAcc <= -25f) {
+                                                    viewModel.adjustCountdownSeconds(1)
+                                                    sDragAcc = 0f
+                                                } else if (sDragAcc >= 25f) {
+                                                    viewModel.adjustCountdownSeconds(-1)
+                                                    sDragAcc = 0f
+                                                }
+                                            },
+                                            onDragEnd = { sDragAcc = 0f }
+                                        )
+                                    }
+                                ) {
+                                    Text(
+                                        text = String.format("%02d", seconds),
+                                        style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // 2. Middle: Sub-Labels HOURS : MINS : SECS aligned under numbers
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "HOURS",
+                                    style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
+                                )
+                                Text(" : ", style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light))
+                                Text(
+                                    text = "MINS",
+                                    style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
+                                )
+                                Text(" : ", style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light))
+                                Text(
+                                    text = "SECS",
+                                    style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
                                 )
                             }
-                        ) {
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // 3. Bottom: Instruction text
                             Text(
-                                text = String.format("%02d", hours),
-                                style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
-                            )
-                        }
-
-                        Text(":", style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontWeight = FontWeight.Light))
-
-                        // Minutes Drag Zone
-                        Box(
-                            modifier = Modifier.pointerInput(Unit) {
-                                detectDragGestures(
-                                    onDrag = { change, dragAmount ->
-                                        change.consume()
-                                        mDragAcc += dragAmount.y
-                                        if (mDragAcc <= -25f) {
-                                            viewModel.adjustCountdownMinutes(1)
-                                            mDragAcc = 0f
-                                        } else if (mDragAcc >= 25f) {
-                                            viewModel.adjustCountdownMinutes(-1)
-                                            mDragAcc = 0f
-                                        }
-                                    },
-                                    onDragEnd = { mDragAcc = 0f }
+                                text = if (!isCountdownRunning) "DRAG UP/DOWN TO ADJUST" else "FOCUS COUNTDOWN",
+                                style = TextStyle(
+                                    color = currentGrayColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Light,
+                                    letterSpacing = 2.sp
                                 )
-                            }
-                        ) {
-                            Text(
-                                text = String.format("%02d", minutes),
-                                style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
-                            )
-                        }
-
-                        Text(":", style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontWeight = FontWeight.Light))
-
-                        // Seconds Drag Zone
-                        Box(
-                            modifier = Modifier.pointerInput(Unit) {
-                                detectDragGestures(
-                                    onDrag = { change, dragAmount ->
-                                        change.consume()
-                                        sDragAcc += dragAmount.y
-                                        if (sDragAcc <= -25f) {
-                                            viewModel.adjustCountdownSeconds(1)
-                                            sDragAcc = 0f
-                                        } else if (sDragAcc >= 25f) {
-                                            viewModel.adjustCountdownSeconds(-1)
-                                            sDragAcc = 0f
-                                        }
-                                    },
-                                    onDragEnd = { sDragAcc = 0f }
-                                )
-                            }
-                        ) {
-                            Text(
-                                text = String.format("%02d", seconds),
-                                style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                             )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = if (!isCountdownRunning) "DRAG HOURS : MINS : SECS UP/DOWN" else "FOCUS COUNTDOWN",
-                        style = TextStyle(
-                            color = currentGrayColor,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Light,
-                            letterSpacing = 2.sp
-                        )
-                    )
                 }
                 AppMode.Counter -> {
                     Text(

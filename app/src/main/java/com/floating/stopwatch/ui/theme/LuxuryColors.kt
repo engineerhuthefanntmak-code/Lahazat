@@ -22,6 +22,7 @@ object LuxuryColors {
 
     fun fromName(name: String): Color {
         return when (name) {
+            "Gold" -> AccentGold
             "Galaxy Blue" -> GalaxyBlue
             "Titanium" -> Titanium
             "Emerald" -> Emerald

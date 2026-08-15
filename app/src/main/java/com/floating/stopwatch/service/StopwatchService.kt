@@ -1017,7 +1017,7 @@ class StopwatchService : Service() {
                             Text(
                                 text = "TAP: $tapCount",
                                 style = TextStyle(
-                                    color = if (isVolumeActive) Color(0xFFFF9500) else LuxuryColors.CreamyWhite,
+                                    color = if (isVolumeActive) Color(0xFFFF9500) else accentColor,
                                     fontSize = (22.sp.value * fontSizeScale).sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace
@@ -1036,7 +1036,7 @@ class StopwatchService : Service() {
                             TimeDisplay(
                                 elapsedTimeMs = elapsedTimeMs,
                                 showCentiseconds = showCentiseconds,
-                                baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 22.sp),
+                                baseStyle = TextStyle(color = accentColor, fontSize = 22.sp),
                                 scaleFactor = fontSizeScale,
                                 gradientGoldEnabled = gradientEnabled,
                                 isVertical = layoutOrientation == "vertical",

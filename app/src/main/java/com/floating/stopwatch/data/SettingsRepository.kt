@@ -29,9 +29,13 @@ class SettingsRepository(private val context: Context) {
         val FLOATING_OPACITY = floatPreferencesKey("floating_opacity")
     }
 
+    val hasAnyWidgetActive: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        (0..2).any { i -> prefs[booleanPreferencesKey("widget_${i}_active")] == true }
+    }
+
     // Dynamic Indexed Preferences for Multi-Widget (up to 5 concurrent widgets)
     fun isWidgetActive(index: Int): Flow<Boolean> = context.dataStore.data.map {
-        it[booleanPreferencesKey("widget_${index}_active")] ?: (index == 0) // widget 0 is active by default
+        it[booleanPreferencesKey("widget_${index}_active")] ?: false // Default false to avoid auto-spawning
     }
 
     fun getWidgetType(index: Int): Flow<String> = context.dataStore.data.map {

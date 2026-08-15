@@ -33,6 +33,7 @@ import com.floating.stopwatch.ui.screens.MainScreen
 import com.floating.stopwatch.ui.screens.SettingsScreen
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
@@ -83,7 +84,6 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
             val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
 
-
             val accentColor = if (colorPreset == "Custom") {
                 try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
             } else {
@@ -114,9 +114,12 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             }
 
             LaunchedEffect(hasOverlayPermission) {
-                // Backgrounding triggers or launches overlay service automatic trigger ONLY if permission is explicitly verified
                 if (hasOverlayPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Settings.canDrawOverlays(this@MainActivity)) {
-                    startFloatingService()
+                    lifecycleScope.launch {
+                        if (settingsRepository.hasAnyWidgetActive.first()) {
+                            startFloatingService()
+                        }
+                    }
                 }
             }
 
@@ -174,7 +177,11 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         if (requestCode == 1024) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (Settings.canDrawOverlays(this)) {
-                    startFloatingService()
+                    lifecycleScope.launch {
+                        if (settingsRepository.hasAnyWidgetActive.first()) {
+                            startFloatingService()
+                        }
+                    }
                 }
             }
         }
@@ -226,7 +233,11 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         // verify permission status live
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (Settings.canDrawOverlays(this)) {
-                startFloatingService()
+                lifecycleScope.launch {
+                    if (settingsRepository.hasAnyWidgetActive.first()) {
+                        startFloatingService()
+                    }
+                }
             }
         }
     }

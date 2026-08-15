@@ -18,10 +18,7 @@ class SettingsRepository(private val context: Context) {
         val FLOATING_Y = floatPreferencesKey("floating_y")
         val HAPTIC_INTENSITY = stringPreferencesKey("haptic_intensity")
         val THEME_MODE = stringPreferencesKey("theme_mode")
-        val BIOMETRIC_LOCK = booleanPreferencesKey("biometric_lock")
         val SHAPE_PRESET = stringPreferencesKey("shape_preset")
-        val FONT_SIZE_SCALE = floatPreferencesKey("font_size_scale")
-        val GRADIENT_ENABLED = booleanPreferencesKey("gradient_enabled")
         val MESH_GRADIENT_ENABLED = booleanPreferencesKey("mesh_gradient_enabled")
         val ENERGY_AURA_ENABLED = booleanPreferencesKey("energy_aura_enabled")
         val AURA_EFFECT_TYPE = stringPreferencesKey("aura_effect_type")
@@ -30,8 +27,6 @@ class SettingsRepository(private val context: Context) {
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
         val FLOATING_PADDING = floatPreferencesKey("floating_padding")
         val FLOATING_OPACITY = floatPreferencesKey("floating_opacity")
-        val GLOWING_BORDER = booleanPreferencesKey("glowing_border")
-        val SHOW_BATTERY_INDICATOR = booleanPreferencesKey("show_battery_indicator")
     }
 
     // Dynamic Indexed Preferences for Multi-Widget (up to 5 concurrent widgets)
@@ -71,6 +66,22 @@ class SettingsRepository(private val context: Context) {
         it[floatPreferencesKey("widget_${index}_height")] ?: 56.0f
     }
 
+    fun getWidgetSaveDimensions(index: Int): Flow<Boolean> = context.dataStore.data.map {
+        it[booleanPreferencesKey("widget_${index}_save_dimensions")] ?: true
+    }
+
+    fun getWidgetFontSizeScale(index: Int): Flow<Float> = context.dataStore.data.map {
+        it[floatPreferencesKey("widget_${index}_font_size_scale")] ?: 1.0f
+    }
+
+    fun getWidgetGradientEnabled(index: Int): Flow<Boolean> = context.dataStore.data.map {
+        it[booleanPreferencesKey("widget_${index}_gradient_enabled")] ?: false
+    }
+
+    fun getWidgetGradientColor(index: Int): Flow<String> = context.dataStore.data.map {
+        it[stringPreferencesKey("widget_${index}_gradient_color")] ?: "Gold"
+    }
+
     fun getWidgetCountdownDuration(index: Int): Flow<Int> = context.dataStore.data.map {
         it[intPreferencesKey("widget_${index}_countdown_duration")] ?: 300 // 5 minutes default
     }
@@ -106,17 +117,29 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[floatPreferencesKey("widget_${index}_height")] = height }
     }
 
+    suspend fun setWidgetSaveDimensions(index: Int, enabled: Boolean) {
+        context.dataStore.edit { it[booleanPreferencesKey("widget_${index}_save_dimensions")] = enabled }
+    }
+
+    suspend fun setWidgetFontSizeScale(index: Int, scale: Float) {
+        context.dataStore.edit { it[floatPreferencesKey("widget_${index}_font_size_scale")] = scale }
+    }
+
+    suspend fun setWidgetGradientEnabled(index: Int, enabled: Boolean) {
+        context.dataStore.edit { it[booleanPreferencesKey("widget_${index}_gradient_enabled")] = enabled }
+    }
+
+    suspend fun setWidgetGradientColor(index: Int, colorName: String) {
+        context.dataStore.edit { it[stringPreferencesKey("widget_${index}_gradient_color")] = colorName }
+    }
+
     suspend fun setWidgetCountdownDuration(index: Int, seconds: Int) {
         context.dataStore.edit { it[intPreferencesKey("widget_${index}_countdown_duration")] = seconds }
     }
 
-    val biometricLock: Flow<Boolean> = context.dataStore.data.map { it[BIOMETRIC_LOCK] ?: false }
-
     val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "Midnight" }
 
     val shapePreset: Flow<String> = context.dataStore.data.map { it[SHAPE_PRESET] ?: "rounded" }
-    val fontSizeScale: Flow<Float> = context.dataStore.data.map { it[FONT_SIZE_SCALE] ?: 1.0f }
-    val gradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[GRADIENT_ENABLED] ?: false }
     val meshGradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[MESH_GRADIENT_ENABLED] ?: true }
     val energyAuraEnabled: Flow<Boolean> = context.dataStore.data.map { it[ENERGY_AURA_ENABLED] ?: true }
     val auraEffectType: Flow<String> = context.dataStore.data.map { it[AURA_EFFECT_TYPE] ?: "Ribbons & Sparks" }
@@ -126,8 +149,6 @@ class SettingsRepository(private val context: Context) {
 
     val floatingPadding: Flow<Float> = context.dataStore.data.map { it[FLOATING_PADDING] ?: 6.0f }
     val floatingOpacity: Flow<Float> = context.dataStore.data.map { it[FLOATING_OPACITY] ?: 0.85f }
-    val glowingBorder: Flow<Boolean> = context.dataStore.data.map { it[GLOWING_BORDER] ?: false }
-    val showBatteryIndicator: Flow<Boolean> = context.dataStore.data.map { it[SHOW_BATTERY_INDICATOR] ?: true }
 
     val stylePreset: Flow<String> = context.dataStore.data.map { it[STYLE_PRESET] ?: "Glass" }
     val colorPreset: Flow<String> = context.dataStore.data.map { it[COLOR_PRESET] ?: "Gold" }
@@ -165,20 +186,8 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[THEME_MODE] = mode }
     }
 
-    suspend fun setBiometricLock(enabled: Boolean) {
-        context.dataStore.edit { it[BIOMETRIC_LOCK] = enabled }
-    }
-
     suspend fun setShapePreset(preset: String) {
         context.dataStore.edit { it[SHAPE_PRESET] = preset }
-    }
-
-    suspend fun setFontSizeScale(scale: Float) {
-        context.dataStore.edit { it[FONT_SIZE_SCALE] = scale }
-    }
-
-    suspend fun setGradientEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[GRADIENT_ENABLED] = enabled }
     }
 
     suspend fun setMeshGradientEnabled(enabled: Boolean) {
@@ -207,14 +216,6 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setFloatingOpacity(opacity: Float) {
         context.dataStore.edit { it[FLOATING_OPACITY] = opacity }
-    }
-
-    suspend fun setGlowingBorder(enabled: Boolean) {
-        context.dataStore.edit { it[GLOWING_BORDER] = enabled }
-    }
-
-    suspend fun setShowBatteryIndicator(enabled: Boolean) {
-        context.dataStore.edit { it[SHOW_BATTERY_INDICATOR] = enabled }
     }
 
     suspend fun setActiveWidgetsCount(count: Int) {

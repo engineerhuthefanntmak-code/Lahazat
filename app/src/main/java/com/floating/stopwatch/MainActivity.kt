@@ -80,7 +80,6 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
             val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
 
-            val biometricLock by settingsRepository.biometricLock.collectAsState(initial = false)
 
             val accentColor = if (colorPreset == "Custom") {
                 try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -123,44 +122,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 currentScreen = "Main"
             }
 
-            if (biometricLock && !isUnlockedByBiometrics) {
-                // Biometric Privacy Lock Active
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(LuxuryColors.WarmBlack)
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "BIOMETRIC LOCKED",
-                            style = TextStyle(
-                                color = LuxuryColors.CreamyWhite,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.ExtraLight,
-                                letterSpacing = 3.sp
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = {
-                                triggerBiometricAuthentication(this@MainActivity) {
-                                    isUnlockedByBiometrics = true
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.AccentGold)
-                        ) {
-                            Text("UNLOCK APPLICATION", color = LuxuryColors.WarmBlack)
-                        }
-                    }
-                }
-                LaunchedEffect(Unit) {
-                    triggerBiometricAuthentication(this@MainActivity) {
-                        isUnlockedByBiometrics = true
-                    }
-                }
-            } else if (!hasOverlayPermission) {
+            if (!hasOverlayPermission) {
                 OverlayPermissionExplanationScreen(
                     onGrantClick = {
                         requestOverlayPermission()

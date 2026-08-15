@@ -141,23 +141,6 @@ class StopwatchService : Service() {
         val milestones: MutableStateFlow<List<String>> = MutableStateFlow(emptyList())
     )
 
-    // Battery level state flow
-    private val _batteryPercentage = MutableStateFlow(100)
-    private val batteryPercentage: StateFlow<Int> = _batteryPercentage.asStateFlow()
-
-    private val batteryReceiver = object : android.content.BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == Intent.ACTION_BATTERY_CHANGED) {
-                val level = intent.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
-                val scale = intent.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1)
-                if (level != -1 && scale != -1) {
-                    val pct = (level * 100 / scale.toFloat()).toInt()
-                    _batteryPercentage.value = pct
-                }
-            }
-        }
-    }
-
     override fun onCreate() {
         super.onCreate()
         activeServices.add(this)
@@ -182,6 +165,27 @@ class StopwatchService : Service() {
             startForeground(NOTIFICATION_ID, buildNotification())
         }
 
+        // Observe shared StopwatchEngine for real-time bidirectional synchronization
+        serviceScope.launch {
+            getEngine().elapsedTimeMs.collectLatest { engineElapsed ->
+                widgetStates.forEach { state ->
+                    if (state.type.value == "stopwatch") {
+                        state.elapsedOrValue.value = engineElapsed
+                    }
+                }
+            }
+        }
+
+        serviceScope.launch {
+            getEngine().state.collectLatest { engineState ->
+                widgetStates.forEach { state ->
+                    if (state.type.value == "stopwatch") {
+                        state.running.value = (engineState == com.floating.stopwatch.domain.StopwatchState.Running)
+                    }
+                }
+            }
+        }
+
         // Monitor and auto-sync active widgets list
         startWidgetLifecycleManager()
 
@@ -195,9 +199,6 @@ class StopwatchService : Service() {
                 setupMediaSessionForScreenOffVolume(active, true)
             }
         }
-
-        // Register battery receiver for real-time tracking
-        registerReceiver(batteryReceiver, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -319,15 +320,13 @@ class StopwatchService : Service() {
                 val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
 
                 val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
-                val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
-                val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
+                val fontSizeScale by settingsRepository.getWidgetFontSizeScale(index).collectAsState(initial = 1.0f)
+                val gradientEnabled by settingsRepository.getWidgetGradientEnabled(index).collectAsState(initial = false)
                 val energyAuraEnabled by settingsRepository.energyAuraEnabled.collectAsState(initial = true)
                 val auraEffectType by settingsRepository.auraEffectType.collectAsState(initial = "Ribbons & Sparks")
                 val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
                 val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
                 val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
-                val glowingBorder by settingsRepository.glowingBorder.collectAsState(initial = false)
-                val currentBatteryPct by batteryPercentage.collectAsState()
 
                 val accentColor = if (colorPreset == "Custom") {
                     try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -365,17 +364,11 @@ class StopwatchService : Service() {
                     }
                 }
 
-                // Volume button dynamic flags intercept controller
-                LaunchedEffect(isVolumeActive, type) {
+                // Permanently preserve FLAG_NOT_FOCUSABLE to prevent stealing input focus from underlying applications
+                LaunchedEffect(Unit) {
                     val overlay = activeOverlays[index]
                     if (overlay != null) {
-                        if (isVolumeActive && type == "counter") {
-                            // Focusable to catch volume buttons
-                            overlay.params.flags = overlay.params.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
-                        } else {
-                            // Non-focusable to pass keys back to the system
-                            overlay.params.flags = overlay.params.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        }
+                        overlay.params.flags = overlay.params.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         windowManager.updateViewLayout(overlay.composeView, overlay.params)
                     }
                 }
@@ -403,8 +396,6 @@ class StopwatchService : Service() {
                         layoutOrientation = layoutOrientation,
                         paddingDpValue = floatingPadding,
                         opacity = floatingOpacity,
-                        glowingBorder = glowingBorder,
-                        batteryPercentage = currentBatteryPct,
                         onMovementDrag = { dx, dy ->
                             activeOverlays[index]?.let {
                                 it.params.x += dx.roundToInt()
@@ -424,6 +415,9 @@ class StopwatchService : Service() {
                             when (action) {
                                 "Start" -> {
                                     hapticController.trigger(hapticIntensity, "Start")
+                                    if (type == "stopwatch") {
+                                        getEngine().start()
+                                    }
                                     state.running.value = true
                                     state.baseTime.value = SystemClock.elapsedRealtime()
                                     startTickerForWidget(index)
@@ -431,12 +425,18 @@ class StopwatchService : Service() {
                                 }
                                 "Stop" -> {
                                     hapticController.trigger(hapticIntensity, "Stop")
+                                    if (type == "stopwatch") {
+                                        getEngine().pause()
+                                    }
                                     state.running.value = false
                                     stopTickerForWidget(index)
                                     serviceScope.launch { settingsRepository.setWidgetRunning(index, false) }
                                 }
                                 "Reset" -> {
                                     hapticController.trigger(hapticIntensity, "Reset")
+                                    if (type == "stopwatch") {
+                                        getEngine().reset()
+                                    }
                                     state.running.value = false
                                     stopTickerForWidget(index)
                                     if (type == "countdown") {
@@ -761,8 +761,6 @@ class StopwatchService : Service() {
         layoutOrientation: String,
         paddingDpValue: Float,
         opacity: Float,
-        glowingBorder: Boolean,
-        batteryPercentage: Int,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
         onAction: (String) -> Unit
@@ -851,16 +849,6 @@ class StopwatchService : Service() {
                                 Modifier.background(Color.Black.copy(alpha = opacity), RoundedCornerShape(finalCornerRadius))
                             }
                         )
-                        .then(
-                            if (glowingBorder) {
-                                Modifier.background(Color.Transparent, RoundedCornerShape(finalCornerRadius))
-                                    .then(
-                                        Modifier.shadow(elevation = 2.dp, shape = RoundedCornerShape(finalCornerRadius), ambientColor = accentColor, spotColor = accentColor)
-                                    )
-                            } else {
-                                Modifier
-                            }
-                        )
                 )
 
             // Content
@@ -870,6 +858,44 @@ class StopwatchService : Service() {
                     .padding(safePadding.dp),
                 contentAlignment = Alignment.Center
             ) {
+                // Foreground Values (Stopwatch / Countdown / Tap Counter) - Always visible
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    if (widgetType == "counter") {
+                        // Render pure touch-based counts numbers
+                        Text(
+                            text = "TAP: $tapCount",
+                            style = TextStyle(
+                                color = if (isVolumeActive) Color(0xFFFF9500) else LuxuryColors.CreamyWhite,
+                                fontSize = (22.sp.value * fontSizeScale).sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        )
+                        if (isVolumeActive) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFF9500))
+                            )
+                        }
+                    } else {
+                        TimeDisplay(
+                            elapsedTimeMs = elapsedTimeMs,
+                            showCentiseconds = showCentiseconds,
+                            baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 22.sp),
+                            scaleFactor = fontSizeScale,
+                            gradientGoldEnabled = gradientEnabled,
+                            isVertical = layoutOrientation == "vertical",
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                }
+
                 if (showMenu) {
                     LuxuryTextDropdownMenu(
                         widgetType = widgetType,
@@ -886,67 +912,6 @@ class StopwatchService : Service() {
                         },
                         onDismiss = { showMenu = false }
                     )
-                } else {
-                    // Foreground Values (Stopwatch / Countdown / Tap Counter)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        if (shapePreset != "circle") {
-                            val scaledIconSize = (16.dp.value * fontSizeScale).coerceAtLeast(10.0f).dp
-                            val scaledFontSize = (8.sp.value * fontSizeScale).coerceAtLeast(6.0f).sp
-
-                            Box(
-                                modifier = Modifier
-                                    .size(scaledIconSize)
-                                    .border(
-                                        border = BorderStroke(1.dp, if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A)),
-                                        shape = CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "$batteryPercentage%",
-                                    color = if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A),
-                                    fontSize = scaledFontSize,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-
-                        if (widgetType == "counter") {
-                            // Render pure touch-based counts numbers
-                            Text(
-                                text = "TAP: $tapCount",
-                                style = TextStyle(
-                                    color = if (isVolumeActive) Color(0xFFFF9500) else LuxuryColors.CreamyWhite,
-                                    fontSize = (22.sp.value * fontSizeScale).sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            )
-                            if (isVolumeActive) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFFFF9500))
-                                )
-                            }
-                        } else {
-                            TimeDisplay(
-                                elapsedTimeMs = elapsedTimeMs,
-                                showCentiseconds = showCentiseconds,
-                                baseStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 22.sp),
-                                scaleFactor = fontSizeScale,
-                                gradientGoldEnabled = gradientEnabled,
-                                isVertical = layoutOrientation == "vertical",
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
-                        }
-                    }
                 }
             }
         }
@@ -997,10 +962,6 @@ class StopwatchService : Service() {
         super.onDestroy()
         activeServices.remove(this)
         serviceScope.cancel()
-
-        try {
-            unregisterReceiver(batteryReceiver)
-        } catch (e: Exception) { e.printStackTrace() }
 
         // Secure unmount and clean up all spawned widget overlay life-cycles
         activeOverlays.keys.toList().forEach { dismissWidget(it) }

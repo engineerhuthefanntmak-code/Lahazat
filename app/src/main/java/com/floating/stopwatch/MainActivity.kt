@@ -51,7 +51,10 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         super.onCreate(savedInstanceState)
 
         settingsRepository = SettingsRepository(applicationContext)
-        mainViewModel = MainViewModel(StopwatchService.getEngine())
+        mainViewModel = MainViewModel(
+            engine = StopwatchService.getEngine(),
+            countdownEngine = StopwatchService.getCountdownEngine()
+        )
         hapticController = HapticController(applicationContext)
 
         // Track fold/hinge updates with explicit safe fallbacks in case Jetpack WindowManager throws on traditional non-foldable devices

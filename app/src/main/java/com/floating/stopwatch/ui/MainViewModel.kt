@@ -1,16 +1,14 @@
 package com.floating.stopwatch.ui
 
-import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.floating.stopwatch.domain.CountdownEngine
 import com.floating.stopwatch.domain.Lap
 import com.floating.stopwatch.domain.StopwatchEngine
 import com.floating.stopwatch.domain.StopwatchState
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 enum class AppMode {
@@ -18,7 +16,8 @@ enum class AppMode {
 }
 
 class MainViewModel(
-    val engine: StopwatchEngine
+    val engine: StopwatchEngine,
+    val countdownEngine: CountdownEngine = CountdownEngine()
 ) : ViewModel() {
 
     val currentMode = MutableStateFlow(AppMode.Stopwatch)
@@ -27,11 +26,10 @@ class MainViewModel(
     val elapsedTimeMs: StateFlow<Long> = engine.elapsedTimeMs
     val laps: StateFlow<List<Lap>> = engine.laps
 
-    // Countdown State
-    val countdownInitialMs = MutableStateFlow(300000L) // Default 5 mins
-    val countdownRemainingMs = MutableStateFlow(300000L)
-    val isCountdownRunning = MutableStateFlow(false)
-    private var countdownJob: Job? = null
+    // Countdown State delegated to CountdownEngine
+    val countdownInitialMs: StateFlow<Long> = countdownEngine.initialDurationMs
+    val countdownRemainingMs: StateFlow<Long> = countdownEngine.remainingTimeMs
+    val isCountdownRunning: StateFlow<Boolean> = countdownEngine.isRunning
 
     // Counter State
     val counterValue = MutableStateFlow(0L)
@@ -47,71 +45,27 @@ class MainViewModel(
 
     // Countdown Time Adjustment via Drag
     fun adjustCountdownHours(deltaHours: Int) {
-        if (isCountdownRunning.value) return
-        val currentMs = countdownInitialMs.value
-        val hours = currentMs / 3600000L
-        val rest = currentMs % 3600000L
-        val newHours = (hours + deltaHours).coerceIn(0L, 99L)
-        val newTotal = newHours * 3600000L + rest
-        countdownInitialMs.value = newTotal
-        countdownRemainingMs.value = newTotal
+        countdownEngine.adjustDuration(deltaHours * 3600000L)
     }
 
     fun adjustCountdownMinutes(deltaMinutes: Int) {
-        if (isCountdownRunning.value) return
-        val currentMs = countdownInitialMs.value
-        val hours = currentMs / 3600000L
-        val minutes = (currentMs % 3600000L) / 60000L
-        val seconds = currentMs % 60000L
-        val newMinutes = (minutes + deltaMinutes).coerceIn(0L, 59L)
-        val newTotal = hours * 3600000L + newMinutes * 60000L + seconds
-        countdownInitialMs.value = newTotal
-        countdownRemainingMs.value = newTotal
+        countdownEngine.adjustDuration(deltaMinutes * 60000L)
     }
 
     fun adjustCountdownSeconds(deltaSeconds: Int) {
-        if (isCountdownRunning.value) return
-        val currentMs = countdownInitialMs.value
-        val hours = currentMs / 3600000L
-        val minutes = (currentMs % 3600000L) / 60000L
-        val seconds = (currentMs % 60000L) / 1000L
-        val newSeconds = (seconds + deltaSeconds).coerceIn(0L, 59L)
-        val newTotal = hours * 3600000L + minutes * 60000L + newSeconds * 1000L
-        countdownInitialMs.value = newTotal
-        countdownRemainingMs.value = newTotal
+        countdownEngine.adjustDuration(deltaSeconds * 1000L)
     }
 
     fun startCountdown() {
-        if (countdownRemainingMs.value <= 0L) return
-        isCountdownRunning.value = true
-        countdownJob?.cancel()
-        countdownJob = viewModelScope.launch(Dispatchers.Default) {
-            var lastBase = SystemClock.elapsedRealtime()
-            while (isCountdownRunning.value) {
-                delay(10)
-                val now = SystemClock.elapsedRealtime()
-                val delta = now - lastBase
-                lastBase = now
-                val current = countdownRemainingMs.value - delta
-                if (current <= 0L) {
-                    countdownRemainingMs.value = 0L
-                    isCountdownRunning.value = false
-                    break
-                } else {
-                    countdownRemainingMs.value = current
-                }
-            }
-        }
+        countdownEngine.start()
     }
 
     fun pauseCountdown() {
-        isCountdownRunning.value = false
-        countdownJob?.cancel()
+        countdownEngine.pause()
     }
 
     fun resetCountdown() {
-        pauseCountdown()
-        countdownRemainingMs.value = countdownInitialMs.value
+        countdownEngine.reset()
     }
 
     fun incrementCounter() {

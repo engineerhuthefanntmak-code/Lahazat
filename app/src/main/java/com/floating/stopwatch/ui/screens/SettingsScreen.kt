@@ -30,14 +30,9 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
-    val mainSize by settingsRepository.mainSize.collectAsState(initial = 1.0f)
-    val floatingSize by settingsRepository.floatingSize.collectAsState(initial = 0.5f)
-    val showCentisecondsMain by settingsRepository.showCentisecondsMain.collectAsState(initial = true)
-    val showCentisecondsFloating by settingsRepository.showCentisecondsFloating.collectAsState(initial = true)
     val stylePreset by settingsRepository.stylePreset.collectAsState(initial = "Glass Premium")
     val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
     val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
-    val experienceLevel by settingsRepository.experienceLevel.collectAsState(initial = "Premium")
     val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
     val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
     val biometricLock by settingsRepository.biometricLock.collectAsState(initial = false)
@@ -58,7 +53,6 @@ fun SettingsScreen(
     val shapes = listOf("rounded", "capsule", "circle", "sharp", "glass")
     val themeModes = listOf("Midnight", "Warm Paper", "Obsidian Dark")
     val presets = listOf("Glass Premium", "Obsidian", "Titanium", "Ultra Minimal")
-    val experienceLevels = listOf("Ultra Minimal", "Premium", "Full Control")
     val intensities = listOf("Off", "Light", "Medium", "Strong")
     val colorPresets = listOf("Gold", "Galaxy Blue", "Titanium", "Emerald", "Sapphire", "Violet", "Rose", "Ice", "Amber", "Pure White", "Custom")
 
@@ -105,7 +99,7 @@ fun SettingsScreen(
                 .padding(24.dp)
         ) {
             // ------------------------------------------------------------
-            // MULTI-WIDGET MANAGER (Section 3 - Items 1, 3, 4)
+            // MULTI-WIDGET MANAGER & INDIVIDUAL SIZES
             // ------------------------------------------------------------
             Text(
                 text = "ACTIVE FLOATING WIDGETS MANAGER",
@@ -208,7 +202,7 @@ fun SettingsScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
-                                text = "WIDTH: ${wWidth.toInt()}dp",
+                                text = "INDIVIDUAL WIDTH: ${wWidth.toInt()}dp",
                                 color = LuxuryColors.WarmGray,
                                 fontSize = 10.sp
                             )
@@ -220,7 +214,7 @@ fun SettingsScreen(
                             )
 
                             Text(
-                                text = "HEIGHT: ${wHeight.toInt()}dp",
+                                text = "INDIVIDUAL HEIGHT: ${wHeight.toInt()}dp",
                                 color = LuxuryColors.WarmGray,
                                 fontSize = 10.sp
                             )
@@ -237,149 +231,10 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ------------------------------------------------------------
-            // UNIFIED OVERLAY DIMENSIONS CONTROL
-            // ------------------------------------------------------------
-            val unifiedSizeEnabled by settingsRepository.unifiedSizeEnabled.collectAsState(initial = false)
-            val unifiedWidth by settingsRepository.unifiedWidth.collectAsState(initial = 170.0f)
-            val unifiedHeight by settingsRepository.unifiedHeight.collectAsState(initial = 56.0f)
-
-            Card(
-                colors = CardDefaults.cardColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.12f)),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp)
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "UNIFIED SIZE FOR ALL OVERLAYS",
-                            color = LuxuryColors.CreamyWhite,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 1.sp
-                        )
-                        Switch(
-                            checked = unifiedSizeEnabled,
-                            onCheckedChange = { scope.launch { settingsRepository.setUnifiedSizeEnabled(it) } },
-                            colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
-                        )
-                    }
-
-                    if (unifiedSizeEnabled) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "UNIFIED OVERLAY WIDTH: ${unifiedWidth.toInt()}dp",
-                            color = LuxuryColors.WarmGray,
-                            fontSize = 11.sp
-                        )
-                        Slider(
-                            value = unifiedWidth,
-                            onValueChange = { scope.launch { settingsRepository.setUnifiedWidth(it) } },
-                            valueRange = 1.0f..320.0f,
-                            colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold, activeTrackColor = LuxuryColors.AccentGold)
-                        )
-
-                        Text(
-                            text = "UNIFIED OVERLAY HEIGHT: ${unifiedHeight.toInt()}dp",
-                            color = LuxuryColors.WarmGray,
-                            fontSize = 11.sp
-                        )
-                        Slider(
-                            value = unifiedHeight,
-                            onValueChange = { scope.launch { settingsRepository.setUnifiedHeight(it) } },
-                            valueRange = 1.0f..120.0f,
-                            colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold, activeTrackColor = LuxuryColors.AccentGold)
-                        )
-                    }
-                }
-            }
-
-            // Main size Slider (0.0 to 1.0)
-            Text(
-                text = "MAIN TIME SIZE SCALE",
-                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
-            )
-            Slider(
-                value = mainSize,
-                onValueChange = { scope.launch { settingsRepository.setMainSize(it) } },
-                valueRange = 0.5f..1.5f,
-                colors = SliderDefaults.colors(
-                    thumbColor = LuxuryColors.AccentGold,
-                    activeTrackColor = LuxuryColors.AccentGold
-                )
-            )
-            Text(
-                text = "Value: ${String.format("%.2f", mainSize)}",
-                style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-
-            // Floating Width Slider (1 to 280 dp) - Independent control (with circle auto-equality constraint)
-            val floatingWidth by settingsRepository.floatingWidth.collectAsState(initial = 170.0f)
-            val floatingHeight by settingsRepository.floatingHeight.collectAsState(initial = 56.0f)
+            // Floating Padding Slider (0 to 32 dp)
             val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
             val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
 
-            Text(
-                text = if (shapePreset == "circle") "FLOATING OVERLAY DIAMETER (CIRCLE MODE BOUND)" else "FLOATING OVERLAY WIDTH",
-                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
-            )
-            Slider(
-                value = floatingWidth,
-                onValueChange = {
-                    scope.launch {
-                        settingsRepository.setFloatingWidth(it)
-                        if (shapePreset == "circle") {
-                            settingsRepository.setFloatingHeight(it)
-                        }
-                    }
-                },
-                valueRange = 1.0f..280.0f,
-                colors = SliderDefaults.colors(
-                    thumbColor = LuxuryColors.AccentGold,
-                    activeTrackColor = LuxuryColors.AccentGold
-                )
-            )
-            Text(
-                text = "Width: ${floatingWidth.toInt()}dp (Limits: 1dp to 280dp)",
-                style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-
-            // Floating Height Slider (1 to 80 dp) - Independent control (with circle auto-equality constraint)
-            Text(
-                text = if (shapePreset == "circle") "FLOATING OVERLAY HEIGHT (LOCKED TO WIDTH FOR CIRCLE)" else "FLOATING OVERLAY HEIGHT",
-                style = TextStyle(color = if (shapePreset == "circle") LuxuryColors.WarmGray.copy(alpha = 0.5f) else LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
-            )
-            Slider(
-                value = if (shapePreset == "circle") floatingWidth.coerceAtMost(80.0f) else floatingHeight,
-                onValueChange = {
-                    if (shapePreset != "circle") {
-                        scope.launch {
-                            settingsRepository.setFloatingHeight(it)
-                        }
-                    }
-                },
-                valueRange = 1.0f..80.0f,
-                enabled = shapePreset != "circle",
-                colors = SliderDefaults.colors(
-                    thumbColor = if (shapePreset == "circle") LuxuryColors.WarmGray else LuxuryColors.AccentGold,
-                    activeTrackColor = if (shapePreset == "circle") LuxuryColors.WarmGray.copy(alpha = 0.3f) else LuxuryColors.AccentGold
-                )
-            )
-            Text(
-                text = if (shapePreset == "circle") "Height: ${floatingWidth.coerceAtMost(80.0f).toInt()}dp [Auto-locked to Width]" else "Height: ${floatingHeight.toInt()}dp (Limits: 1dp to 80dp)",
-                style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
-
-            // Floating Padding Slider (0 to 32 dp)
             Text(
                 text = "FLOATING OVERLAY INTERNAL PADDING",
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
@@ -403,7 +258,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // New Backdrop Opacity Slider
+            // Backdrop Opacity Slider
             val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
             Text(
                 text = "FLOATING BACKDROP OPACITY",
@@ -428,7 +283,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // New Glowing Border Toggle
+            // Glowing Border Toggle
             val glowingBorder by settingsRepository.glowingBorder.collectAsState(initial = false)
             Row(
                 modifier = Modifier
@@ -448,51 +303,7 @@ fun SettingsScreen(
                 )
             }
 
-            // Status Indicator Mode Selector
-            val statusIndicatorMode by settingsRepository.statusIndicatorMode.collectAsState(initial = "battery")
-            Text(
-                text = "STATUS INDICATOR MODE",
-                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
-                modifier = Modifier.padding(top = 12.dp, bottom = 6.dp)
-            )
-            listOf("battery" to "CIRCULAR BATTERY STATUS", "book" to "OPEN BOOK ICON (📖)", "hidden" to "HIDDEN").forEach { (modeKey, label) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { scope.launch { settingsRepository.setStatusIndicatorMode(modeKey) } }
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = (statusIndicatorMode == modeKey),
-                        onClick = { scope.launch { settingsRepository.setStatusIndicatorMode(modeKey) } },
-                        colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(text = label, color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
-                }
-            }
-
-            // Show Centiseconds Toggles
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "SHOW CENTISECONDS (MAIN SCREEN)",
-                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
-                )
-                Switch(
-                    checked = showCentisecondsMain,
-                    onCheckedChange = { scope.launch { settingsRepository.setShowCentisecondsMain(it) } },
-                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
-                )
-            }
-
-            // Custom UI customization keys (Item 3, 4, 5, 6, 10, 11)
+            // Custom UI customization keys
             val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
             val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
             val auraEffectType by settingsRepository.auraEffectType.collectAsState(initial = "Ribbons & Sparks")
@@ -510,7 +321,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // Shape Presets Dropdown/Options (Item 4)
+            // Shape Presets Options
             Text(
                 text = "SHAPE PRESET",
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 1.sp),
@@ -523,10 +334,6 @@ fun SettingsScreen(
                         .clickable {
                             scope.launch {
                                 settingsRepository.setShapePreset(shape)
-                                if (shape == "circle") {
-                                    // Make sure width and height are synchronized for circular look
-                                    settingsRepository.setFloatingHeight(floatingWidth)
-                                }
                             }
                         }
                         .padding(vertical = 8.dp),
@@ -537,10 +344,6 @@ fun SettingsScreen(
                         onClick = {
                             scope.launch {
                                 settingsRepository.setShapePreset(shape)
-                                if (shape == "circle") {
-                                    // Make sure width and height are synchronized for circular look
-                                    settingsRepository.setFloatingHeight(floatingWidth)
-                                }
                             }
                         },
                         colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold)
@@ -552,7 +355,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Font size scale control (Item 6)
+            // Font size scale control
             Text(
                 text = "FONT SIZE SCALE",
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp)
@@ -572,7 +375,7 @@ fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Layout Orientation switch (Item 10)
+            // Layout Orientation switch
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -683,7 +486,7 @@ fun SettingsScreen(
                 )
             }
 
-            // Mesh Gradient switch (Item 7)
+            // Mesh Gradient switch
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -702,7 +505,7 @@ fun SettingsScreen(
                 )
             }
 
-            // Gradient Text colors switch (Item 5)
+            // Gradient Text colors switch
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -739,27 +542,9 @@ fun SettingsScreen(
                 )
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "SHOW CENTISECONDS (FLOATING)",
-                    style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 13.sp)
-                )
-                Switch(
-                    checked = showCentisecondsFloating,
-                    onCheckedChange = { scope.launch { settingsRepository.setShowCentisecondsFloating(it) } },
-                    colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
-                )
-            }
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Display Theme Mode Setting (Midnight / Warm Paper / Obsidian Dark)
+            // Display Theme Mode Setting
             Text(
                 text = "ILLUMINATION STYLE MODE",
                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
@@ -806,32 +591,6 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(text = preset, color = LuxuryColors.CreamyWhite, fontSize = 14.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Experience Level Setting
-            Text(
-                text = "FLOATING EXPERIENCE LEVEL",
-                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            experienceLevels.forEach { level ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { scope.launch { settingsRepository.setExperienceLevel(level) } }
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = (experienceLevel == level),
-                        onClick = { scope.launch { settingsRepository.setExperienceLevel(level) } },
-                        colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(text = level, color = LuxuryColors.CreamyWhite, fontSize = 14.sp)
                 }
             }
 
@@ -887,7 +646,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Custom Color HSV / RGB Slider Picker if "Custom" is selected
+            // Custom Color HSV / RGB Slider Picker
             if (colorPreset == "Custom") {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -917,8 +676,6 @@ fun SettingsScreen(
                     valueRange = 0f..255f
                 )
 
-                // Contrast checks warning details
-                // Contrast formula: L = 0.2126 * R + 0.7152 * G + 0.0722 * B
                 val relativeLuminance = (0.2126f * (customR/255) + 0.7152f * (customG/255) + 0.0722f * (customB/255))
                 if (relativeLuminance < 0.2f) {
                     Spacer(modifier = Modifier.height(8.dp))

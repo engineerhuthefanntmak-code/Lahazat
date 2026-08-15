@@ -11,18 +11,11 @@ val Context.dataStore by preferencesDataStore(name = "settings")
 class SettingsRepository(private val context: Context) {
 
     companion object {
-        val MAIN_SIZE = floatPreferencesKey("main_size")
-        val FLOATING_SIZE = floatPreferencesKey("floating_size")
-        val FLOATING_WIDTH = floatPreferencesKey("floating_width")
-        val FLOATING_HEIGHT = floatPreferencesKey("floating_height")
-        val SHOW_CENTISECONDS_MAIN = booleanPreferencesKey("show_centiseconds_main")
-        val SHOW_CENTISECONDS_FLOATING = booleanPreferencesKey("show_centiseconds_floating")
         val STYLE_PRESET = stringPreferencesKey("style_preset")
         val COLOR_PRESET = stringPreferencesKey("color_preset")
         val CUSTOM_COLOR_HEX = stringPreferencesKey("custom_color_hex")
         val FLOATING_X = floatPreferencesKey("floating_x")
         val FLOATING_Y = floatPreferencesKey("floating_y")
-        val EXPERIENCE_LEVEL = stringPreferencesKey("experience_level")
         val HAPTIC_INTENSITY = stringPreferencesKey("haptic_intensity")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val BIOMETRIC_LOCK = booleanPreferencesKey("biometric_lock")
@@ -39,40 +32,6 @@ class SettingsRepository(private val context: Context) {
         val FLOATING_OPACITY = floatPreferencesKey("floating_opacity")
         val GLOWING_BORDER = booleanPreferencesKey("glowing_border")
         val SHOW_BATTERY_INDICATOR = booleanPreferencesKey("show_battery_indicator")
-        val STATUS_INDICATOR_MODE = stringPreferencesKey("status_indicator_mode")
-        val UNIFIED_SIZE_ENABLED = booleanPreferencesKey("unified_size_enabled")
-        val UNIFIED_WIDTH = floatPreferencesKey("unified_width")
-        val UNIFIED_HEIGHT = floatPreferencesKey("unified_height")
-    }
-
-    val unifiedSizeEnabled: Flow<Boolean> = context.dataStore.data.map { it[UNIFIED_SIZE_ENABLED] ?: false }
-    val unifiedWidth: Flow<Float> = context.dataStore.data.map { it[UNIFIED_WIDTH] ?: 170.0f }
-    val unifiedHeight: Flow<Float> = context.dataStore.data.map { it[UNIFIED_HEIGHT] ?: 56.0f }
-
-    suspend fun setUnifiedSizeEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[UNIFIED_SIZE_ENABLED] = enabled }
-    }
-
-    suspend fun setUnifiedWidth(width: Float) {
-        context.dataStore.edit {
-            it[UNIFIED_WIDTH] = width
-            if (it[UNIFIED_SIZE_ENABLED] == true) {
-                for (i in 0..4) {
-                    it[floatPreferencesKey("widget_${i}_width")] = width
-                }
-            }
-        }
-    }
-
-    suspend fun setUnifiedHeight(height: Float) {
-        context.dataStore.edit {
-            it[UNIFIED_HEIGHT] = height
-            if (it[UNIFIED_SIZE_ENABLED] == true) {
-                for (i in 0..4) {
-                    it[floatPreferencesKey("widget_${i}_height")] = height
-                }
-            }
-        }
     }
 
     // Dynamic Indexed Preferences for Multi-Widget (up to 5 concurrent widgets)
@@ -105,11 +64,11 @@ class SettingsRepository(private val context: Context) {
     }
 
     fun getWidgetWidth(index: Int): Flow<Float> = context.dataStore.data.map {
-        it[floatPreferencesKey("widget_${index}_width")] ?: (it[FLOATING_WIDTH] ?: 170.0f)
+        it[floatPreferencesKey("widget_${index}_width")] ?: 170.0f
     }
 
     fun getWidgetHeight(index: Int): Flow<Float> = context.dataStore.data.map {
-        it[floatPreferencesKey("widget_${index}_height")] ?: (it[FLOATING_HEIGHT] ?: 56.0f)
+        it[floatPreferencesKey("widget_${index}_height")] ?: 56.0f
     }
 
     fun getWidgetCountdownDuration(index: Int): Flow<Int> = context.dataStore.data.map {
@@ -155,11 +114,6 @@ class SettingsRepository(private val context: Context) {
 
     val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "Midnight" }
 
-    val mainSize: Flow<Float> = context.dataStore.data.map { it[MAIN_SIZE] ?: 1.0f }
-    val floatingSize: Flow<Float> = context.dataStore.data.map { it[FLOATING_SIZE] ?: 0.5f }
-    val floatingWidth: Flow<Float> = context.dataStore.data.map { it[FLOATING_WIDTH] ?: 170.0f }
-    val floatingHeight: Flow<Float> = context.dataStore.data.map { it[FLOATING_HEIGHT] ?: 56.0f }
-
     val shapePreset: Flow<String> = context.dataStore.data.map { it[SHAPE_PRESET] ?: "rounded" }
     val fontSizeScale: Flow<Float> = context.dataStore.data.map { it[FONT_SIZE_SCALE] ?: 1.0f }
     val gradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[GRADIENT_ENABLED] ?: false }
@@ -174,10 +128,6 @@ class SettingsRepository(private val context: Context) {
     val floatingOpacity: Flow<Float> = context.dataStore.data.map { it[FLOATING_OPACITY] ?: 0.85f }
     val glowingBorder: Flow<Boolean> = context.dataStore.data.map { it[GLOWING_BORDER] ?: false }
     val showBatteryIndicator: Flow<Boolean> = context.dataStore.data.map { it[SHOW_BATTERY_INDICATOR] ?: true }
-    val statusIndicatorMode: Flow<String> = context.dataStore.data.map { it[STATUS_INDICATOR_MODE] ?: "battery" }
-
-    val showCentisecondsMain: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_MAIN] ?: true }
-    val showCentisecondsFloating: Flow<Boolean> = context.dataStore.data.map { it[SHOW_CENTISECONDS_FLOATING] ?: true }
 
     val stylePreset: Flow<String> = context.dataStore.data.map { it[STYLE_PRESET] ?: "Glass" }
     val colorPreset: Flow<String> = context.dataStore.data.map { it[COLOR_PRESET] ?: "Gold" }
@@ -186,42 +136,7 @@ class SettingsRepository(private val context: Context) {
     val floatingX: Flow<Float> = context.dataStore.data.map { it[FLOATING_X] ?: -1.0f }
     val floatingY: Flow<Float> = context.dataStore.data.map { it[FLOATING_Y] ?: -1.0f }
 
-    val experienceLevel: Flow<String> = context.dataStore.data.map { it[EXPERIENCE_LEVEL] ?: "Premium" }
     val hapticIntensity: Flow<String> = context.dataStore.data.map { it[HAPTIC_INTENSITY] ?: "Medium" }
-
-    suspend fun setMainSize(size: Float) {
-        context.dataStore.edit { it[MAIN_SIZE] = size }
-    }
-
-    suspend fun setFloatingSize(size: Float) {
-        context.dataStore.edit { it[FLOATING_SIZE] = size }
-    }
-
-    suspend fun setFloatingWidth(width: Float) {
-        context.dataStore.edit {
-            it[FLOATING_WIDTH] = width
-            for (i in 0..4) {
-                it[floatPreferencesKey("widget_${i}_width")] = width
-            }
-        }
-    }
-
-    suspend fun setFloatingHeight(height: Float) {
-        context.dataStore.edit {
-            it[FLOATING_HEIGHT] = height
-            for (i in 0..4) {
-                it[floatPreferencesKey("widget_${i}_height")] = height
-            }
-        }
-    }
-
-    suspend fun setShowCentisecondsMain(show: Boolean) {
-        context.dataStore.edit { it[SHOW_CENTISECONDS_MAIN] = show }
-    }
-
-    suspend fun setShowCentisecondsFloating(show: Boolean) {
-        context.dataStore.edit { it[SHOW_CENTISECONDS_FLOATING] = show }
-    }
 
     suspend fun setStylePreset(preset: String) {
         context.dataStore.edit { it[STYLE_PRESET] = preset }
@@ -240,10 +155,6 @@ class SettingsRepository(private val context: Context) {
             it[FLOATING_X] = x
             it[FLOATING_Y] = y
         }
-    }
-
-    suspend fun setExperienceLevel(level: String) {
-        context.dataStore.edit { it[EXPERIENCE_LEVEL] = level }
     }
 
     suspend fun setHapticIntensity(intensity: String) {
@@ -304,10 +215,6 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setShowBatteryIndicator(enabled: Boolean) {
         context.dataStore.edit { it[SHOW_BATTERY_INDICATOR] = enabled }
-    }
-
-    suspend fun setStatusIndicatorMode(mode: String) {
-        context.dataStore.edit { it[STATUS_INDICATOR_MODE] = mode }
     }
 
     suspend fun setActiveWidgetsCount(count: Int) {

@@ -265,17 +265,12 @@ class StopwatchService : Service() {
                 }
             }
 
-            // Sync width and height changes dynamically (respecting unified overlay sizes)
+            // Sync width and height changes dynamically for each individual widget
             serviceScope.launch {
                 combine(
-                    settingsRepository.unifiedSizeEnabled,
-                    settingsRepository.unifiedWidth,
-                    settingsRepository.unifiedHeight,
                     settingsRepository.getWidgetWidth(i),
                     settingsRepository.getWidgetHeight(i)
-                ) { isUnified, uW, uH, wDp, hDp ->
-                    if (isUnified) Pair(uW, uH) else Pair(wDp, hDp)
-                }.collectLatest { (wDp, hDp) ->
+                ) { wDp, hDp -> Pair(wDp, hDp) }.collectLatest { (wDp, hDp) ->
                     val overlay = activeOverlays[i]
                     if (overlay != null && overlay.composeView.isAttachedToWindow) {
                         val wPx = wDp.toInt().dpToPx().coerceAtLeast(1)
@@ -316,11 +311,8 @@ class StopwatchService : Service() {
                 val isVolumeActive by state.isVolumeCounterActive.collectAsState()
                 val milestones by state.milestones.collectAsState()
 
-                val mainSize by settingsRepository.mainSize.collectAsState(initial = 1.0f)
-                val floatingSize by settingsRepository.floatingSize.collectAsState(initial = 0.5f)
                 val floatingWidth by settingsRepository.getWidgetWidth(index).collectAsState(initial = 170.0f)
                 val floatingHeight by settingsRepository.getWidgetHeight(index).collectAsState(initial = 56.0f)
-                val showCentisecondsFloating by settingsRepository.showCentisecondsFloating.collectAsState(initial = true)
                 val stylePreset by settingsRepository.stylePreset.collectAsState(initial = "Glass Premium")
                 val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
                 val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
@@ -335,7 +327,6 @@ class StopwatchService : Service() {
                 val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
                 val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
                 val glowingBorder by settingsRepository.glowingBorder.collectAsState(initial = false)
-                val statusIndicatorMode by settingsRepository.statusIndicatorMode.collectAsState(initial = "battery")
                 val currentBatteryPct by batteryPercentage.collectAsState()
 
                 val accentColor = if (colorPreset == "Custom") {
@@ -401,7 +392,7 @@ class StopwatchService : Service() {
                         tapCount = tapCount,
                         isVolumeActive = isVolumeActive,
                         milestones = milestones,
-                        showCentiseconds = showCentisecondsFloating,
+                        showCentiseconds = true,
                         stylePreset = stylePreset,
                         accentColor = accentColor,
                         shapePreset = shapePreset,
@@ -413,7 +404,6 @@ class StopwatchService : Service() {
                         paddingDpValue = floatingPadding,
                         opacity = floatingOpacity,
                         glowingBorder = glowingBorder,
-                        statusIndicatorMode = statusIndicatorMode,
                         batteryPercentage = currentBatteryPct,
                         onMovementDrag = { dx, dy ->
                             activeOverlays[index]?.let {
@@ -772,7 +762,6 @@ class StopwatchService : Service() {
         paddingDpValue: Float,
         opacity: Float,
         glowingBorder: Boolean,
-        statusIndicatorMode: String,
         batteryPercentage: Int,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
@@ -903,31 +892,24 @@ class StopwatchService : Service() {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        if (statusIndicatorMode != "hidden" && shapePreset != "circle") {
+                        if (shapePreset != "circle") {
                             val scaledIconSize = (16.dp.value * fontSizeScale).coerceAtLeast(10.0f).dp
                             val scaledFontSize = (8.sp.value * fontSizeScale).coerceAtLeast(6.0f).sp
 
-                            if (statusIndicatorMode == "battery") {
-                                Box(
-                                    modifier = Modifier
-                                        .size(scaledIconSize)
-                                        .border(
-                                            border = BorderStroke(1.dp, if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A)),
-                                            shape = CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "$batteryPercentage%",
-                                        color = if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A),
-                                        fontSize = scaledFontSize,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            } else if (statusIndicatorMode == "book") {
+                            Box(
+                                modifier = Modifier
+                                    .size(scaledIconSize)
+                                    .border(
+                                        border = BorderStroke(1.dp, if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A)),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(
-                                    text = "📖",
-                                    fontSize = scaledFontSize * 1.5f
+                                    text = "$batteryPercentage%",
+                                    color = if (running) Color(0xFF4AC98F) else Color(0xFFC94A4A),
+                                    fontSize = scaledFontSize,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))

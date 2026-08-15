@@ -75,8 +75,6 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             var currentScreen by remember { mutableStateOf("Main") }
             var isUnlockedByBiometrics by remember { mutableStateOf(false) }
 
-            val mainSize by settingsRepository.mainSize.collectAsState(initial = 1.0f)
-            val showCentisecondsMain by settingsRepository.showCentisecondsMain.collectAsState(initial = true)
             val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
             val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
             val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
@@ -178,8 +176,8 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                             viewModel = mainViewModel,
                             hapticController = hapticController,
                             hapticIntensity = hapticIntensity,
-                            showCentiseconds = showCentisecondsMain,
-                            mainSize = mainSize,
+                            showCentiseconds = true,
+                            mainSize = 1.0f,
                             accentColor = accentColor,
                             themeMode = themeMode,
                             onNavigateToSettings = { currentScreen = "Settings" }

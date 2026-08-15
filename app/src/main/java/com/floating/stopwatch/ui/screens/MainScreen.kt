@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.floating.stopwatch.domain.Lap
 import com.floating.stopwatch.domain.StopwatchState
+import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.theme.LuxuryColors
@@ -51,8 +52,11 @@ fun MainScreen(
     themeMode: String,
     onNavigateToSettings: () -> Unit
 ) {
+    val currentMode by viewModel.currentMode.collectAsState()
     val state by viewModel.state.collectAsState()
     val elapsedTimeMs by viewModel.elapsedTimeMs.collectAsState()
+    val countdownRemainingMs by viewModel.countdownRemainingMs.collectAsState()
+    val counterValue by viewModel.counterValue.collectAsState()
     val laps by viewModel.laps.collectAsState()
 
     val scope = rememberCoroutineScope()
@@ -108,14 +112,23 @@ fun MainScreen(
                 .padding(8.dp)
         )
 
-        // Top label "STOPWATCH"
+        // Top label - Tapping cycles mode (Stopwatch -> Countdown -> Counter -> Stopwatch)
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = 16.dp)
+                .clickable {
+                    hapticController.trigger(hapticIntensity, "Lap")
+                    viewModel.cycleMode()
+                }
+                .padding(4.dp)
         ) {
             Text(
-                text = "STOPWATCH",
+                text = when (currentMode) {
+                    AppMode.Stopwatch -> "STOPWATCH ▾"
+                    AppMode.Countdown -> "COUNTDOWN ▾"
+                    AppMode.Counter -> "COUNTER ▾"
+                },
                 style = TextStyle(
                     color = currentTextColor,
                     fontSize = 14.sp,
@@ -142,37 +155,86 @@ fun MainScreen(
             remember { mutableStateOf(1.0f) }
         }
 
-        // Center Stopwatch display
+        // Center display & controls depending on current AppMode
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            TimeDisplay(
-                elapsedTimeMs = elapsedTimeMs,
-                showCentiseconds = showCentiseconds,
-                baseStyle = TextStyle(color = currentTextColor, fontSize = 54.sp),
-                scaleFactor = mainSize,
-                modifier = Modifier
-                    .scale(scalePulse * breathingScale)
-                    .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
-            )
+            when (currentMode) {
+                AppMode.Stopwatch -> {
+                    TimeDisplay(
+                        elapsedTimeMs = elapsedTimeMs,
+                        showCentiseconds = showCentiseconds,
+                        baseStyle = TextStyle(color = currentTextColor, fontSize = 54.sp),
+                        scaleFactor = mainSize,
+                        modifier = Modifier
+                            .scale(scalePulse * breathingScale)
+                            .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
+                    )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = state.name.uppercase(),
-                style = TextStyle(
-                    color = currentGrayColor,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Light,
-                    letterSpacing = 3.sp
-                )
-            )
+                    Text(
+                        text = state.name.uppercase(),
+                        style = TextStyle(
+                            color = currentGrayColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Light,
+                            letterSpacing = 3.sp
+                        )
+                    )
+                }
+                AppMode.Countdown -> {
+                    TimeDisplay(
+                        elapsedTimeMs = countdownRemainingMs,
+                        showCentiseconds = showCentiseconds,
+                        baseStyle = TextStyle(color = currentTextColor, fontSize = 54.sp),
+                        scaleFactor = mainSize,
+                        modifier = Modifier.scale(scalePulse * breathingScale)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "FOCUS COUNTDOWN",
+                        style = TextStyle(
+                            color = currentGrayColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Light,
+                            letterSpacing = 3.sp
+                        )
+                    )
+                }
+                AppMode.Counter -> {
+                    Text(
+                        text = "$counterValue",
+                        style = TextStyle(
+                            color = currentTextColor,
+                            fontSize = 72.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        ),
+                        modifier = Modifier.scale(scalePulse)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "TAP COUNTER",
+                        style = TextStyle(
+                            color = currentGrayColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Light,
+                            letterSpacing = 3.sp
+                        )
+                    )
+                }
+            }
         }
 
-        // Action Buttons Row
+        // Action Buttons Row depending on AppMode
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -181,83 +243,173 @@ fun MainScreen(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Lap / Reset button
-            Box(
-                modifier = Modifier
-                    .size(68.dp)
-                    .clip(CircleShape)
-                    .background(Color.Transparent)
-                    .clickable {
-                        if (state == StopwatchState.Running) {
-                            hapticController.trigger(hapticIntensity, "Lap")
-                            viewModel.lap()
-                        } else if (state == StopwatchState.Paused) {
-                            hapticController.trigger(hapticIntensity, "Reset")
-                            viewModel.reset()
+            when (currentMode) {
+                AppMode.Stopwatch -> {
+                    // Lap / Reset button
+                    Box(
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .background(Color.Transparent)
+                            .clickable {
+                                if (state == StopwatchState.Running) {
+                                    hapticController.trigger(hapticIntensity, "Lap")
+                                    viewModel.lap()
+                                } else if (state == StopwatchState.Paused) {
+                                    hapticController.trigger(hapticIntensity, "Reset")
+                                    viewModel.reset()
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            shape = CircleShape,
+                            color = Color.Transparent,
+                            border = BorderStroke(1.dp, currentGrayColor)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = if (state == StopwatchState.Paused) "RESET" else "LAP",
+                                    style = TextStyle(
+                                        color = currentTextColor,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Light,
+                                        letterSpacing = 1.sp
+                                    )
+                                )
+                            }
                         }
                     }
-                    .semantics {
-                        liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                // Circular stroke design
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    shape = CircleShape,
-                    color = Color.Transparent,
-                    border = BorderStroke(1.dp, currentGrayColor)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
+
+                    // Big Start/Stop golden button
+                    val buttonColor = if (state == StopwatchState.Running) Color(0xFF9E2A2B) else accentColor
+                    Box(
+                        modifier = Modifier
+                            .size(92.dp)
+                            .clip(CircleShape)
+                            .background(buttonColor)
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = {
+                                        triggerPulse = true
+                                        tryAwaitRelease()
+                                        triggerPulse = false
+                                    },
+                                    onTap = {
+                                        if (state == StopwatchState.Running) {
+                                            hapticController.trigger(hapticIntensity, "Stop")
+                                            viewModel.pause()
+                                        } else {
+                                            hapticController.trigger(hapticIntensity, "Start")
+                                            viewModel.start()
+                                        }
+                                    }
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = if (state == StopwatchState.Paused) "RESET" else "LAP",
+                            text = if (state == StopwatchState.Running) "STOP" else "START",
                             style = TextStyle(
-                                color = currentTextColor,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Light,
+                                color = LuxuryColors.WarmBlack,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp
                             )
                         )
                     }
                 }
-            }
-
-            // Big Start/Stop golden button
-            val buttonColor = if (state == StopwatchState.Running) Color(0xFF9E2A2B) else accentColor
-            Box(
-                modifier = Modifier
-                    .size(92.dp)
-                    .clip(CircleShape)
-                    .background(buttonColor)
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                triggerPulse = true
-                                tryAwaitRelease()
-                                triggerPulse = false
+                AppMode.Countdown -> {
+                    // Countdown controls
+                    Box(
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .background(Color.Transparent)
+                            .clickable {
+                                hapticController.trigger(hapticIntensity, "Reset")
+                                viewModel.countdownRemainingMs.value = 300000L
                             },
-                            onTap = {
-                                if (state == StopwatchState.Running) {
-                                    hapticController.trigger(hapticIntensity, "Stop")
-                                    viewModel.pause()
-                                } else {
-                                    hapticController.trigger(hapticIntensity, "Start")
-                                    viewModel.start()
-                                }
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            shape = CircleShape,
+                            color = Color.Transparent,
+                            border = BorderStroke(1.dp, currentGrayColor)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "RESET",
+                                    style = TextStyle(color = currentTextColor, fontSize = 11.sp, letterSpacing = 1.sp)
+                                )
                             }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(92.dp)
+                            .clip(CircleShape)
+                            .background(accentColor)
+                            .clickable {
+                                hapticController.trigger(hapticIntensity, "Start")
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "START",
+                            style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (state == StopwatchState.Running) "STOP" else "START",
-                    style = TextStyle(
-                        color = LuxuryColors.WarmBlack,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                )
+                    }
+                }
+                AppMode.Counter -> {
+                    // Decrement Button
+                    Box(
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .background(Color.Transparent)
+                            .clickable {
+                                hapticController.trigger(hapticIntensity, "Reset")
+                                viewModel.decrementCounter()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            shape = CircleShape,
+                            color = Color.Transparent,
+                            border = BorderStroke(1.dp, currentGrayColor)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "- 1",
+                                    style = TextStyle(color = currentTextColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                )
+                            }
+                        }
+                    }
+
+                    // Increment Button
+                    Box(
+                        modifier = Modifier
+                            .size(92.dp)
+                            .clip(CircleShape)
+                            .background(accentColor)
+                            .clickable {
+                                hapticController.trigger(hapticIntensity, "Lap")
+                                viewModel.incrementCounter()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "+ 1",
+                            style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
             }
         }
 

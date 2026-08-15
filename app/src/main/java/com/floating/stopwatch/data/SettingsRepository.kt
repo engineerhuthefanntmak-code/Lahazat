@@ -31,6 +31,7 @@ class SettingsRepository(private val context: Context) {
         val GRADIENT_ENABLED = booleanPreferencesKey("gradient_enabled")
         val MESH_GRADIENT_ENABLED = booleanPreferencesKey("mesh_gradient_enabled")
         val ENERGY_AURA_ENABLED = booleanPreferencesKey("energy_aura_enabled")
+        val AURA_EFFECT_TYPE = stringPreferencesKey("aura_effect_type")
         val VOLUME_COUNTER_SCREEN_OFF_ENABLED = booleanPreferencesKey("volume_counter_screen_off_enabled")
         val LAYOUT_ORIENTATION = stringPreferencesKey("layout_orientation")
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
@@ -131,6 +132,7 @@ class SettingsRepository(private val context: Context) {
     val gradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[GRADIENT_ENABLED] ?: false }
     val meshGradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[MESH_GRADIENT_ENABLED] ?: true }
     val energyAuraEnabled: Flow<Boolean> = context.dataStore.data.map { it[ENERGY_AURA_ENABLED] ?: true }
+    val auraEffectType: Flow<String> = context.dataStore.data.map { it[AURA_EFFECT_TYPE] ?: "Ribbons & Sparks" }
     val volumeCounterScreenOffEnabled: Flow<Boolean> = context.dataStore.data.map { it[VOLUME_COUNTER_SCREEN_OFF_ENABLED] ?: false }
     val layoutOrientation: Flow<String> = context.dataStore.data.map { it[LAYOUT_ORIENTATION] ?: "horizontal" }
     val activeWidgetsCount: Flow<Int> = context.dataStore.data.map { it[ACTIVE_WIDGETS_COUNT] ?: 1 }
@@ -241,6 +243,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setEnergyAuraEnabled(enabled: Boolean) {
         context.dataStore.edit { it[ENERGY_AURA_ENABLED] = enabled }
+    }
+
+    suspend fun setAuraEffectType(type: String) {
+        context.dataStore.edit { it[AURA_EFFECT_TYPE] = type }
     }
 
     suspend fun setVolumeCounterScreenOffEnabled(enabled: Boolean) {

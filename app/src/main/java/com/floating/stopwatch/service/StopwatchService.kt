@@ -80,6 +80,36 @@ class StopwatchService : Service() {
                 } catch (e: Exception) { e.printStackTrace() }
             }
         }
+
+        fun handleVolumePress(increment: Boolean): Boolean {
+            var handled = false
+            activeServices.forEach { service ->
+                service.widgetStates.forEach { ws ->
+                    if (ws.type.value == "counter") {
+                        if (increment) {
+                            ws.tapCount.value++
+                            val newVal = ws.tapCount.value
+                            ws.elapsedOrValue.value = newVal.toLong()
+                            service.serviceScope.launch {
+                                service.settingsRepository.setWidgetValue(ws.index, newVal.toLong())
+                            }
+                            service.checkCounterMilestoneAndVibrate(newVal)
+                            handled = true
+                        } else if (ws.tapCount.value > 0) {
+                            ws.tapCount.value--
+                            val newVal = ws.tapCount.value
+                            ws.elapsedOrValue.value = newVal.toLong()
+                            service.serviceScope.launch {
+                                service.settingsRepository.setWidgetValue(ws.index, newVal.toLong())
+                            }
+                            service.checkCounterMilestoneAndVibrate(newVal)
+                            handled = true
+                        }
+                    }
+                }
+            }
+            return handled
+        }
     }
 
     private lateinit var windowManager: WindowManager
@@ -159,9 +189,10 @@ class StopwatchService : Service() {
         serviceScope.launch {
             combine(
                 settingsRepository.volumeCounterScreenOffEnabled,
-                snapshotFlow { widgetStates.any { it.type.value == "counter" } }
-            ) { enabled, hasCounter -> Pair(enabled, hasCounter) }.collectLatest { (enabled, hasCounter) ->
-                setupMediaSessionForScreenOffVolume(enabled, hasCounter)
+                snapshotFlow { widgetStates.any { it.type.value == "counter" } },
+                snapshotFlow { widgetStates.any { it.type.value == "counter" && it.isVolumeCounterActive.value } }
+            ) { enabled, hasCounter, isVolActive -> (enabled || isVolActive) && hasCounter }.collectLatest { active ->
+                setupMediaSessionForScreenOffVolume(active, true)
             }
         }
 
@@ -198,9 +229,12 @@ class StopwatchService : Service() {
 
                             spawnWidget(i)
 
-                            if (running) {
+                            if (running && type != "counter") {
                                 widgetStates[i].baseTime.value = SystemClock.elapsedRealtime()
                                 startTickerForWidget(i)
+                            } else if (type == "counter") {
+                                widgetStates[i].running.value = false
+                                serviceScope.launch { settingsRepository.setWidgetRunning(i, false) }
                             }
                         }
                     } else {
@@ -289,6 +323,7 @@ class StopwatchService : Service() {
                 val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
                 val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
                 val energyAuraEnabled by settingsRepository.energyAuraEnabled.collectAsState(initial = true)
+                val auraEffectType by settingsRepository.auraEffectType.collectAsState(initial = "Ribbons & Sparks")
                 val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
                 val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
                 val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
@@ -366,6 +401,7 @@ class StopwatchService : Service() {
                         fontSizeScale = fontSizeScale,
                         gradientEnabled = gradientEnabled,
                         energyAuraEnabled = energyAuraEnabled,
+                        auraEffectType = auraEffectType,
                         layoutOrientation = layoutOrientation,
                         paddingDpValue = floatingPadding,
                         opacity = floatingOpacity,
@@ -557,6 +593,11 @@ class StopwatchService : Service() {
                     })
                 }
             }
+            val playbackState = android.media.session.PlaybackState.Builder()
+                .setState(android.media.session.PlaybackState.STATE_PLAYING, 0L, 1.0f)
+                .setActions(android.media.session.PlaybackState.ACTION_PLAY)
+                .build()
+            mediaSession?.setPlaybackState(playbackState)
             mediaSession?.isActive = true
         } else {
             mediaSession?.isActive = false
@@ -608,6 +649,7 @@ class StopwatchService : Service() {
     private fun startTickerForWidget(index: Int) {
         tickerJobs[index]?.cancel()
         val state = widgetStates[index]
+        if (state.type.value == "counter") return
         tickerJobs[index] = serviceScope.launch(Dispatchers.Default) {
             var lastSavedSec = 0L
             while (true) {
@@ -718,6 +760,7 @@ class StopwatchService : Service() {
         fontSizeScale: Float,
         gradientEnabled: Boolean,
         energyAuraEnabled: Boolean,
+        auraEffectType: String,
         layoutOrientation: String,
         paddingDpValue: Float,
         opacity: Float,
@@ -738,83 +781,91 @@ class StopwatchService : Service() {
         val safePadding = paddingDpValue.coerceAtLeast(0.0f)
         var showMenu by remember { mutableStateOf(false) }
 
+        val auraPadding = if (energyAuraEnabled) 12.dp else 0.dp
+
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            if (widgetType == "counter" && !showMenu && !isVolumeActive) {
-                                onAction("Increment")
-                            } else {
-                                showMenu = !showMenu
-                            }
-                        },
-                        onLongPress = {
-                            showMenu = !showMenu
-                        }
-                    )
-                }
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragEnd = { onMovementRelease() },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            onMovementDrag(dragAmount.x, dragAmount.y)
-                        }
-                    )
-                }
-                .onKeyEvent { keyEvent ->
-                    if (isVolumeActive && widgetType == "counter" && keyEvent.type == KeyEventType.KeyDown) {
-                        if (keyEvent.key == Key.VolumeUp) {
-                            onAction("Increment")
-                            true
-                        } else if (keyEvent.key == Key.VolumeDown) {
-                            onAction("Decrement")
-                            true
-                        } else false
-                    } else false
-                },
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Backdrop
+            if (energyAuraEnabled) {
+                EnergyAuraEffect(
+                    isRunning = running,
+                    effectType = auraEffectType,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(
-                        if (stylePreset == "Glass Premium" || shapePreset == "glass") {
-                            Modifier
-                                .background(Color.White.copy(alpha = 0.12f * opacity), RoundedCornerShape(finalCornerRadius))
-                                .blur(16.dp)
-                        } else if (stylePreset == "Obsidian") {
-                            Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f * opacity), RoundedCornerShape(finalCornerRadius))
-                        } else if (stylePreset == "Titanium") {
-                            val titaniumBrush = Brush.verticalGradient(
-                                colors = listOf(Color(0xFF2C2F33), Color(0xFF1E2124))
-                            )
-                            Modifier.background(titaniumBrush, RoundedCornerShape(finalCornerRadius))
-                        } else {
-                            Modifier.background(Color.Black.copy(alpha = opacity), RoundedCornerShape(finalCornerRadius))
-                        }
-                    )
-                    .then(
-                        if (glowingBorder) {
-                            Modifier.background(Color.Transparent, RoundedCornerShape(finalCornerRadius))
-                                .then(
-                                    Modifier.shadow(elevation = 2.dp, shape = RoundedCornerShape(finalCornerRadius), ambientColor = accentColor, spotColor = accentColor)
-                                )
-                        } else {
-                            Modifier
-                        }
-                    )
+                    .padding(auraPadding)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = {
+                                if (widgetType == "counter" && !showMenu && !isVolumeActive) {
+                                    onAction("Increment")
+                                } else {
+                                    showMenu = !showMenu
+                                }
+                            },
+                            onLongPress = {
+                                showMenu = !showMenu
+                            }
+                        )
+                    }
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragEnd = { onMovementRelease() },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                onMovementDrag(dragAmount.x, dragAmount.y)
+                            }
+                        )
+                    }
+                    .onKeyEvent { keyEvent ->
+                        if (isVolumeActive && widgetType == "counter" && keyEvent.type == KeyEventType.KeyDown) {
+                            if (keyEvent.key == Key.VolumeUp) {
+                                onAction("Increment")
+                                true
+                            } else if (keyEvent.key == Key.VolumeDown) {
+                                onAction("Decrement")
+                                true
+                            } else false
+                        } else false
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                if (energyAuraEnabled) {
-                    EnergyAuraEffect(
-                        isRunning = running,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
+                // Backdrop
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(
+                            if (stylePreset == "Glass Premium" || shapePreset == "glass") {
+                                Modifier
+                                    .background(Color.White.copy(alpha = 0.12f * opacity), RoundedCornerShape(finalCornerRadius))
+                                    .blur(16.dp)
+                            } else if (stylePreset == "Obsidian") {
+                                Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f * opacity), RoundedCornerShape(finalCornerRadius))
+                            } else if (stylePreset == "Titanium") {
+                                val titaniumBrush = Brush.verticalGradient(
+                                    colors = listOf(Color(0xFF2C2F33), Color(0xFF1E2124))
+                                )
+                                Modifier.background(titaniumBrush, RoundedCornerShape(finalCornerRadius))
+                            } else {
+                                Modifier.background(Color.Black.copy(alpha = opacity), RoundedCornerShape(finalCornerRadius))
+                            }
+                        )
+                        .then(
+                            if (glowingBorder) {
+                                Modifier.background(Color.Transparent, RoundedCornerShape(finalCornerRadius))
+                                    .then(
+                                        Modifier.shadow(elevation = 2.dp, shape = RoundedCornerShape(finalCornerRadius), ambientColor = accentColor, spotColor = accentColor)
+                                    )
+                            } else {
+                                Modifier
+                            }
+                        )
+                )
 
             // Content
             Box(
@@ -911,6 +962,7 @@ class StopwatchService : Service() {
             }
         }
     }
+    }
 
     private fun Int.dpToPx(): Int {
         val density = applicationContext.resources.displayMetrics.density
@@ -976,63 +1028,68 @@ fun LuxuryTextDropdownMenu(
 ) {
     val scaleFontSize = (11.sp.value * fontSizeScale).coerceAtLeast(10.0f).sp
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xF20A0A0A)),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
-        modifier = Modifier
-            .wrapContentSize()
-            .padding(2.dp)
-            .shadow(8.dp, RoundedCornerShape(12.dp))
+    androidx.compose.ui.window.Popup(
+        alignment = Alignment.Center,
+        onDismissRequest = onDismiss
     ) {
-        Column(
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xF20A0A0A)),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
             modifier = Modifier
-                .width(IntrinsicSize.Max)
-                .padding(vertical = 4.dp, horizontal = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            horizontalAlignment = Alignment.Start
+                .wrapContentSize()
+                .padding(2.dp)
+                .shadow(8.dp, RoundedCornerShape(12.dp))
         ) {
-            val options = mutableListOf<Pair<String, String>>()
-            if (widgetType == "counter") {
-                options.add("INCREMENT" to "Increment")
-                options.add("DECREMENT" to "Decrement")
-                options.add((if (isVolumeActive) "DISABLE VOLUME KEYS" else "ENABLE VOLUME KEYS") to "ToggleVolume")
-            } else {
-                options.add("START" to "Start")
-                options.add("STOP" to "Stop")
-                options.add("RESET" to "Reset")
-                options.add("MILESTONE" to "Milestone")
-            }
-            options.add("SETTINGS" to "OpenApp")
-            options.add("HIDE" to "Hide")
-            options.add("CLOSE" to "Close")
+            Column(
+                modifier = Modifier
+                    .width(IntrinsicSize.Max)
+                    .padding(vertical = 4.dp, horizontal = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                val options = mutableListOf<Pair<String, String>>()
+                if (widgetType == "counter") {
+                    options.add("INCREMENT" to "Increment")
+                    options.add("DECREMENT" to "Decrement")
+                    options.add((if (isVolumeActive) "DISABLE VOLUME KEYS" else "ENABLE VOLUME KEYS") to "ToggleVolume")
+                } else {
+                    options.add("START" to "Start")
+                    options.add("STOP" to "Stop")
+                    options.add("RESET" to "Reset")
+                    options.add("MILESTONE" to "Milestone")
+                }
+                options.add("SETTINGS" to "OpenApp")
+                options.add("HIDE" to "Hide")
+                options.add("CLOSE" to "Close")
 
-            options.forEach { (label, action) ->
-                Text(
-                    text = label,
-                    style = TextStyle(
-                        color = when (label) {
-                            "START", "INCREMENT" -> Color(0xFF4AC98F)
-                            "STOP" -> Color(0xFFF5A623)
-                            "CLOSE" -> Color(0xFFC94A4A)
-                            else -> LuxuryColors.CreamyWhite
-                        },
-                        fontSize = scaleFontSize,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 1.sp
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            if (action == "Hide") {
-                                onDismiss()
-                            } else {
-                                onAction(action)
-                                onDismiss()
+                options.forEach { (label, action) ->
+                    Text(
+                        text = label,
+                        style = TextStyle(
+                            color = when (label) {
+                                "START", "INCREMENT" -> Color(0xFF4AC98F)
+                                "STOP" -> Color(0xFFF5A623)
+                                "CLOSE" -> Color(0xFFC94A4A)
+                                else -> LuxuryColors.CreamyWhite
+                            },
+                            fontSize = scaleFontSize,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.sp
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (action == "Hide") {
+                                    onDismiss()
+                                } else {
+                                    onAction(action)
+                                    onDismiss()
+                                }
                             }
-                        }
-                        .padding(vertical = 3.dp, horizontal = 6.dp)
-                )
+                            .padding(vertical = 3.dp, horizontal = 6.dp)
+                    )
+                }
             }
         }
     }

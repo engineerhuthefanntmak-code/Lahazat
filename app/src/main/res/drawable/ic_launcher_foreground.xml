@@ -5,74 +5,87 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Outermost Soft Bevel Ring: Graphite/Dark Charcoal Shadow -->
+    <!-- Top Crown Mechanical Push Button Base -->
+    <path
+        android:fillColor="#8E8E93"
+        android:pathData="M50,13 h8 v6 h-8 z" />
+
+    <!-- Top Crown Metallic Cap -->
+    <path
+        android:fillColor="#F2F2F7"
+        android:pathData="M47,8 C47,6.9 47.9,6 49,6 h10 C60.1,6 61,6.9 61,8 v5 h-14 z" />
+
+    <!-- Top-Right Angled Secondary Mechanical Button -->
+    <path
+        android:fillColor="#C7C7CC"
+        android:pathData="M70,19.5 L74.5,15.0 L78.8,19.3 L74.3,23.8 Z" />
+
+    <!-- Outer Bevel - Shadow & Metallic Rim Rings -->
     <path
         android:fillColor="#1C1C1E"
         android:pathData="M54,16 C74.98,16 92,33.02 92,54 C92,74.98 74.98,92 54,92 C33.02,92 16,74.98 16,54 C16,33.02 33.02,16 54,16 Z" />
 
-    <!-- Platinum Perimeter: Raised Outer Edge Ring -->
+    <!-- Platinum Outer Bevel Edge -->
     <path
         android:fillColor="#E5E5EA"
         android:pathData="M54,18 C73.88,18 90,34.12 90,54 C90,73.88 73.88,90 54,90 C34.12,90 18,73.88 18,54 C18,34.12 34.12,18 54,18 Z" />
 
-    <!-- Recessed Graphite Ring: Groove/Gap -->
+    <!-- Recessed Metallic Groove Ring -->
     <path
         android:fillColor="#2C2C2E"
         android:pathData="M54,20 C72.78,20 88,35.22 88,54 C88,72.78 72.78,88 54,88 C35.22,88 20,72.78 20,54 C20,35.22 35.22,20 54,20 Z" />
 
-    <!-- Raised Satin-Metal Ring -->
+    <!-- Raised Satin Metal Dial Bezel -->
     <path
         android:fillColor="#D1D1D6"
         android:pathData="M54,22 C71.67,22 86,36.33 86,54 C86,71.67 71.67,86 54,86 C36.33,86 22,71.67 22,54 C22,36.33 36.33,22 54,22 Z" />
 
-    <!-- Inner Matte-Black Surface Dial Screen -->
+    <!-- Deep Matte-Black Inner Dial Floor -->
     <path
-        android:fillColor="#0A0A0A"
+        android:fillColor="#09090A"
         android:pathData="M54,25 C70.02,25 83,37.98 83,54 C83,70.02 70.02,83 54,83 C37.98,83 25,70.02 25,54 C25,37.98 37.98,25 54,25 Z" />
 
-    <!-- Symmetrical Luxury Mechanical Crown (Top Button) -->
-    <!-- Base neck connector -->
-    <path
-        android:fillColor="#8E8E93"
-        android:pathData="M50,14 h8 v4 h-8 z" />
-    <!-- Rounded satin-metal primary button crown cap -->
-    <path
-        android:fillColor="#E5E5EA"
-        android:pathData="M48,8 C48,6.9 48.9,6 50,6 h8 C59.1,6 60,6.9 60,8 v6 h-12 z" />
-
-    <!-- Symmetrical Angled Side Button (At 45 degrees, precisely balanced and rotated) -->
-    <!-- Positioned at top-right (x=73.5, y=19.5 to coordinate axes) -->
-    <path
-        android:fillColor="#8E8E93"
-        android:pathData="M71.0,20.2 L75.2,16.0 L79.5,20.2 L75.2,24.5 Z" />
-
-    <!-- Inner Dial: Highly Refined Minimalist Components -->
-
-    <!-- Platinum Circular Progress Arc Indicator (Visually separate, clean endpoints) -->
-    <!-- Follows 360/45 radial track boundary cleanly -->
+    <!-- Intertwined Metallic Ribbon Motif (Subtle 3D Overlay Loops forming Stopwatch Inner Structure) -->
+    <!-- Primary Outer Ribbon Loop (Bright Platinum) -->
     <path
         android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M38,42 C42,32 66,32 70,42 C74,52 34,56 38,66 C42,76 66,76 70,66" />
+
+    <!-- Interlocking Counter-Ribbon Loop (Metallic Gunmetal / Silver Accent) -->
+    <path
+        android:strokeColor="#A1A1A6"
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
+        android:strokeLineJoin="round"
         android:fillColor="#00000000"
-        android:pathData="M31.5,41 C36.2,33.2 44.5,28 54,28 C68.4,28 80,39.6 80,54" />
+        android:pathData="M70,42 C66,32 42,32 38,42 C34,52 74,56 70,66 C66,76 42,76 38,66" />
 
-    <!-- Central Stopwatch Hand (Originates exactly from mathematical center (54,54)) -->
-    <!-- Perfectly sleek and balanced geometry with a Pearl White finish -->
+    <!-- Precision Radial Ticks around perimeter -->
     <path
-        android:strokeColor="#F5F3EF"
-        android:strokeWidth="1.75"
+        android:strokeColor="#E5E5EA"
+        android:strokeWidth="1.5"
         android:strokeLineCap="round"
-        android:pathData="M54,54 L54,34" />
+        android:pathData="M54,27 L54,30 M81,54 L78,54 M54,81 L54,78 M27,54 L30,54" />
 
-    <!-- Central Precision Center Rotational Axis Hub: Outer Hub Ring -->
+    <!-- Stopwatch Pointer / Precision Indicator Hand -->
     <path
-        android:fillColor="#E5E5EA"
-        android:pathData="M54,54 m -4,0 a 4,4 0 1,1 8,0 a 4,4 0 1,1 -8,0" />
+        android:strokeColor="#F2F2F7"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:pathData="M54,54 L68,36" />
 
-    <!-- Central Precision Center Rotational Axis Hub: Inner Core -->
+    <!-- Center Mechanical Hub - Platinum Cap -->
     <path
-        android:fillColor="#0A0A0A"
-        android:pathData="M54,54 m -1.5,0 a 1.5,1.5 0 1,1 3,0 a 1.5,1.5 0 1,1 -3,0" />
+        android:fillColor="#F2F2F7"
+        android:pathData="M54,54 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+
+    <!-- Center Mechanical Hub - Inner Axis Core -->
+    <path
+        android:fillColor="#1C1C1E"
+        android:pathData="M54,54 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
 
 </vector>

@@ -1,5 +1,6 @@
 package com.floating.stopwatch.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -431,6 +432,7 @@ fun SettingsScreen(
             // Custom UI customization keys (Item 3, 4, 5, 6, 10, 11)
             val fontSizeScale by settingsRepository.fontSizeScale.collectAsState(initial = 1.0f)
             val gradientEnabled by settingsRepository.gradientEnabled.collectAsState(initial = false)
+            val auraEffectType by settingsRepository.auraEffectType.collectAsState(initial = "Ribbons & Sparks")
             val meshGradientEnabled by settingsRepository.meshGradientEnabled.collectAsState(initial = true)
             val energyAuraEnabled by settingsRepository.energyAuraEnabled.collectAsState(initial = true)
             val volumeCounterScreenOffEnabled by settingsRepository.volumeCounterScreenOffEnabled.collectAsState(initial = false)
@@ -524,6 +526,45 @@ fun SettingsScreen(
                     onCheckedChange = { scope.launch { settingsRepository.setLayoutOrientation(if (it) "vertical" else "horizontal") } },
                     colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold)
                 )
+            }
+
+            if (energyAuraEnabled) {
+                Text(
+                    text = "AURA STYLE PRESET",
+                    style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 1.sp),
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
+                val auraTypes = listOf("Ribbons & Sparks", "Lightning", "Fire", "Wave", "Rain", "Smoke", "Stardust", "Pulse Ring", "Glow Mist", "Energy Threads")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    var expandedAuraMenu by remember { mutableStateOf(false) }
+                    Box {
+                        OutlinedButton(
+                            onClick = { expandedAuraMenu = true },
+                            border = BorderStroke(1.dp, LuxuryColors.WarmGray.copy(alpha = 0.5f))
+                        ) {
+                            Text(text = auraEffectType, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
+                        }
+                        DropdownMenu(
+                            expanded = expandedAuraMenu,
+                            onDismissRequest = { expandedAuraMenu = false }
+                        ) {
+                            auraTypes.forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type, color = LuxuryColors.CreamyWhite) },
+                                    onClick = {
+                                        scope.launch { settingsRepository.setAuraEffectType(type) }
+                                        expandedAuraMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // Volume Counter Screen Off switch

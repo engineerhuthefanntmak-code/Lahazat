@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,6 +47,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     private var foldingFeatureState = mutableStateOf<FoldingFeature?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         settingsRepository = SettingsRepository(applicationContext)
@@ -264,6 +266,19 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 startFloatingService()
             }
         }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
+            if (StopwatchService.handleVolumePress(increment = true)) {
+                return true
+            }
+        } else if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (StopwatchService.handleVolumePress(increment = false)) {
+                return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
     }
 }
 

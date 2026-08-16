@@ -175,6 +175,8 @@ fun MainScreen(
                         showCentiseconds = showCentiseconds,
                         baseStyle = TextStyle(color = currentTextColor, fontSize = 54.sp),
                         scaleFactor = mainSize,
+                        accentColor = accentColor,
+                        gradientGoldEnabled = false,
                         modifier = Modifier
                             .scale(scalePulse * breathingScale)
                             .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }

@@ -51,10 +51,6 @@ class CountdownEngine {
 
     fun pause() = synchronized(lock) {
         if (!_isRunning.value) return
-        val now = SystemClock.elapsedRealtime()
-        val delta = now - baseTime
-        val current = (_remainingTimeMs.value - delta).coerceAtLeast(0L)
-        _remainingTimeMs.value = current
         _isRunning.value = false
         stopTicker()
     }

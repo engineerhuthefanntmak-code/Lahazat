@@ -223,13 +223,15 @@ class StopwatchService : Service() {
         // Monitor and auto-sync active widgets list
         startWidgetLifecycleManager()
 
-        // Screen-off volume button handler for counter
+        // Screen-off / background volume button handler for counter mode
         serviceScope.launch {
             combine(
                 settingsRepository.volumeCounterScreenOffEnabled,
                 snapshotFlow { widgetStates.any { it.type.value == "counter" } },
                 snapshotFlow { widgetStates.any { it.type.value == "counter" && it.isVolumeCounterActive.value } }
-            ) { enabled, hasCounter, isVolActive -> (enabled || isVolActive) && hasCounter }.collectLatest { active ->
+            ) { enabled, hasCounterWidget, isVolActive ->
+                enabled || isVolActive || hasCounterWidget
+            }.collectLatest { active ->
                 setupMediaSessionForScreenOffVolume(active, true)
             }
         }
@@ -967,6 +969,7 @@ class StopwatchService : Service() {
                                 showCentiseconds = showCentiseconds,
                                 baseStyle = TextStyle(color = accentColor, fontSize = 22.sp),
                                 scaleFactor = fontSizeScale,
+                                accentColor = accentColor,
                                 gradientGoldEnabled = gradientEnabled,
                                 isVertical = layoutOrientation == "vertical",
                                 modifier = Modifier.padding(vertical = 4.dp)

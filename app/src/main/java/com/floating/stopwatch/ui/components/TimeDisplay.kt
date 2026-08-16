@@ -54,6 +54,7 @@ fun TimeDisplay(
     modifier: Modifier = Modifier,
     baseStyle: TextStyle,
     scaleFactor: Float = 1.0f,
+    accentColor: Color? = null,
     gradientGoldEnabled: Boolean = false,
     isVertical: Boolean = false
 ) {
@@ -73,9 +74,9 @@ fun TimeDisplay(
     val totalSecondsForFlash = elapsedTimeMs / 1000
     val isFullMinute = elapsedTimeMs > 0 && totalSecondsForFlash % 60 == 0L && (elapsedTimeMs % 1000) < 600
 
-    val baseTextColor = if (gradientGoldEnabled) LuxuryColors.AccentGold else baseStyle.color
+    val effectiveColor = if (gradientGoldEnabled) (accentColor ?: LuxuryColors.AccentGold) else baseStyle.color
     val animatedFlashColor by animateColorAsState(
-        targetValue = if (isFullMinute) LuxuryColors.AccentGold else baseTextColor,
+        targetValue = if (isFullMinute) (accentColor ?: LuxuryColors.AccentGold) else effectiveColor,
         animationSpec = tween(durationMillis = 200),
         label = "MinuteFlash"
     )

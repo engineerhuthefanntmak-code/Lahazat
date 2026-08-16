@@ -47,7 +47,7 @@ import com.floating.stopwatch.domain.CountdownEngine
 import com.floating.stopwatch.domain.HapticController
 import com.floating.stopwatch.domain.StopwatchEngine
 import com.floating.stopwatch.ui.components.TimeDisplay
-import com.floating.stopwatch.ui.components.EnergyAuraEffect
+import com.floating.stopwatch.ui.components.HeritageVisualSystem
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -361,11 +361,16 @@ class StopwatchService : Service() {
                 val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
                 val fontSizeScale by settingsRepository.getWidgetFontSizeScale(index).collectAsState(initial = 1.0f)
                 val gradientEnabled by settingsRepository.getWidgetGradientEnabled(index).collectAsState(initial = false)
-                val energyAuraEnabled by settingsRepository.energyAuraEnabled.collectAsState(initial = true)
-                val auraEffectType by settingsRepository.auraEffectType.collectAsState(initial = "Ribbons & Sparks")
                 val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
                 val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
                 val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
+
+                val heritageVisualEnabled by settingsRepository.heritageVisualEnabled.collectAsState(initial = true)
+                val heritagePattern by settingsRepository.heritagePattern.collectAsState(initial = "Andalusian Star")
+                val heritageMeshEnabled by settingsRepository.heritageMeshEnabled.collectAsState(initial = true)
+                val heritageOpacity by settingsRepository.heritageOpacity.collectAsState(initial = 0.15f)
+                val heritageMeshIntensity by settingsRepository.heritageMeshIntensity.collectAsState(initial = 0.20f)
+                val heritageSpeed by settingsRepository.heritageSpeed.collectAsState(initial = 1.0f)
 
                 val accentColor = if (colorPreset == "Custom") {
                     try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -430,11 +435,15 @@ class StopwatchService : Service() {
                         shapePreset = shapePreset,
                         fontSizeScale = fontSizeScale,
                         gradientEnabled = gradientEnabled,
-                        energyAuraEnabled = energyAuraEnabled,
-                        auraEffectType = auraEffectType,
                         layoutOrientation = layoutOrientation,
                         paddingDpValue = floatingPadding,
                         opacity = floatingOpacity,
+                        heritageVisualEnabled = heritageVisualEnabled,
+                        heritagePattern = heritagePattern,
+                        heritageMeshEnabled = heritageMeshEnabled,
+                        heritageOpacity = heritageOpacity,
+                        heritageMeshIntensity = heritageMeshIntensity,
+                        heritageSpeed = heritageSpeed,
                         onMovementDrag = { dx, dy ->
                             activeOverlays[index]?.let {
                                 it.params.x += dx.roundToInt()
@@ -908,11 +917,15 @@ class StopwatchService : Service() {
         shapePreset: String,
         fontSizeScale: Float,
         gradientEnabled: Boolean,
-        energyAuraEnabled: Boolean,
-        auraEffectType: String,
         layoutOrientation: String,
         paddingDpValue: Float,
         opacity: Float,
+        heritageVisualEnabled: Boolean,
+        heritagePattern: String,
+        heritageMeshEnabled: Boolean,
+        heritageOpacity: Float,
+        heritageMeshIntensity: Float,
+        heritageSpeed: Float,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
         onToggleMenu: () -> Unit,
@@ -926,16 +939,20 @@ class StopwatchService : Service() {
         }
 
         val safePadding = paddingDpValue.coerceAtLeast(0.0f)
-        val auraPadding = if (energyAuraEnabled) 12.dp else 0.dp
 
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            if (energyAuraEnabled) {
-                EnergyAuraEffect(
-                    isRunning = running,
-                    effectType = auraEffectType,
+            if (heritageVisualEnabled) {
+                HeritageVisualSystem(
+                    enabled = true,
+                    patternName = heritagePattern,
+                    meshEnabled = heritageMeshEnabled,
+                    opacity = heritageOpacity,
+                    meshIntensity = heritageMeshIntensity,
+                    speed = heritageSpeed,
+                    accentColor = accentColor,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -943,7 +960,6 @@ class StopwatchService : Service() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(auraPadding)
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = {

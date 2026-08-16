@@ -29,6 +29,7 @@ import com.floating.stopwatch.domain.HapticController
 import com.floating.stopwatch.domain.StopwatchEngine
 import com.floating.stopwatch.service.StopwatchService
 import com.floating.stopwatch.ui.MainViewModel
+import com.floating.stopwatch.ui.screens.HeritageOpeningScreen
 import com.floating.stopwatch.ui.screens.MainScreen
 import com.floating.stopwatch.ui.screens.SettingsScreen
 import com.floating.stopwatch.ui.theme.LuxuryColors
@@ -77,6 +78,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
         setContent {
             var currentScreen by remember { mutableStateOf("Main") }
+            var showOpeningScreen by remember { mutableStateOf(savedInstanceState == null) }
             var isUnlockedByBiometrics by remember { mutableStateOf(false) }
 
             val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
@@ -128,7 +130,14 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 currentScreen = "Main"
             }
 
-            if (!hasOverlayPermission) {
+            if (showOpeningScreen) {
+                HeritageOpeningScreen(
+                    accentColor = accentColor,
+                    onOpeningComplete = {
+                        showOpeningScreen = false
+                    }
+                )
+            } else if (!hasOverlayPermission) {
                 OverlayPermissionExplanationScreen(
                     onGrantClick = {
                         requestOverlayPermission()
@@ -142,6 +151,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                     "Main" -> {
                         MainScreen(
                             viewModel = mainViewModel,
+                            settingsRepository = settingsRepository,
                             hapticController = hapticController,
                             hapticIntensity = hapticIntensity,
                             showCentiseconds = true,

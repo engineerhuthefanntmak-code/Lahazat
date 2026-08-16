@@ -20,8 +20,12 @@ class SettingsRepository(private val context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val SHAPE_PRESET = stringPreferencesKey("shape_preset")
         val MESH_GRADIENT_ENABLED = booleanPreferencesKey("mesh_gradient_enabled")
-        val ENERGY_AURA_ENABLED = booleanPreferencesKey("energy_aura_enabled")
-        val AURA_EFFECT_TYPE = stringPreferencesKey("aura_effect_type")
+        val HERITAGE_VISUAL_ENABLED = booleanPreferencesKey("heritage_visual_enabled")
+        val HERITAGE_PATTERN = stringPreferencesKey("heritage_pattern")
+        val HERITAGE_MESH_ENABLED = booleanPreferencesKey("heritage_mesh_enabled")
+        val HERITAGE_OPACITY = floatPreferencesKey("heritage_opacity")
+        val HERITAGE_MESH_INTENSITY = floatPreferencesKey("heritage_mesh_intensity")
+        val HERITAGE_SPEED = floatPreferencesKey("heritage_speed")
         val VOLUME_COUNTER_SCREEN_OFF_ENABLED = booleanPreferencesKey("volume_counter_screen_off_enabled")
         val LAYOUT_ORIENTATION = stringPreferencesKey("layout_orientation")
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
@@ -145,8 +149,12 @@ class SettingsRepository(private val context: Context) {
 
     val shapePreset: Flow<String> = context.dataStore.data.map { it[SHAPE_PRESET] ?: "rounded" }
     val meshGradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[MESH_GRADIENT_ENABLED] ?: true }
-    val energyAuraEnabled: Flow<Boolean> = context.dataStore.data.map { it[ENERGY_AURA_ENABLED] ?: true }
-    val auraEffectType: Flow<String> = context.dataStore.data.map { it[AURA_EFFECT_TYPE] ?: "Ribbons & Sparks" }
+    val heritageVisualEnabled: Flow<Boolean> = context.dataStore.data.map { it[HERITAGE_VISUAL_ENABLED] ?: true }
+    val heritagePattern: Flow<String> = context.dataStore.data.map { it[HERITAGE_PATTERN] ?: "Andalusian Star" }
+    val heritageMeshEnabled: Flow<Boolean> = context.dataStore.data.map { it[HERITAGE_MESH_ENABLED] ?: true }
+    val heritageOpacity: Flow<Float> = context.dataStore.data.map { it[HERITAGE_OPACITY] ?: 0.15f }
+    val heritageMeshIntensity: Flow<Float> = context.dataStore.data.map { it[HERITAGE_MESH_INTENSITY] ?: 0.20f }
+    val heritageSpeed: Flow<Float> = context.dataStore.data.map { it[HERITAGE_SPEED] ?: 1.0f }
     val volumeCounterScreenOffEnabled: Flow<Boolean> = context.dataStore.data.map { it[VOLUME_COUNTER_SCREEN_OFF_ENABLED] ?: false }
     val layoutOrientation: Flow<String> = context.dataStore.data.map { it[LAYOUT_ORIENTATION] ?: "horizontal" }
     val activeWidgetsCount: Flow<Int> = context.dataStore.data.map { it[ACTIVE_WIDGETS_COUNT] ?: 1 }
@@ -198,12 +206,28 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[MESH_GRADIENT_ENABLED] = enabled }
     }
 
-    suspend fun setEnergyAuraEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[ENERGY_AURA_ENABLED] = enabled }
+    suspend fun setHeritageVisualEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[HERITAGE_VISUAL_ENABLED] = enabled }
     }
 
-    suspend fun setAuraEffectType(type: String) {
-        context.dataStore.edit { it[AURA_EFFECT_TYPE] = type }
+    suspend fun setHeritagePattern(pattern: String) {
+        context.dataStore.edit { it[HERITAGE_PATTERN] = pattern }
+    }
+
+    suspend fun setHeritageMeshEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[HERITAGE_MESH_ENABLED] = enabled }
+    }
+
+    suspend fun setHeritageOpacity(opacity: Float) {
+        context.dataStore.edit { it[HERITAGE_OPACITY] = opacity }
+    }
+
+    suspend fun setHeritageMeshIntensity(intensity: Float) {
+        context.dataStore.edit { it[HERITAGE_MESH_INTENSITY] = intensity }
+    }
+
+    suspend fun setHeritageSpeed(speed: Float) {
+        context.dataStore.edit { it[HERITAGE_SPEED] = speed }
     }
 
     suspend fun setVolumeCounterScreenOffEnabled(enabled: Boolean) {

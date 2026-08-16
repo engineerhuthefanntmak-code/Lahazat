@@ -56,7 +56,7 @@ fun SettingsScreen(
 
     val categories = listOf(
         "Appearance", "Main Screen", "Stopwatch", "Countdown", "Counter",
-        "Floating Widgets", "Animated Energy Aura", "Sounds & Haptics", "Advanced"
+        "Floating Widgets", "Heritage Visual System", "Sounds & Haptics", "Advanced"
     )
 
     Scaffold(
@@ -232,36 +232,74 @@ fun SettingsScreen(
                             Text(text = "OPACITY: ${(floatingOpacity * 100).toInt()}%", color = LuxuryColors.WarmGray, fontSize = 10.sp)
                             Slider(value = floatingOpacity, onValueChange = { scope.launch { settingsRepository.setFloatingOpacity(it) } }, valueRange = 0.0f..1.0f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
                         }
-                        "Animated Energy Aura" -> {
-                            val energyAuraEnabled by settingsRepository.energyAuraEnabled.collectAsState(initial = true)
-                            val auraEffectType by settingsRepository.auraEffectType.collectAsState(initial = "Ribbons & Sparks")
+                        "Heritage Visual System" -> {
+                            val heritageVisualEnabled by settingsRepository.heritageVisualEnabled.collectAsState(initial = true)
+                            val heritagePattern by settingsRepository.heritagePattern.collectAsState(initial = "Andalusian Star")
+                            val heritageMeshEnabled by settingsRepository.heritageMeshEnabled.collectAsState(initial = true)
+                            val heritageOpacity by settingsRepository.heritageOpacity.collectAsState(initial = 0.15f)
+                            val heritageMeshIntensity by settingsRepository.heritageMeshIntensity.collectAsState(initial = 0.20f)
+                            val heritageSpeed by settingsRepository.heritageSpeed.collectAsState(initial = 1.0f)
+
+                            val patterns = listOf(
+                                "Andalusian Star",
+                                "Andalusian Lattice",
+                                "Arabic Eightfold",
+                                "Islamic Geometric Rosette",
+                                "Muqarnas Geometry",
+                                "Kufic Grid",
+                                "Arabesque Geometry",
+                                "Eight-Point Star Lattice",
+                                "Interlaced Heritage Knot",
+                                "Continuous Geometric Mesh"
+                            )
 
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(text = "ANIMATED ENERGY AURA EFFECT", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                Switch(checked = energyAuraEnabled, onCheckedChange = { scope.launch { settingsRepository.setEnergyAuraEnabled(it) } }, colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold))
+                                Text(text = "ENABLE HERITAGE VISUAL SYSTEM", color = LuxuryColors.CreamyWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Switch(checked = heritageVisualEnabled, onCheckedChange = { scope.launch { settingsRepository.setHeritageVisualEnabled(it) } }, colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold))
                             }
 
-                            if (energyAuraEnabled) {
+                            if (heritageVisualEnabled) {
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text(text = "AURA STYLE PRESET", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                                val auraTypes = listOf(
-                                    "Ribbons & Sparks", "Silver Whisper", "Heartbeat Pulse", "Orbital Ring",
-                                    "Frost Crystals", "Golden Sands", "Sonic Echo", "Living Shadow", "Silk Threads",
-                                    "Moonlight Glow", "Lightning", "Fire", "Wave", "Rain", "Smoke", "Stardust",
-                                    "Pulse Ring", "Glow Mist", "Energy Threads", "None/Off"
-                                )
-                                auraTypes.forEach { type ->
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(text = "ANIMATED HERITAGE MESH", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                                    Switch(checked = heritageMeshEnabled, onCheckedChange = { scope.launch { settingsRepository.setHeritageMeshEnabled(it) } }, colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold))
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(text = "PATTERN OPACITY: ${(heritageOpacity * 100).toInt()}%", color = LuxuryColors.WarmGray, fontSize = 10.sp)
+                                Slider(value = heritageOpacity, onValueChange = { scope.launch { settingsRepository.setHeritageOpacity(it) } }, valueRange = 0.05f..0.50f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(text = "MESH INTENSITY: ${(heritageMeshIntensity * 100).toInt()}%", color = LuxuryColors.WarmGray, fontSize = 10.sp)
+                                Slider(value = heritageMeshIntensity, onValueChange = { scope.launch { settingsRepository.setHeritageMeshIntensity(it) } }, valueRange = 0.05f..0.50f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(text = "ANIMATION SPEED: ${String.format("%.1f", heritageSpeed)}x", color = LuxuryColors.WarmGray, fontSize = 10.sp)
+                                Slider(value = heritageSpeed, onValueChange = { scope.launch { settingsRepository.setHeritageSpeed(it) } }, valueRange = 0.2f..3.0f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Text(text = "SELECT HERITAGE PATTERN (10 PATTERNS)", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
+                                patterns.forEach { pattern ->
                                     Row(
-                                        modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setAuraEffectType(type) } }.padding(vertical = 6.dp),
+                                        modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setHeritagePattern(pattern) } }.padding(vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        RadioButton(selected = auraEffectType == type, onClick = { scope.launch { settingsRepository.setAuraEffectType(type) } }, colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold))
+                                        RadioButton(selected = heritagePattern == pattern, onClick = { scope.launch { settingsRepository.setHeritagePattern(pattern) } }, colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(text = type, color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                                        Text(text = pattern, color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
                                     }
                                 }
                             }

@@ -199,12 +199,17 @@ class StopwatchService : Service() {
             }
         }
 
-        // Observe shared CountdownEngine for real-time bidirectional synchronization
+        // Observe shared CountdownEngine for real-time bidirectional synchronization & completion trigger
         serviceScope.launch {
             getCountdownEngine().remainingTimeMs.collectLatest { countdownMs ->
                 widgetStates.forEach { state ->
                     if (state.type.value == "countdown") {
+                        val prevMs = state.elapsedOrValue.value
                         state.elapsedOrValue.value = countdownMs
+                        if (prevMs > 0L && countdownMs == 0L && state.running.value) {
+                            state.running.value = false
+                            triggerCountdownCompletion(state.index)
+                        }
                     }
                 }
             }
@@ -229,7 +234,8 @@ class StopwatchService : Service() {
                 settingsRepository.volumeCounterScreenOffEnabled,
                 snapshotFlow { widgetStates.any { it.type.value == "counter" && it.isVolumeCounterActive.value } }
             ) { enabled, isVolActive ->
-                enabled || isVolActive
+                val hasActiveCounter = widgetStates.any { it.type.value == "counter" }
+                (enabled && hasActiveCounter) || isVolActive
             }.collectLatest { active ->
                 setupMediaSessionForScreenOffVolume(active, true)
             }

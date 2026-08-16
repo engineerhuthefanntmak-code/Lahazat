@@ -18,6 +18,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.getValue
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -82,24 +83,64 @@ fun TimeDisplay(
     )
 
     val scaledMainSize = (baseStyle.fontSize.value * scaleFactor).sp
-    val mainDigitStyle = baseStyle.copy(
-        fontSize = scaledMainSize,
-        fontFamily = FontFamily.Monospace,
-        fontWeight = FontWeight.Bold,
-        color = animatedFlashColor,
-        shadow = androidx.compose.ui.graphics.Shadow(
-            color = Color.Black.copy(alpha = 0.35f),
-            offset = androidx.compose.ui.geometry.Offset(2f, 2f),
-            blurRadius = 4f
+
+    val gradientBrush = if (gradientGoldEnabled) {
+        Brush.linearGradient(
+            colors = listOf(
+                accentColor ?: LuxuryColors.AccentGold,
+                Color.White,
+                accentColor ?: LuxuryColors.AccentGold
+            )
         )
-    )
+    } else null
+
+    val mainDigitStyle = if (gradientBrush != null) {
+        baseStyle.copy(
+            fontSize = scaledMainSize,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            brush = gradientBrush,
+            shadow = androidx.compose.ui.graphics.Shadow(
+                color = Color.Black.copy(alpha = 0.35f),
+                offset = androidx.compose.ui.geometry.Offset(2f, 2f),
+                blurRadius = 4f
+            )
+        )
+    } else {
+        baseStyle.copy(
+            fontSize = scaledMainSize,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold,
+            color = animatedFlashColor,
+            shadow = androidx.compose.ui.graphics.Shadow(
+                color = Color.Black.copy(alpha = 0.35f),
+                offset = androidx.compose.ui.geometry.Offset(2f, 2f),
+                blurRadius = 4f
+            )
+        )
+    }
 
     val centiSize = (scaledMainSize.value * 0.58f).sp
-    val centiDigitStyle = mainDigitStyle.copy(
-        fontSize = centiSize,
-        fontWeight = FontWeight.Normal,
-        color = animatedFlashColor.copy(alpha = 0.7f)
-    )
+    val centiDigitStyle = if (gradientBrush != null) {
+        val centiBrush = Brush.linearGradient(
+            colors = listOf(
+                (accentColor ?: LuxuryColors.AccentGold).copy(alpha = 0.7f),
+                Color.White.copy(alpha = 0.7f),
+                (accentColor ?: LuxuryColors.AccentGold).copy(alpha = 0.7f)
+            )
+        )
+        mainDigitStyle.copy(
+            fontSize = centiSize,
+            fontWeight = FontWeight.Normal,
+            brush = centiBrush
+        )
+    } else {
+        mainDigitStyle.copy(
+            fontSize = centiSize,
+            fontWeight = FontWeight.Normal,
+            color = animatedFlashColor.copy(alpha = 0.7f)
+        )
+    }
 
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr

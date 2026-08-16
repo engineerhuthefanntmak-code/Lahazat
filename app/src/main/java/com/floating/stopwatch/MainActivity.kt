@@ -28,6 +28,7 @@ import com.floating.stopwatch.data.SettingsRepository
 import com.floating.stopwatch.domain.HapticController
 import com.floating.stopwatch.domain.StopwatchEngine
 import com.floating.stopwatch.service.StopwatchService
+import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.screens.MainScreen
 import com.floating.stopwatch.ui.screens.SettingsScreen
@@ -244,12 +245,12 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
-        if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
-            if (StopwatchService.handleVolumePress(increment = true)) {
+        if (mainViewModel.currentMode.value == AppMode.Counter) {
+            if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
+                mainViewModel.incrementCounter()
                 return true
-            }
-        } else if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) {
-            if (StopwatchService.handleVolumePress(increment = false)) {
+            } else if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) {
+                mainViewModel.decrementCounter()
                 return true
             }
         }

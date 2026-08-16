@@ -47,7 +47,6 @@ import com.floating.stopwatch.domain.CountdownEngine
 import com.floating.stopwatch.domain.HapticController
 import com.floating.stopwatch.domain.StopwatchEngine
 import com.floating.stopwatch.ui.components.TimeDisplay
-import com.floating.stopwatch.ui.components.HeritageVisualSystem
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -91,33 +90,16 @@ class StopwatchService : Service() {
         }
 
         fun handleVolumePress(increment: Boolean): Boolean {
-            var handled = false
-            activeServices.forEach { service ->
-                service.widgetStates.forEach { ws ->
-                    if (ws.type.value == "counter") {
-                        if (increment) {
-                            ws.tapCount.value++
-                            val newVal = ws.tapCount.value
-                            ws.elapsedOrValue.value = newVal.toLong()
-                            service.serviceScope.launch {
-                                service.settingsRepository.setWidgetValue(ws.index, newVal.toLong())
-                            }
-                            service.checkCounterMilestoneAndVibrate(newVal)
-                            handled = true
-                        } else if (ws.tapCount.value > 0) {
-                            ws.tapCount.value--
-                            val newVal = ws.tapCount.value
-                            ws.elapsedOrValue.value = newVal.toLong()
-                            service.serviceScope.launch {
-                                service.settingsRepository.setWidgetValue(ws.index, newVal.toLong())
-                            }
-                            service.checkCounterMilestoneAndVibrate(newVal)
-                            handled = true
-                        }
-                    }
-                }
+            if (increment) {
+                getEngine().incrementCounter()
+            } else {
+                getEngine().decrementCounter()
             }
-            return handled
+            val newVal = getEngine().counterValue.value.toInt()
+            activeServices.forEach { service ->
+                service.checkCounterMilestoneAndVibrate(newVal)
+            }
+            return true
         }
     }
 
@@ -130,7 +112,6 @@ class StopwatchService : Service() {
     private val activeOverlays = mutableMapOf<Int, ActiveOverlay>()
     private val activeMenuOverlays = mutableMapOf<Int, ActiveMenuOverlay>()
     private val widgetStates = List(3) { index -> WidgetState(index) }
-    private val tickerJobs = mutableMapOf<Int, Job>()
 
     private class ActiveOverlay(
         val index: Int,
@@ -188,6 +169,21 @@ class StopwatchService : Service() {
                 widgetStates.forEach { state ->
                     if (state.type.value == "stopwatch") {
                         state.elapsedOrValue.value = engineElapsed
+                    }
+                }
+            }
+        }
+
+        // Observe shared counterValue for real-time bidirectional synchronization
+        serviceScope.launch {
+            getEngine().counterValue.collectLatest { count ->
+                widgetStates.forEach { state ->
+                    if (state.type.value == "counter") {
+                        state.tapCount.value = count.toInt()
+                        state.elapsedOrValue.value = count
+                        serviceScope.launch {
+                            settingsRepository.setWidgetValue(state.index, count)
+                        }
                     }
                 }
             }
@@ -270,10 +266,7 @@ class StopwatchService : Service() {
 
                             spawnWidget(i)
 
-                            if (running && type != "counter") {
-                                widgetStates[i].baseTime.value = SystemClock.elapsedRealtime()
-                                startTickerForWidget(i)
-                            } else if (type == "counter") {
+                            if (type == "counter") {
                                 widgetStates[i].running.value = false
                                 serviceScope.launch { settingsRepository.setWidgetRunning(i, false) }
                             }
@@ -365,12 +358,6 @@ class StopwatchService : Service() {
                 val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
                 val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
 
-                val heritageVisualEnabled by settingsRepository.heritageVisualEnabled.collectAsState(initial = true)
-                val heritagePattern by settingsRepository.heritagePattern.collectAsState(initial = "Andalusian Star")
-                val heritageMeshEnabled by settingsRepository.heritageMeshEnabled.collectAsState(initial = true)
-                val heritageOpacity by settingsRepository.heritageOpacity.collectAsState(initial = 0.15f)
-                val heritageMeshIntensity by settingsRepository.heritageMeshIntensity.collectAsState(initial = 0.20f)
-                val heritageSpeed by settingsRepository.heritageSpeed.collectAsState(initial = 1.0f)
 
                 val accentColor = if (colorPreset == "Custom") {
                     try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -438,12 +425,6 @@ class StopwatchService : Service() {
                         layoutOrientation = layoutOrientation,
                         paddingDpValue = floatingPadding,
                         opacity = floatingOpacity,
-                        heritageVisualEnabled = heritageVisualEnabled,
-                        heritagePattern = heritagePattern,
-                        heritageMeshEnabled = heritageMeshEnabled,
-                        heritageOpacity = heritageOpacity,
-                        heritageMeshIntensity = heritageMeshIntensity,
-                        heritageSpeed = heritageSpeed,
                         onMovementDrag = { dx, dy ->
                             activeOverlays[index]?.let {
                                 it.params.x += dx.roundToInt()
@@ -540,8 +521,6 @@ class StopwatchService : Service() {
                     getCountdownEngine().start()
                 }
                 state.running.value = true
-                state.baseTime.value = SystemClock.elapsedRealtime()
-                startTickerForWidget(index)
                 serviceScope.launch { settingsRepository.setWidgetRunning(index, true) }
             }
             "Stop" -> {
@@ -552,7 +531,6 @@ class StopwatchService : Service() {
                     getCountdownEngine().pause()
                 }
                 state.running.value = false
-                stopTickerForWidget(index)
                 serviceScope.launch { settingsRepository.setWidgetRunning(index, false) }
             }
             "Reset" -> {
@@ -563,7 +541,6 @@ class StopwatchService : Service() {
                     getCountdownEngine().reset()
                 }
                 state.running.value = false
-                stopTickerForWidget(index)
                 if (type == "countdown") {
                     state.elapsedOrValue.value = state.countdownDuration.value * 1000L
                     serviceScope.launch { settingsRepository.setWidgetValue(index, state.countdownDuration.value * 1000L) }
@@ -575,25 +552,19 @@ class StopwatchService : Service() {
                 serviceScope.launch { settingsRepository.setWidgetRunning(index, false) }
             }
             "Increment" -> {
-                state.tapCount.value++
-                val newVal = state.tapCount.value
-                state.elapsedOrValue.value = newVal.toLong()
-                serviceScope.launch { settingsRepository.setWidgetValue(index, newVal.toLong()) }
+                getEngine().incrementCounter()
+                val newVal = getEngine().counterValue.value.toInt()
                 checkCounterMilestoneAndVibrate(newVal)
                 if (newVal != 33 && newVal != 66 && newVal != 99 && newVal != 100) {
                     hapticController.trigger(hapticIntensity, "Lap")
                 }
             }
             "Decrement" -> {
-                if (state.tapCount.value > 0) {
-                    state.tapCount.value--
-                    val newVal = state.tapCount.value
-                    state.elapsedOrValue.value = newVal.toLong()
-                    serviceScope.launch { settingsRepository.setWidgetValue(index, newVal.toLong()) }
-                    checkCounterMilestoneAndVibrate(newVal)
-                    if (newVal != 33 && newVal != 66 && newVal != 99 && newVal != 100) {
-                        hapticController.trigger(hapticIntensity, "Reset")
-                    }
+                getEngine().decrementCounter()
+                val newVal = getEngine().counterValue.value.toInt()
+                checkCounterMilestoneAndVibrate(newVal)
+                if (newVal != 33 && newVal != 66 && newVal != 99 && newVal != 100) {
+                    hapticController.trigger(hapticIntensity, "Reset")
                 }
             }
             "ToggleVolume" -> {
@@ -636,26 +607,6 @@ class StopwatchService : Service() {
             onResume()
         }
 
-        val composeView = ComposeView(this).apply {
-            setViewTreeLifecycleOwner(owner)
-            setViewTreeViewModelStoreOwner(owner)
-            setViewTreeSavedStateRegistryOwner(owner)
-
-            setContent {
-                val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
-                LuxuryTextDropdownMenu(
-                    widgetType = widgetType,
-                    fontSizeScale = fontSizeScale,
-                    isVolumeActive = isVolumeActive,
-                    onAction = { action ->
-                        handleWidgetAction(index, action, hapticIntensity)
-                        dismissMenuOverlay(index)
-                    },
-                    onDismiss = { dismissMenuOverlay(index) }
-                )
-            }
-        }
-
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
@@ -664,18 +615,55 @@ class StopwatchService : Service() {
         }
 
         val menuParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
             type,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = overlay.params.x
-            y = overlay.params.y + overlay.params.height + 4
         }
 
-        clampMenuToScreen(menuParams)
+        val initialMenuX = overlay.params.x
+        val initialMenuY = overlay.params.y + overlay.params.height + 4
+
+        val composeView = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+
+            setContent {
+                val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { dismissMenuOverlay(index) })
+                        }
+                ) {
+                    val clampedX = initialMenuX.coerceIn(16, (applicationContext.resources.displayMetrics.widthPixels - 220).coerceAtLeast(16))
+                    val clampedY = initialMenuY.coerceIn(16, (applicationContext.resources.displayMetrics.heightPixels - 320).coerceAtLeast(16))
+
+                    Box(
+                        modifier = Modifier.offset(
+                            x = (clampedX / applicationContext.resources.displayMetrics.density).dp,
+                            y = (clampedY / applicationContext.resources.displayMetrics.density).dp
+                        )
+                    ) {
+                        LuxuryTextDropdownMenu(
+                            widgetType = widgetType,
+                            fontSizeScale = fontSizeScale,
+                            isVolumeActive = isVolumeActive,
+                            onAction = { action ->
+                                handleWidgetAction(index, action, hapticIntensity)
+                                dismissMenuOverlay(index)
+                            },
+                            onDismiss = { dismissMenuOverlay(index) }
+                        )
+                    }
+                }
+            }
+        }
 
         activeMenuOverlays[index] = ActiveMenuOverlay(index, owner, composeView, menuParams)
         try {
@@ -690,10 +678,11 @@ class StopwatchService : Service() {
         val screenWidth = metrics.widthPixels
         val screenHeight = metrics.heightPixels
 
-        if (menuParams.x < 0) menuParams.x = 0
-        if (menuParams.x > screenWidth - 200) menuParams.x = (screenWidth - 200).coerceAtLeast(0)
-        if (menuParams.y < 0) menuParams.y = 0
-        if (menuParams.y > screenHeight - 300) menuParams.y = (screenHeight - 300).coerceAtLeast(0)
+        val minMarginPx = (8 * metrics.density).roundToInt()
+        if (menuParams.x < minMarginPx) menuParams.x = minMarginPx
+        if (menuParams.x > screenWidth - (200 * metrics.density).roundToInt()) menuParams.x = (screenWidth - (200 * metrics.density).roundToInt()).coerceAtLeast(minMarginPx)
+        if (menuParams.y < minMarginPx) menuParams.y = minMarginPx
+        if (menuParams.y > screenHeight - (300 * metrics.density).roundToInt()) menuParams.y = (screenHeight - (300 * metrics.density).roundToInt()).coerceAtLeast(minMarginPx)
     }
 
     private fun dismissMenuOverlay(index: Int) {
@@ -771,28 +760,17 @@ class StopwatchService : Service() {
     }
 
     private fun handleCounterVolumePress(increment: Boolean) {
-        widgetStates.forEach { ws ->
-            if (ws.type.value == "counter") {
-                if (increment) {
-                    ws.tapCount.value++
-                    val newVal = ws.tapCount.value
-                    ws.elapsedOrValue.value = newVal.toLong()
-                    serviceScope.launch { settingsRepository.setWidgetValue(ws.index, newVal.toLong()) }
-                    checkCounterMilestoneAndVibrate(newVal)
-                } else if (ws.tapCount.value > 0) {
-                    ws.tapCount.value--
-                    val newVal = ws.tapCount.value
-                    ws.elapsedOrValue.value = newVal.toLong()
-                    serviceScope.launch { settingsRepository.setWidgetValue(ws.index, newVal.toLong()) }
-                    checkCounterMilestoneAndVibrate(newVal)
-                }
-            }
+        if (increment) {
+            getEngine().incrementCounter()
+        } else {
+            getEngine().decrementCounter()
         }
+        val newVal = getEngine().counterValue.value.toInt()
+        checkCounterMilestoneAndVibrate(newVal)
     }
 
     private fun dismissWidget(index: Int) {
         dismissMenuOverlay(index)
-        stopTickerForWidget(index)
         val overlay = activeOverlays.remove(index) ?: return
         overlay.lifecycleOwner.apply {
             onPause()
@@ -804,52 +782,6 @@ class StopwatchService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    private fun startTickerForWidget(index: Int) {
-        tickerJobs[index]?.cancel()
-        val state = widgetStates[index]
-        if (state.type.value == "counter") return
-        tickerJobs[index] = serviceScope.launch(Dispatchers.Default) {
-            var lastSavedSec = 0L
-            while (true) {
-                if (state.running.value) {
-                    if (state.type.value == "stopwatch") {
-                        val elapsed = state.elapsedOrValue.value + (SystemClock.elapsedRealtime() - state.baseTime.value)
-                        state.elapsedOrValue.value = elapsed
-                        state.baseTime.value = SystemClock.elapsedRealtime()
-                        val sec = elapsed / 1000
-                        if (sec != lastSavedSec) {
-                            lastSavedSec = sec
-                            settingsRepository.setWidgetValue(index, elapsed)
-                        }
-                    } else if (state.type.value == "countdown") {
-                        val currentRemaining = state.elapsedOrValue.value - (SystemClock.elapsedRealtime() - state.baseTime.value)
-                        state.baseTime.value = SystemClock.elapsedRealtime()
-                        if (currentRemaining <= 0L) {
-                            state.elapsedOrValue.value = 0L
-                            state.running.value = false
-                            settingsRepository.setWidgetValue(index, 0L)
-                            settingsRepository.setWidgetRunning(index, false)
-                            triggerCountdownCompletion(index)
-                            break
-                        } else {
-                            state.elapsedOrValue.value = currentRemaining
-                            val sec = currentRemaining / 1000
-                            if (sec != lastSavedSec) {
-                                lastSavedSec = sec
-                                settingsRepository.setWidgetValue(index, currentRemaining)
-                            }
-                        }
-                    }
-                }
-                delay(10)
-            }
-        }
-    }
-
-    private fun stopTickerForWidget(index: Int) {
-        tickerJobs[index]?.cancel()
-        tickerJobs.remove(index)
-    }
 
     private fun triggerCountdownCompletion(index: Int) {
         serviceScope.launch {
@@ -920,12 +852,6 @@ class StopwatchService : Service() {
         layoutOrientation: String,
         paddingDpValue: Float,
         opacity: Float,
-        heritageVisualEnabled: Boolean,
-        heritagePattern: String,
-        heritageMeshEnabled: Boolean,
-        heritageOpacity: Float,
-        heritageMeshIntensity: Float,
-        heritageSpeed: Float,
         onMovementDrag: (Float, Float) -> Unit,
         onMovementRelease: () -> Unit,
         onToggleMenu: () -> Unit,
@@ -944,19 +870,6 @@ class StopwatchService : Service() {
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            if (heritageVisualEnabled) {
-                HeritageVisualSystem(
-                    enabled = true,
-                    patternName = heritagePattern,
-                    meshEnabled = heritageMeshEnabled,
-                    opacity = heritageOpacity,
-                    meshIntensity = heritageMeshIntensity,
-                    speed = heritageSpeed,
-                    accentColor = accentColor,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
             Box(
                 modifier = Modifier
                     .fillMaxSize()

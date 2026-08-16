@@ -40,7 +40,6 @@ import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.data.SettingsRepository
-import com.floating.stopwatch.ui.components.HeritageVisualSystem
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import com.floating.stopwatch.domain.HapticController
 import kotlinx.coroutines.launch
@@ -98,36 +97,12 @@ fun MainScreen(
         else -> LuxuryColors.WarmGray
     }
 
-    val heritageVisualEnabled by settingsRepository.heritageVisualEnabled.collectAsState(initial = true)
-    val heritagePattern by settingsRepository.heritagePattern.collectAsState(initial = "Andalusian Star")
-    val heritageMeshEnabled by settingsRepository.heritageMeshEnabled.collectAsState(initial = true)
-    val heritageOpacity by settingsRepository.heritageOpacity.collectAsState(initial = 0.15f)
-    val heritageMeshIntensity by settingsRepository.heritageMeshIntensity.collectAsState(initial = 0.20f)
-    val heritageSpeed by settingsRepository.heritageSpeed.collectAsState(initial = 1.0f)
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(currentBgColor)
+            .padding(24.dp)
     ) {
-        if (heritageVisualEnabled) {
-            HeritageVisualSystem(
-                enabled = true,
-                patternName = heritagePattern,
-                meshEnabled = heritageMeshEnabled,
-                opacity = heritageOpacity,
-                meshIntensity = heritageMeshIntensity,
-                speed = heritageSpeed,
-                accentColor = accentColor,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-        ) {
         // Settings click triggers navigation
         Text(
             text = "SETTINGS",
@@ -587,7 +562,6 @@ fun MainScreen(
                     )
                 )
             }
-        }
         }
     }
 

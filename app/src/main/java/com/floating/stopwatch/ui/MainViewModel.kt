@@ -31,8 +31,8 @@ class MainViewModel(
     val countdownRemainingMs: StateFlow<Long> = countdownEngine.remainingTimeMs
     val isCountdownRunning: StateFlow<Boolean> = countdownEngine.isRunning
 
-    // Counter State
-    val counterValue = MutableStateFlow(0L)
+    // Counter State delegated to shared engine
+    val counterValue: StateFlow<Long> = engine.counterValue
 
     fun cycleMode() {
         val nextMode = when (currentMode.value) {
@@ -69,17 +69,15 @@ class MainViewModel(
     }
 
     fun incrementCounter() {
-        counterValue.value += 1
+        engine.incrementCounter()
     }
 
     fun decrementCounter() {
-        if (counterValue.value > 0) {
-            counterValue.value -= 1
-        }
+        engine.decrementCounter()
     }
 
     fun resetCounter() {
-        counterValue.value = 0
+        engine.setCounterValue(0L)
     }
 
     fun start() {

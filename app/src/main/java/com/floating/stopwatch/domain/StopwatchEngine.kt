@@ -28,6 +28,23 @@ class StopwatchEngine {
     private val _laps = MutableStateFlow<List<Lap>>(emptyList())
     val laps: StateFlow<List<Lap>> = _laps.asStateFlow()
 
+    private val _counterValue = MutableStateFlow(0L)
+    val counterValue: StateFlow<Long> = _counterValue.asStateFlow()
+
+    fun incrementCounter() = synchronized(lock) {
+        _counterValue.value++
+    }
+
+    fun decrementCounter() = synchronized(lock) {
+        if (_counterValue.value > 0) {
+            _counterValue.value--
+        }
+    }
+
+    fun setCounterValue(value: Long) = synchronized(lock) {
+        _counterValue.value = value.coerceAtLeast(0L)
+    }
+
     private var baseTime = 0L
     private var accumulatedTime = 0L
 

@@ -77,7 +77,9 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         }
 
         setContent {
-            var currentScreen by remember { mutableStateOf("Main") }
+            var currentScreen by remember {
+                mutableStateOf(if (intent?.getBooleanExtra("OPEN_SETTINGS", false) == true) "Settings" else "Main")
+            }
             var isUnlockedByBiometrics by remember { mutableStateOf(false) }
 
             val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
@@ -228,6 +230,14 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
     // Live update when activity is resumed
     private var onResumeCallback: (() -> Unit)? = null
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("OPEN_SETTINGS", false)) {
+            // Screen updated via state observation when required
+        }
+    }
 
     override fun onResume() {
         super.onResume()

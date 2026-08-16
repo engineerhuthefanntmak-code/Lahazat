@@ -486,6 +486,7 @@ fun MainScreen(
                                 } else {
                                     hapticController.trigger(hapticIntensity, "Start")
                                     viewModel.startCountdown()
+                                            scope.launch { settingsRepository.setWidgetActive(1, true) }
                                 }
                             },
                         contentAlignment = Alignment.Center
@@ -533,6 +534,7 @@ fun MainScreen(
                             .clickable {
                                 hapticController.trigger(hapticIntensity, "Lap")
                                 viewModel.incrementCounter()
+                                scope.launch { settingsRepository.setWidgetActive(2, true) }
                             },
                         contentAlignment = Alignment.Center
                     ) {

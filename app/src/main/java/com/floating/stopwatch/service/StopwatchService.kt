@@ -227,10 +227,9 @@ class StopwatchService : Service() {
         serviceScope.launch {
             combine(
                 settingsRepository.volumeCounterScreenOffEnabled,
-                snapshotFlow { widgetStates.any { it.type.value == "counter" } },
                 snapshotFlow { widgetStates.any { it.type.value == "counter" && it.isVolumeCounterActive.value } }
-            ) { enabled, hasCounterWidget, isVolActive ->
-                enabled || isVolActive || hasCounterWidget
+            ) { enabled, isVolActive ->
+                enabled || isVolActive
             }.collectLatest { active ->
                 setupMediaSessionForScreenOffVolume(active, true)
             }
@@ -589,6 +588,7 @@ class StopwatchService : Service() {
             "OpenApp" -> {
                 val intent = Intent(this@StopwatchService, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra("OPEN_SETTINGS", true)
                 }
                 startActivity(intent)
             }

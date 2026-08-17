@@ -55,7 +55,7 @@ fun SettingsScreen(
     val colorPresets = listOf("Gold", "Galaxy Blue", "Titanium", "Emerald", "Sapphire", "Violet", "Rose", "Ice", "Amber", "Pure White", "Custom")
 
     val categories = listOf(
-        "Appearance", "Stopwatch", "Countdown", "Counter",
+        "Appearance", "Stopwatch", "Countdown", "Counter", "Interval",
         "Floating Widgets", "Sounds & Haptics", "Advanced"
     )
 
@@ -206,6 +206,103 @@ fun SettingsScreen(
                         "Stopwatch" -> WidgetCategorySettings(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
                         "Countdown" -> WidgetCategorySettings(index = 1, widgetTitle = "COUNTDOWN", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
                         "Counter" -> WidgetCategorySettings(index = 2, widgetTitle = "COUNTER", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
+                        "Interval" -> {
+                            val intervalName by settingsRepository.intervalName.collectAsState(initial = "HIT")
+                            val workMs by settingsRepository.intervalWorkMs.collectAsState(initial = 40000L)
+                            val restMs by settingsRepository.intervalRestMs.collectAsState(initial = 20000L)
+                            val rounds by settingsRepository.intervalRounds.collectAsState(initial = 8)
+
+                            var nameInput by remember(intervalName) { mutableStateOf(intervalName) }
+                            var workSecs by remember(workMs) { mutableIntStateOf((workMs / 1000).toInt()) }
+                            var restSecs by remember(restMs) { mutableIntStateOf((restMs / 1000).toInt()) }
+                            var roundsVal by remember(rounds) { mutableIntStateOf(rounds) }
+
+                            Text(text = "INTERVAL CONFIGURATION", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = nameInput,
+                                onValueChange = { nameInput = it },
+                                label = { Text("Interval Name", color = LuxuryColors.WarmGray, fontSize = 10.sp) },
+                                textStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("WORK DURATION: ${workSecs}s", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                                Slider(
+                                    value = workSecs.toFloat(),
+                                    onValueChange = { workSecs = it.toInt().coerceAtLeast(1) },
+                                    valueRange = 1f..300f,
+                                    modifier = Modifier.width(140.dp),
+                                    colors = SliderDefaults.colors(thumbColor = activeAccentColor)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("REST DURATION: ${restSecs}s", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                                Slider(
+                                    value = restSecs.toFloat(),
+                                    onValueChange = { restSecs = it.toInt().coerceAtLeast(1) },
+                                    valueRange = 1f..300f,
+                                    modifier = Modifier.width(140.dp),
+                                    colors = SliderDefaults.colors(thumbColor = activeAccentColor)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("ROUNDS: $roundsVal", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                                Row {
+                                    Box(modifier = Modifier.clickable { if (roundsVal > 1) roundsVal -= 1 }.padding(8.dp)) {
+                                        Text("-", color = activeAccentColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Box(modifier = Modifier.clickable { roundsVal += 1 }.padding(8.dp)) {
+                                        Text("+", color = activeAccentColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        settingsRepository.setIntervalConfig(
+                                            name = nameInput.ifBlank { "HIT" },
+                                            workMs = workSecs * 1000L,
+                                            restMs = restSecs * 1000L,
+                                            rounds = roundsVal
+                                        )
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = activeAccentColor),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("SAVE CONFIGURATION", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            WidgetCategorySettings(index = 3, widgetTitle = "INTERVAL", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
+                        }
                         "Floating Widgets" -> {
                             val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
                             val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)

@@ -374,27 +374,55 @@ fun MainScreen(
 
                     var showBuilderDialog by remember { mutableStateOf(false) }
 
+                    // 3-second auto-hide logic for EDIT control
+                    var isEditVisible by remember { mutableStateOf(true) }
+                    var autoHideJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+                    fun resetAutoHideTimer() {
+                        isEditVisible = true
+                        autoHideJob?.cancel()
+                        autoHideJob = scope.launch {
+                            kotlinx.coroutines.delay(3000L)
+                            if (!showBuilderDialog) {
+                                isEditVisible = false
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(Unit) {
+                        resetAutoHideTimer()
+                    }
+
                     if (activeTemplate != null) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .pointerInput(Unit) {
+                                    detectTapGestures(onTap = { resetAutoHideTimer() })
+                                }
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = activeTemplate!!.name.uppercase(),
+                                    text = activeTemplate.name.uppercase(),
                                     style = TextStyle(color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "[EDIT]",
-                                    style = TextStyle(color = currentGrayColor, fontSize = 10.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp),
-                                    modifier = Modifier
-                                        .clickable { showBuilderDialog = true }
-                                        .padding(4.dp)
-                                )
+                                if (isEditVisible || showBuilderDialog) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "[EDIT]",
+                                        style = TextStyle(color = currentGrayColor, fontSize = 10.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp),
+                                        modifier = Modifier
+                                            .clickable {
+                                                resetAutoHideTimer()
+                                                showBuilderDialog = true
+                                            }
+                                            .padding(4.dp)
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -439,11 +467,19 @@ fun MainScreen(
                     }
 
                     if (showBuilderDialog && activeTemplate != null) {
-                        IntervalBuilderDialog(
-                            initialTemplate = activeTemplate!!,
+                        IntervalQuickEditDialog(
+                            initialTemplate = activeTemplate,
                             onDismiss = { showBuilderDialog = false },
                             onSave = { updatedTemplate ->
                                 intervalEngine.loadTemplate(updatedTemplate)
+                                scope.launch {
+                                    settingsRepository.setIntervalConfig(
+                                        name = updatedTemplate.name,
+                                        workMs = updatedTemplate.workDurationMs,
+                                        restMs = updatedTemplate.restDurationMs,
+                                        rounds = updatedTemplate.repetitions
+                                    )
+                                }
                                 showBuilderDialog = false
                             }
                         )
@@ -870,14 +906,15 @@ fun MainScreen(
 }
 
 @Composable
-fun IntervalBuilderDialog(
+fun IntervalQuickEditDialog(
     initialTemplate: IntervalTemplate,
     onDismiss: () -> Unit,
     onSave: (IntervalTemplate) -> Unit
 ) {
     var templateName by remember { mutableStateOf(initialTemplate.name) }
+    var workSecs by remember { mutableIntStateOf((initialTemplate.workDurationMs / 1000).toInt()) }
+    var restSecs by remember { mutableIntStateOf((initialTemplate.restDurationMs / 1000).toInt()) }
     var repetitions by remember { mutableIntStateOf(initialTemplate.repetitions) }
-    var stages by remember { mutableStateOf(initialTemplate.stages) }
 
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -894,7 +931,7 @@ fun IntervalBuilderDialog(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "INTERVAL BUILDER",
+                    text = "INTERVAL CONFIGURATION",
                     style = TextStyle(color = LuxuryColors.AccentGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 )
 
@@ -903,7 +940,7 @@ fun IntervalBuilderDialog(
                 OutlinedTextField(
                     value = templateName,
                     onValueChange = { templateName = it },
-                    label = { Text("Template Name", color = LuxuryColors.WarmGray, fontSize = 10.sp) },
+                    label = { Text("Interval Name", color = LuxuryColors.WarmGray, fontSize = 10.sp) },
                     textStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -915,7 +952,41 @@ fun IntervalBuilderDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("REPETITIONS: $repetitions", color = LuxuryColors.WarmGray, fontSize = 11.sp)
+                    Text("WORK DURATION: ${workSecs}s", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                    Slider(
+                        value = workSecs.toFloat(),
+                        onValueChange = { workSecs = it.toInt().coerceAtLeast(1) },
+                        valueRange = 1f..300f,
+                        modifier = Modifier.width(130.dp),
+                        colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("REST DURATION: ${restSecs}s", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                    Slider(
+                        value = restSecs.toFloat(),
+                        onValueChange = { restSecs = it.toInt().coerceAtLeast(1) },
+                        valueRange = 1f..300f,
+                        modifier = Modifier.width(130.dp),
+                        colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("ROUNDS: $repetitions", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
                     Row {
                         Box(
                             modifier = Modifier
@@ -934,101 +1005,35 @@ fun IntervalBuilderDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text("STAGES (${stages.size})", color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 1.sp)
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 220.dp)
-                ) {
-                    items(stages.size) { index ->
-                        val stage = stages[index]
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.1f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(stage.name, color = LuxuryColors.CreamyWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    Text("${stage.durationMs / 1000}s (${stage.type})", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                                }
-                                Row {
-                                    Text(
-                                        "DUP",
-                                        color = LuxuryColors.AccentGold,
-                                        fontSize = 10.sp,
-                                        modifier = Modifier
-                                            .clickable {
-                                                val dup = stage.copy(id = "s_${System.currentTimeMillis()}", order = stages.size)
-                                                stages = stages + dup
-                                            }
-                                            .padding(4.dp)
-                                    )
-                                    if (stages.size > 1) {
-                                        Text(
-                                            "DEL",
-                                            color = Color(0xFFC94A4A),
-                                            fontSize = 10.sp,
-                                            modifier = Modifier
-                                                .clickable {
-                                                    stages = stages.filterIndexed { i, _ -> i != index }
-                                                }
-                                                .padding(4.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    Button(
-                        onClick = {
-                            val newStage = IntervalStage(
-                                id = "s_${System.currentTimeMillis()}",
-                                name = "WORK",
-                                durationMs = 30000L,
-                                order = stages.size,
-                                type = IntervalStageType.WORK
-                            )
-                            stages = stages + newStage
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.3f))
-                    ) {
-                        Text("+ STAGE", color = LuxuryColors.CreamyWhite, fontSize = 10.sp)
-                    }
-
+                    Text(
+                        text = "CANCEL",
+                        color = LuxuryColors.WarmGray,
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .clickable { onDismiss() }
+                            .padding(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
                             val updated = IntervalTemplate(
                                 id = initialTemplate.id,
-                                name = templateName,
-                                stages = stages,
+                                name = templateName.ifBlank { "HIT" },
+                                workDurationMs = workSecs * 1000L,
+                                restDurationMs = restSecs * 1000L,
                                 repetitions = repetitions
                             )
                             onSave(updated)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.AccentGold)
                     ) {
-                        Text("SAVE", color = LuxuryColors.WarmBlack, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("SAVE", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

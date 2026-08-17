@@ -20,35 +20,35 @@ class IntervalEngineTest {
     fun testInitialState() {
         assertEquals(IntervalState.IDLE, engine.state.value)
         assertNotNull(engine.activeTemplate.value)
-        assertEquals("HIIT", engine.activeTemplate.value?.name)
+        assertEquals("HIT", engine.activeTemplate.value.name)
+        assertEquals(40000L, engine.activeTemplate.value.workDurationMs)
+        assertEquals(20000L, engine.activeTemplate.value.restDurationMs)
+        assertEquals(8, engine.activeTemplate.value.repetitions)
         assertEquals(1, engine.currentRound.value)
         assertEquals(0, engine.currentStageIndex.value)
         assertEquals(40000L, engine.stageRemainingMs.value)
     }
 
     @Test
-    fun testLoadCustomTemplate() {
-        val customTemplate = IntervalTemplate(
-            id = "custom_test",
-            name = "TEST TEMPLATE",
-            stages = listOf(
-                IntervalStage("st1", "WORK", 10000L, 0, IntervalStageType.WORK),
-                IntervalStage("st2", "REST", 5000L, 1, IntervalStageType.REST)
-            ),
-            repetitions = 3
-        )
-        engine.loadTemplate(customTemplate)
+    fun testRenameTemplate() {
+        engine.renameTemplate("BOXING")
+        assertEquals("BOXING", engine.activeTemplate.value.name)
+        assertEquals(40000L, engine.activeTemplate.value.workDurationMs)
+    }
 
-        assertEquals(IntervalState.IDLE, engine.state.value)
-        assertEquals("TEST TEMPLATE", engine.activeTemplate.value?.name)
-        assertEquals(10000L, engine.stageRemainingMs.value)
+    @Test
+    fun testUpdateDurations() {
+        engine.updateDurations(45000L, 15000L, 12)
+        assertEquals(45000L, engine.activeTemplate.value.workDurationMs)
+        assertEquals(15000L, engine.activeTemplate.value.restDurationMs)
+        assertEquals(12, engine.activeTemplate.value.repetitions)
+        assertEquals(45000L, engine.stageRemainingMs.value)
     }
 
     @Test
     fun testPauseAndReset() {
-        val template = IntervalEngine.BUILT_IN_TEMPLATES[1] // Tabata
-        engine.loadTemplate(template)
-        assertEquals(20000L, engine.stageRemainingMs.value)
+        engine.updateDurations(30000L, 10000L, 5)
+        assertEquals(30000L, engine.stageRemainingMs.value)
 
         engine.pause()
         assertEquals(IntervalState.IDLE, engine.state.value)
@@ -57,6 +57,6 @@ class IntervalEngineTest {
         assertEquals(IntervalState.IDLE, engine.state.value)
         assertEquals(1, engine.currentRound.value)
         assertEquals(0, engine.currentStageIndex.value)
-        assertEquals(20000L, engine.stageRemainingMs.value)
+        assertEquals(30000L, engine.stageRemainingMs.value)
     }
 }

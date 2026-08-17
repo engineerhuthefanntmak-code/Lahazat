@@ -55,9 +55,30 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         settingsRepository = SettingsRepository(applicationContext)
         mainViewModel = MainViewModel(
             engine = StopwatchService.getEngine(),
-            countdownEngine = StopwatchService.getCountdownEngine()
+            countdownEngine = StopwatchService.getCountdownEngine(),
+            intervalEngine = StopwatchService.getIntervalEngine()
         )
         hapticController = HapticController(applicationContext)
+
+        // Observe DataStore for persisted Interval configuration and update shared IntervalEngine
+        lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(
+                settingsRepository.intervalName,
+                settingsRepository.intervalWorkMs,
+                settingsRepository.intervalRestMs,
+                settingsRepository.intervalRounds
+            ) { name, workMs, restMs, rounds ->
+                com.floating.stopwatch.domain.IntervalTemplate(
+                    id = "persisted_interval",
+                    name = name,
+                    workDurationMs = workMs,
+                    restDurationMs = restMs,
+                    repetitions = rounds
+                )
+            }.collectLatest { template ->
+                StopwatchService.getIntervalEngine().loadTemplate(template)
+            }
+        }
 
         // Track fold/hinge updates with explicit safe fallbacks in case Jetpack WindowManager throws on traditional non-foldable devices
         lifecycleScope.launch {

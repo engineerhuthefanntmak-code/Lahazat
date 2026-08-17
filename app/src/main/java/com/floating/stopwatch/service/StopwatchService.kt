@@ -123,7 +123,7 @@ class StopwatchService : Service() {
     // Multi-Widget context structures
     private val activeOverlays = mutableMapOf<Int, ActiveOverlay>()
     private val activeMenuOverlays = mutableMapOf<Int, ActiveMenuOverlay>()
-    private val widgetStates = List(3) { index -> WidgetState(index) }
+    private val widgetStates = List(4) { index -> WidgetState(index) }
 
     private class ActiveOverlay(
         val index: Int,
@@ -263,8 +263,8 @@ class StopwatchService : Service() {
     }
 
     private fun startWidgetLifecycleManager() {
-        // Observe settings for up to 3 fixed widgets and spawn/dismiss them reactively
-        for (i in 0..2) {
+        // Observe settings for up to 4 fixed widgets and spawn/dismiss them reactively
+        for (i in 0..3) {
             serviceScope.launch {
                 settingsRepository.isWidgetActive(i).collectLatest { active ->
                     if (active) {
@@ -537,6 +537,8 @@ class StopwatchService : Service() {
                     getEngine().start()
                 } else if (type == "countdown") {
                     getCountdownEngine().start()
+                } else if (type == "intervals") {
+                    getIntervalEngine().start(serviceScope)
                 }
                 state.running.value = true
                 serviceScope.launch { settingsRepository.setWidgetRunning(index, true) }
@@ -547,6 +549,8 @@ class StopwatchService : Service() {
                     getEngine().pause()
                 } else if (type == "countdown") {
                     getCountdownEngine().pause()
+                } else if (type == "intervals") {
+                    getIntervalEngine().pause()
                 }
                 state.running.value = false
                 serviceScope.launch { settingsRepository.setWidgetRunning(index, false) }
@@ -557,6 +561,8 @@ class StopwatchService : Service() {
                     getEngine().reset()
                 } else if (type == "countdown") {
                     getCountdownEngine().reset()
+                } else if (type == "intervals") {
+                    getIntervalEngine().reset()
                 }
                 state.running.value = false
                 if (type == "countdown") {
@@ -994,12 +1000,20 @@ class StopwatchService : Service() {
 
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = currentStage?.name?.uppercase() ?: "INTERVAL",
+                                    text = activeTemplate.name.uppercase(),
                                     style = TextStyle(
                                         color = accentColor,
-                                        fontSize = (10.sp.value * fontSizeScale).sp,
+                                        fontSize = (11.sp.value * fontSizeScale).sp,
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 1.sp
+                                    )
+                                )
+                                Text(
+                                    text = currentStage?.name?.uppercase() ?: "WORK",
+                                    style = TextStyle(
+                                        color = LuxuryColors.CreamyWhite,
+                                        fontSize = (10.sp.value * fontSizeScale).sp,
+                                        fontWeight = FontWeight.Medium
                                     )
                                 )
                                 TimeDisplay(
@@ -1010,16 +1024,14 @@ class StopwatchService : Service() {
                                     accentColor = accentColor,
                                     gradientGoldEnabled = false
                                 )
-                                if (activeTemplate != null) {
-                                    Text(
-                                        text = "ROUND $currentRound/${activeTemplate!!.repetitions}",
-                                        style = TextStyle(
-                                            color = LuxuryColors.WarmGray,
-                                            fontSize = (9.sp.value * fontSizeScale).sp,
-                                            fontWeight = FontWeight.Light
-                                        )
+                                Text(
+                                    text = "ROUND $currentRound/${activeTemplate.repetitions}",
+                                    style = TextStyle(
+                                        color = LuxuryColors.WarmGray,
+                                        fontSize = (9.sp.value * fontSizeScale).sp,
+                                        fontWeight = FontWeight.Light
                                     )
-                                }
+                                )
                             }
                         } else {
                             TimeDisplay(

@@ -24,7 +24,25 @@ class SettingsRepository(private val context: Context) {
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
         val FLOATING_PADDING = floatPreferencesKey("floating_padding")
         val FLOATING_OPACITY = floatPreferencesKey("floating_opacity")
+        val INTERVAL_NAME = stringPreferencesKey("interval_name")
+        val INTERVAL_WORK_MS = longPreferencesKey("interval_work_ms")
+        val INTERVAL_REST_MS = longPreferencesKey("interval_rest_ms")
+        val INTERVAL_ROUNDS = intPreferencesKey("interval_rounds")
         val CUSTOM_INTERVAL_TEMPLATES = stringPreferencesKey("custom_interval_templates")
+    }
+
+    val intervalName: Flow<String> = context.dataStore.data.map { it[INTERVAL_NAME] ?: "HIT" }
+    val intervalWorkMs: Flow<Long> = context.dataStore.data.map { it[INTERVAL_WORK_MS] ?: 40000L }
+    val intervalRestMs: Flow<Long> = context.dataStore.data.map { it[INTERVAL_REST_MS] ?: 20000L }
+    val intervalRounds: Flow<Int> = context.dataStore.data.map { it[INTERVAL_ROUNDS] ?: 8 }
+
+    suspend fun setIntervalConfig(name: String, workMs: Long, restMs: Long, rounds: Int) {
+        context.dataStore.edit {
+            it[INTERVAL_NAME] = name
+            it[INTERVAL_WORK_MS] = workMs
+            it[INTERVAL_REST_MS] = restMs
+            it[INTERVAL_ROUNDS] = rounds
+        }
     }
 
     val customIntervalTemplates: Flow<String> = context.dataStore.data.map {
@@ -36,7 +54,7 @@ class SettingsRepository(private val context: Context) {
     }
 
     val hasAnyWidgetActive: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        (0..2).any { i -> prefs[booleanPreferencesKey("widget_${i}_active")] == true }
+        (0..3).any { i -> prefs[booleanPreferencesKey("widget_${i}_active")] == true }
     }
 
     // Dynamic Indexed Preferences for Multi-Widget (up to 5 concurrent widgets)
@@ -48,6 +66,7 @@ class SettingsRepository(private val context: Context) {
         it[stringPreferencesKey("widget_${index}_type")] ?: when (index) {
             1 -> "countdown"
             2 -> "counter"
+            3 -> "intervals"
             else -> "stopwatch"
         }
     }

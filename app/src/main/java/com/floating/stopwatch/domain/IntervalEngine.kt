@@ -22,17 +22,32 @@ data class IntervalStage(
 
 data class IntervalTemplate(
     val id: String,
-    val name: String,
-    val stages: List<IntervalStage>,
-    val repetitions: Int
-)
+    val name: String, // Default = "HIT"
+    val workDurationMs: Long = 40000L,
+    val restDurationMs: Long = 20000L,
+    val repetitions: Int = 8
+) {
+    val stages: List<IntervalStage>
+        get() = listOf(
+            IntervalStage("s1", "WORK", workDurationMs, 0, IntervalStageType.WORK),
+            IntervalStage("s2", "REST", restDurationMs, 1, IntervalStageType.REST)
+        )
+}
 
 class IntervalEngine {
     private val _state = MutableStateFlow(IntervalState.IDLE)
     val state: StateFlow<IntervalState> = _state.asStateFlow()
 
-    private val _activeTemplate = MutableStateFlow<IntervalTemplate?>(null)
-    val activeTemplate: StateFlow<IntervalTemplate?> = _activeTemplate.asStateFlow()
+    private val _activeTemplate = MutableStateFlow(
+        IntervalTemplate(
+            id = "default_hit",
+            name = "HIT",
+            workDurationMs = 40000L,
+            restDurationMs = 20000L,
+            repetitions = 8
+        )
+    )
+    val activeTemplate: StateFlow<IntervalTemplate> = _activeTemplate.asStateFlow()
 
     private val _currentStageIndex = MutableStateFlow(0)
     val currentStageIndex: StateFlow<Int> = _currentStageIndex.asStateFlow()
@@ -40,79 +55,46 @@ class IntervalEngine {
     private val _currentRound = MutableStateFlow(1)
     val currentRound: StateFlow<Int> = _currentRound.asStateFlow()
 
-    private val _stageRemainingMs = MutableStateFlow(0L)
+    private val _stageRemainingMs = MutableStateFlow(40000L)
     val stageRemainingMs: StateFlow<Long> = _stageRemainingMs.asStateFlow()
 
     private var job: Job? = null
     private var lastTimeMs = 0L
 
-    companion object {
-        val BUILT_IN_TEMPLATES = listOf(
-            IntervalTemplate(
-                id = "hiit",
-                name = "HIIT",
-                stages = listOf(
-                    IntervalStage("s1", "WORK", 40000L, 0, IntervalStageType.WORK),
-                    IntervalStage("s2", "REST", 20000L, 1, IntervalStageType.REST)
-                ),
-                repetitions = 8
-            ),
-            IntervalTemplate(
-                id = "tabata",
-                name = "TABATA",
-                stages = listOf(
-                    IntervalStage("s1", "WORK", 20000L, 0, IntervalStageType.WORK),
-                    IntervalStage("s2", "REST", 10000L, 1, IntervalStageType.REST)
-                ),
-                repetitions = 8
-            ),
-            IntervalTemplate(
-                id = "pomodoro",
-                name = "POMODORO",
-                stages = listOf(
-                    IntervalStage("s1", "WORK", 1500000L, 0, IntervalStageType.WORK),
-                    IntervalStage("s2", "REST", 300000L, 1, IntervalStageType.REST)
-                ),
-                repetitions = 4
-            ),
-            IntervalTemplate(
-                id = "study",
-                name = "STUDY",
-                stages = listOf(
-                    IntervalStage("s1", "WORK", 3000000L, 0, IntervalStageType.WORK),
-                    IntervalStage("s2", "REST", 600000L, 1, IntervalStageType.REST)
-                ),
-                repetitions = 4
-            ),
-            IntervalTemplate(
-                id = "workout",
-                name = "WORKOUT",
-                stages = listOf(
-                    IntervalStage("s1", "WORK", 45000L, 0, IntervalStageType.WORK),
-                    IntervalStage("s2", "REST", 15000L, 1, IntervalStageType.REST)
-                ),
-                repetitions = 12
-            )
-        )
-    }
-
-    init {
-        loadTemplate(BUILT_IN_TEMPLATES[0])
-    }
-
     fun loadTemplate(template: IntervalTemplate) {
-        pause()
+        val isActiveRun = _state.value == IntervalState.RUNNING || _state.value == IntervalState.PAUSED
         _activeTemplate.value = template
+
+        // If running or paused, update template configuration for subsequent rounds/stages without interrupting active stage timer
+        if (isActiveRun) {
+            return
+        }
+
+        pause()
         _currentStageIndex.value = 0
         _currentRound.value = 1
-        val firstStageDuration = template.stages.firstOrNull()?.durationMs ?: 0L
-        _stageRemainingMs.value = firstStageDuration
+        _stageRemainingMs.value = template.workDurationMs
         _state.value = IntervalState.IDLE
     }
 
+    fun renameTemplate(newName: String) {
+        val current = _activeTemplate.value
+        _activeTemplate.value = current.copy(name = newName)
+    }
+
+    fun updateDurations(workMs: Long, restMs: Long, reps: Int) {
+        val current = _activeTemplate.value
+        val updated = current.copy(workDurationMs = workMs, restDurationMs = restMs, repetitions = reps)
+        _activeTemplate.value = updated
+        if (_state.value == IntervalState.IDLE) {
+            _stageRemainingMs.value = if (_currentStageIndex.value == 0) workMs else restMs
+        }
+    }
+
     fun start(scope: CoroutineScope) {
-        val template = _activeTemplate.value ?: return
-        if (template.stages.isEmpty()) return
+        val template = _activeTemplate.value
+        val stages = template.stages
+        if (stages.isEmpty()) return
 
         if (_state.value == IntervalState.COMPLETED || _state.value == IntervalState.CANCELLED) {
             reset()
@@ -131,7 +113,7 @@ class IntervalEngine {
 
                 var rem = _stageRemainingMs.value - delta
                 if (rem <= 0) {
-                    val currentStages = _activeTemplate.value?.stages ?: emptyList()
+                    val currentStages = _activeTemplate.value.stages
                     val nextIdx = _currentStageIndex.value + 1
                     if (nextIdx < currentStages.size) {
                         _currentStageIndex.value = nextIdx
@@ -139,7 +121,7 @@ class IntervalEngine {
                     } else {
                         // Round finished
                         val nextRound = _currentRound.value + 1
-                        val maxRounds = _activeTemplate.value?.repetitions ?: 1
+                        val maxRounds = _activeTemplate.value.repetitions
                         if (nextRound <= maxRounds) {
                             _currentRound.value = nextRound
                             _currentStageIndex.value = 0
@@ -170,8 +152,7 @@ class IntervalEngine {
         pause()
         _currentStageIndex.value = 0
         _currentRound.value = 1
-        val firstStageDuration = _activeTemplate.value?.stages?.firstOrNull()?.durationMs ?: 0L
-        _stageRemainingMs.value = firstStageDuration
+        _stageRemainingMs.value = _activeTemplate.value.workDurationMs
         _state.value = IntervalState.IDLE
     }
 
@@ -181,17 +162,16 @@ class IntervalEngine {
     }
 
     fun getCurrentStage(): IntervalStage? {
-        val stages = _activeTemplate.value?.stages ?: return null
+        val stages = _activeTemplate.value.stages
         val idx = _currentStageIndex.value
         return if (idx in stages.indices) stages[idx] else null
     }
 
     fun getNextStage(): IntervalStage? {
-        val stages = _activeTemplate.value?.stages ?: return null
+        val stages = _activeTemplate.value.stages
         val idx = _currentStageIndex.value + 1
         if (idx in stages.indices) return stages[idx]
-        // Next round's first stage
-        if (_currentRound.value < (_activeTemplate.value?.repetitions ?: 1)) {
+        if (_currentRound.value < _activeTemplate.value.repetitions) {
             return stages.firstOrNull()
         }
         return null

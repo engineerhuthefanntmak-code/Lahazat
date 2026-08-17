@@ -66,6 +66,7 @@ class StopwatchService : Service() {
 
         private var sharedEngine: StopwatchEngine? = null
         private var sharedCountdownEngine: CountdownEngine? = null
+        private var sharedIntervalEngine: com.floating.stopwatch.domain.IntervalEngine? = null
 
         fun getEngine(): StopwatchEngine {
             if (sharedEngine == null) {
@@ -79,6 +80,13 @@ class StopwatchService : Service() {
                 sharedCountdownEngine = CountdownEngine()
             }
             return sharedCountdownEngine!!
+        }
+
+        fun getIntervalEngine(): com.floating.stopwatch.domain.IntervalEngine {
+            if (sharedIntervalEngine == null) {
+                sharedIntervalEngine = com.floating.stopwatch.domain.IntervalEngine()
+            }
+            return sharedIntervalEngine!!
         }
 
         fun triggerHapticOnAll(intensity: String, effect: String) {
@@ -975,6 +983,43 @@ class StopwatchService : Service() {
                                         .clip(CircleShape)
                                         .background(Color(0xFFFF9500))
                                 )
+                            }
+                        } else if (widgetType == "intervals") {
+                            val intervalEngine = getIntervalEngine()
+                            val intervalState by intervalEngine.state.collectAsState()
+                            val stageRemainingMs by intervalEngine.stageRemainingMs.collectAsState()
+                            val currentStage = intervalEngine.getCurrentStage()
+                            val currentRound by intervalEngine.currentRound.collectAsState()
+                            val activeTemplate by intervalEngine.activeTemplate.collectAsState()
+
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = currentStage?.name?.uppercase() ?: "INTERVAL",
+                                    style = TextStyle(
+                                        color = accentColor,
+                                        fontSize = (10.sp.value * fontSizeScale).sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
+                                    )
+                                )
+                                TimeDisplay(
+                                    elapsedTimeMs = stageRemainingMs,
+                                    showCentiseconds = true,
+                                    baseStyle = TextStyle(color = accentColor, fontSize = 20.sp),
+                                    scaleFactor = fontSizeScale,
+                                    accentColor = accentColor,
+                                    gradientGoldEnabled = false
+                                )
+                                if (activeTemplate != null) {
+                                    Text(
+                                        text = "ROUND $currentRound/${activeTemplate!!.repetitions}",
+                                        style = TextStyle(
+                                            color = LuxuryColors.WarmGray,
+                                            fontSize = (9.sp.value * fontSizeScale).sp,
+                                            fontWeight = FontWeight.Light
+                                        )
+                                    )
+                                }
                             }
                         } else {
                             TimeDisplay(

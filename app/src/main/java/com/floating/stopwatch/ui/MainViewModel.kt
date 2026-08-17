@@ -11,13 +11,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+import com.floating.stopwatch.domain.IntervalEngine
+
 enum class AppMode {
-    Stopwatch, Countdown, Counter
+    Stopwatch, Countdown, Counter, Intervals
 }
 
 class MainViewModel(
     val engine: StopwatchEngine,
-    val countdownEngine: CountdownEngine = CountdownEngine()
+    val countdownEngine: CountdownEngine = CountdownEngine(),
+    val intervalEngine: IntervalEngine = IntervalEngine()
 ) : ViewModel() {
 
     val currentMode = MutableStateFlow(AppMode.Stopwatch)
@@ -38,7 +41,8 @@ class MainViewModel(
         val nextMode = when (currentMode.value) {
             AppMode.Stopwatch -> AppMode.Countdown
             AppMode.Countdown -> AppMode.Counter
-            AppMode.Counter -> AppMode.Stopwatch
+            AppMode.Counter -> AppMode.Intervals
+            AppMode.Intervals -> AppMode.Stopwatch
         }
         currentMode.value = nextMode
     }

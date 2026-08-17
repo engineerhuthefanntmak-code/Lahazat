@@ -24,6 +24,15 @@ class SettingsRepository(private val context: Context) {
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
         val FLOATING_PADDING = floatPreferencesKey("floating_padding")
         val FLOATING_OPACITY = floatPreferencesKey("floating_opacity")
+        val CUSTOM_INTERVAL_TEMPLATES = stringPreferencesKey("custom_interval_templates")
+    }
+
+    val customIntervalTemplates: Flow<String> = context.dataStore.data.map {
+        it[CUSTOM_INTERVAL_TEMPLATES] ?: ""
+    }
+
+    suspend fun setCustomIntervalTemplates(json: String) {
+        context.dataStore.edit { it[CUSTOM_INTERVAL_TEMPLATES] = json }
     }
 
     val hasAnyWidgetActive: Flow<Boolean> = context.dataStore.data.map { prefs ->

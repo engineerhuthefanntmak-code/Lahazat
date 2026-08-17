@@ -34,6 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.floating.stopwatch.domain.IntervalEngine
+import com.floating.stopwatch.domain.IntervalStage
+import com.floating.stopwatch.domain.IntervalStageType
+import com.floating.stopwatch.domain.IntervalState
+import com.floating.stopwatch.domain.IntervalTemplate
 import com.floating.stopwatch.domain.Lap
 import com.floating.stopwatch.domain.StopwatchState
 import com.floating.stopwatch.ui.AppMode
@@ -135,6 +140,7 @@ fun MainScreen(
                     AppMode.Stopwatch -> "STOPWATCH ▾"
                     AppMode.Countdown -> "COUNTDOWN ▾"
                     AppMode.Counter -> "COUNTER ▾"
+                    AppMode.Intervals -> "INTERVALS ▾"
                 },
                 style = TextStyle(
                     color = currentTextColor,
@@ -357,6 +363,92 @@ fun MainScreen(
                         )
                     )
                 }
+                AppMode.Intervals -> {
+                    val intervalEngine = viewModel.intervalEngine
+                    val intervalState by intervalEngine.state.collectAsState()
+                    val activeTemplate by intervalEngine.activeTemplate.collectAsState()
+                    val currentRound by intervalEngine.currentRound.collectAsState()
+                    val stageRemainingMs by intervalEngine.stageRemainingMs.collectAsState()
+                    val currentStage = intervalEngine.getCurrentStage()
+                    val nextStage = intervalEngine.getNextStage()
+
+                    var showBuilderDialog by remember { mutableStateOf(false) }
+
+                    if (activeTemplate != null) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = activeTemplate!!.name.uppercase(),
+                                    style = TextStyle(color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "[EDIT]",
+                                    style = TextStyle(color = currentGrayColor, fontSize = 10.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp),
+                                    modifier = Modifier
+                                        .clickable { showBuilderDialog = true }
+                                        .padding(4.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = currentStage?.name?.uppercase() ?: "READY",
+                                style = TextStyle(
+                                    color = if (currentStage?.type == IntervalStageType.WORK) accentColor else currentTextColor,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 3.sp
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            TimeDisplay(
+                                elapsedTimeMs = stageRemainingMs,
+                                showCentiseconds = true,
+                                baseStyle = TextStyle(color = currentTextColor, fontSize = 48.sp),
+                                scaleFactor = mainSize,
+                                accentColor = accentColor,
+                                modifier = Modifier.scale(scalePulse)
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "ROUND $currentRound / ${activeTemplate!!.repetitions}",
+                                style = TextStyle(color = currentGrayColor, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
+                            )
+
+                            if (nextStage != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                val nextSecs = nextStage.durationMs / 1000
+                                Text(
+                                    text = "NEXT: ${nextStage.name} (${nextSecs}s)",
+                                    style = TextStyle(color = currentGrayColor.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Normal, letterSpacing = 1.sp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (showBuilderDialog && activeTemplate != null) {
+                        IntervalBuilderDialog(
+                            initialTemplate = activeTemplate!!,
+                            onDismiss = { showBuilderDialog = false },
+                            onSave = { updatedTemplate ->
+                                intervalEngine.loadTemplate(updatedTemplate)
+                                showBuilderDialog = false
+                            }
+                        )
+                    }
+                }
             }
         }
 
@@ -370,6 +462,62 @@ fun MainScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             when (currentMode) {
+                AppMode.Intervals -> {
+                    val intervalEngine = viewModel.intervalEngine
+                    val intervalState by intervalEngine.state.collectAsState()
+
+                    // Reset / Stop button
+                    Box(
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .background(Color.Transparent)
+                            .clickable {
+                                hapticController.trigger(hapticIntensity, "Reset")
+                                intervalEngine.reset()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            shape = CircleShape,
+                            color = Color.Transparent,
+                            border = BorderStroke(1.dp, currentGrayColor)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "RESET",
+                                    style = TextStyle(color = currentTextColor, fontSize = 11.sp, letterSpacing = 1.sp)
+                                )
+                            }
+                        }
+                    }
+
+                    val isRunning = intervalState == IntervalState.RUNNING
+                    val intervalBtnColor = if (isRunning) Color(0xFF9E2A2B) else accentColor
+                    Box(
+                        modifier = Modifier
+                            .size(92.dp)
+                            .clip(CircleShape)
+                            .background(intervalBtnColor)
+                            .clickable {
+                                if (isRunning) {
+                                    hapticController.trigger(hapticIntensity, "Stop")
+                                    intervalEngine.pause()
+                                } else {
+                                    hapticController.trigger(hapticIntensity, "Start")
+                                    intervalEngine.start(scope)
+                                    scope.launch { settingsRepository.setWidgetActive(0, true) }
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isRunning) "PAUSE" else "START",
+                            style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        )
+                    }
+                }
                 AppMode.Stopwatch -> {
                     // Lap / Reset button
                     Box(
@@ -714,6 +862,173 @@ fun MainScreen(
                             grayColor = currentGrayColor
                         )
                         Divider(color = currentGrayColor.copy(alpha = 0.2f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun IntervalBuilderDialog(
+    initialTemplate: IntervalTemplate,
+    onDismiss: () -> Unit,
+    onSave: (IntervalTemplate) -> Unit
+) {
+    var templateName by remember { mutableStateOf(initialTemplate.name) }
+    var repetitions by remember { mutableIntStateOf(initialTemplate.repetitions) }
+    var stages by remember { mutableStateOf(initialTemplate.stages) }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "INTERVAL BUILDER",
+                    style = TextStyle(color = LuxuryColors.AccentGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = templateName,
+                    onValueChange = { templateName = it },
+                    label = { Text("Template Name", color = LuxuryColors.WarmGray, fontSize = 10.sp) },
+                    textStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("REPETITIONS: $repetitions", color = LuxuryColors.WarmGray, fontSize = 11.sp)
+                    Row {
+                        Box(
+                            modifier = Modifier
+                                .clickable { if (repetitions > 1) repetitions -= 1 }
+                                .padding(8.dp)
+                        ) {
+                            Text("-", color = LuxuryColors.AccentGold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clickable { repetitions += 1 }
+                                .padding(8.dp)
+                        ) {
+                            Text("+", color = LuxuryColors.AccentGold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text("STAGES (${stages.size})", color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 1.sp)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 220.dp)
+                ) {
+                    items(stages.size) { index ->
+                        val stage = stages[index]
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.1f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(stage.name, color = LuxuryColors.CreamyWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text("${stage.durationMs / 1000}s (${stage.type})", color = LuxuryColors.WarmGray, fontSize = 10.sp)
+                                }
+                                Row {
+                                    Text(
+                                        "DUP",
+                                        color = LuxuryColors.AccentGold,
+                                        fontSize = 10.sp,
+                                        modifier = Modifier
+                                            .clickable {
+                                                val dup = stage.copy(id = "s_${System.currentTimeMillis()}", order = stages.size)
+                                                stages = stages + dup
+                                            }
+                                            .padding(4.dp)
+                                    )
+                                    if (stages.size > 1) {
+                                        Text(
+                                            "DEL",
+                                            color = Color(0xFFC94A4A),
+                                            fontSize = 10.sp,
+                                            modifier = Modifier
+                                                .clickable {
+                                                    stages = stages.filterIndexed { i, _ -> i != index }
+                                                }
+                                                .padding(4.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Button(
+                        onClick = {
+                            val newStage = IntervalStage(
+                                id = "s_${System.currentTimeMillis()}",
+                                name = "WORK",
+                                durationMs = 30000L,
+                                order = stages.size,
+                                type = IntervalStageType.WORK
+                            )
+                            stages = stages + newStage
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.3f))
+                    ) {
+                        Text("+ STAGE", color = LuxuryColors.CreamyWhite, fontSize = 10.sp)
+                    }
+
+                    Button(
+                        onClick = {
+                            val updated = IntervalTemplate(
+                                id = initialTemplate.id,
+                                name = templateName,
+                                stages = stages,
+                                repetitions = repetitions
+                            )
+                            onSave(updated)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.AccentGold)
+                    ) {
+                        Text("SAVE", color = LuxuryColors.WarmBlack, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

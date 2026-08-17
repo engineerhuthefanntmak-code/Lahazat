@@ -696,7 +696,7 @@ fun MainScreen(
                                         isPressingReset = true
                                         var resetTriggered = false
                                         val job = scope.launch {
-                                            kotlinx.coroutines.delay(2000L)
+                                            kotlinx.coroutines.delay(500L)
                                             resetTriggered = true
                                             hapticController.trigger(hapticIntensity, "Reset")
                                             viewModel.resetCounter()

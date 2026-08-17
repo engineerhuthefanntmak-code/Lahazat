@@ -19,7 +19,6 @@ class SettingsRepository(private val context: Context) {
         val HAPTIC_INTENSITY = stringPreferencesKey("haptic_intensity")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val SHAPE_PRESET = stringPreferencesKey("shape_preset")
-        val MESH_GRADIENT_ENABLED = booleanPreferencesKey("mesh_gradient_enabled")
         val VOLUME_COUNTER_SCREEN_OFF_ENABLED = booleanPreferencesKey("volume_counter_screen_off_enabled")
         val LAYOUT_ORIENTATION = stringPreferencesKey("layout_orientation")
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
@@ -76,13 +75,6 @@ class SettingsRepository(private val context: Context) {
         it[floatPreferencesKey("widget_${index}_font_size_scale")] ?: 1.0f
     }
 
-    fun getWidgetGradientEnabled(index: Int): Flow<Boolean> = context.dataStore.data.map {
-        it[booleanPreferencesKey("widget_${index}_gradient_enabled")] ?: false
-    }
-
-    fun getWidgetGradientColor(index: Int): Flow<String> = context.dataStore.data.map {
-        it[stringPreferencesKey("widget_${index}_gradient_color")] ?: "Gold"
-    }
 
     fun getWidgetCountdownDuration(index: Int): Flow<Int> = context.dataStore.data.map {
         it[intPreferencesKey("widget_${index}_countdown_duration")] ?: 300 // 5 minutes default
@@ -127,13 +119,6 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[floatPreferencesKey("widget_${index}_font_size_scale")] = scale }
     }
 
-    suspend fun setWidgetGradientEnabled(index: Int, enabled: Boolean) {
-        context.dataStore.edit { it[booleanPreferencesKey("widget_${index}_gradient_enabled")] = enabled }
-    }
-
-    suspend fun setWidgetGradientColor(index: Int, colorName: String) {
-        context.dataStore.edit { it[stringPreferencesKey("widget_${index}_gradient_color")] = colorName }
-    }
 
     suspend fun setWidgetCountdownDuration(index: Int, seconds: Int) {
         context.dataStore.edit { it[intPreferencesKey("widget_${index}_countdown_duration")] = seconds }
@@ -142,7 +127,6 @@ class SettingsRepository(private val context: Context) {
     val themeMode: Flow<String> = context.dataStore.data.map { it[THEME_MODE] ?: "Midnight" }
 
     val shapePreset: Flow<String> = context.dataStore.data.map { it[SHAPE_PRESET] ?: "rounded" }
-    val meshGradientEnabled: Flow<Boolean> = context.dataStore.data.map { it[MESH_GRADIENT_ENABLED] ?: true }
     val volumeCounterScreenOffEnabled: Flow<Boolean> = context.dataStore.data.map { it[VOLUME_COUNTER_SCREEN_OFF_ENABLED] ?: false }
     val layoutOrientation: Flow<String> = context.dataStore.data.map { it[LAYOUT_ORIENTATION] ?: "horizontal" }
     val activeWidgetsCount: Flow<Int> = context.dataStore.data.map { it[ACTIVE_WIDGETS_COUNT] ?: 1 }
@@ -190,9 +174,6 @@ class SettingsRepository(private val context: Context) {
         context.dataStore.edit { it[SHAPE_PRESET] = preset }
     }
 
-    suspend fun setMeshGradientEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[MESH_GRADIENT_ENABLED] = enabled }
-    }
 
     suspend fun setVolumeCounterScreenOffEnabled(enabled: Boolean) {
         context.dataStore.edit { it[VOLUME_COUNTER_SCREEN_OFF_ENABLED] = enabled }

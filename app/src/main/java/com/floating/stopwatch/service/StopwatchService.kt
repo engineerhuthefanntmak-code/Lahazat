@@ -97,6 +97,10 @@ class StopwatchService : Service() {
             }
             val newVal = getEngine().counterValue.value.toInt()
             activeServices.forEach { service ->
+                service.serviceScope.launch {
+                    val intensity = service.settingsRepository.hapticIntensity.first()
+                    service.hapticController.trigger(intensity, if (increment) "Lap" else "Reset")
+                }
                 service.checkCounterMilestoneAndVibrate(newVal)
             }
             return true
@@ -360,7 +364,6 @@ class StopwatchService : Service() {
 
                 val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
                 val fontSizeScale by settingsRepository.getWidgetFontSizeScale(index).collectAsState(initial = 1.0f)
-                val gradientEnabled by settingsRepository.getWidgetGradientEnabled(index).collectAsState(initial = false)
                 val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
                 val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
                 val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
@@ -428,7 +431,7 @@ class StopwatchService : Service() {
                         accentColor = accentColor,
                         shapePreset = shapePreset,
                         fontSizeScale = fontSizeScale,
-                        gradientEnabled = gradientEnabled,
+                        gradientEnabled = false,
                         layoutOrientation = layoutOrientation,
                         paddingDpValue = floatingPadding,
                         opacity = floatingOpacity,
@@ -774,6 +777,10 @@ class StopwatchService : Service() {
             getEngine().decrementCounter()
         }
         val newVal = getEngine().counterValue.value.toInt()
+        serviceScope.launch {
+            val intensity = settingsRepository.hapticIntensity.first()
+            hapticController.trigger(intensity, if (increment) "Lap" else "Reset")
+        }
         checkCounterMilestoneAndVibrate(newVal)
     }
 
@@ -952,9 +959,9 @@ class StopwatchService : Service() {
                     ) {
                         if (widgetType == "counter") {
                             Text(
-                                text = "TAP: $tapCount",
+                                text = "$tapCount",
                                 style = TextStyle(
-                                    color = if (isVolumeActive) Color(0xFFFF9500) else accentColor,
+                                    color = if (isVolumeActive) accentColor else accentColor,
                                     fontSize = (22.sp.value * fontSizeScale).sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = FontFamily.Monospace

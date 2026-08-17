@@ -257,9 +257,17 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
         if (mainViewModel.currentMode.value == AppMode.Counter) {
             if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
+                hapticController.trigger(
+                    lifecycleScope.run { "Medium" },
+                    "Lap"
+                )
                 mainViewModel.incrementCounter()
                 return true
             } else if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) {
+                hapticController.trigger(
+                    lifecycleScope.run { "Medium" },
+                    "Reset"
+                )
                 mainViewModel.decrementCounter()
                 return true
             }

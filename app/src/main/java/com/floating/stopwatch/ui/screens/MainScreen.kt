@@ -82,18 +82,19 @@ fun MainScreen(
 
     // Layout configuration based on the illumination Mode
     val currentBgColor = when (themeMode) {
-        "Midnight" -> Color(0xFF000000)
-        "Warm Paper" -> Color(0xFFF7F5F0)
+        "Midnight", "Midnight Dark", "Obsidian Dark" -> Color(0xFF000000)
+        "Warm Paper", "Warm Paper Light" -> Color(0xFFF7F5F0)
+        "Pure White Light" -> Color(0xFFFFFFFF)
         else -> LuxuryColors.WarmBlack
     }
 
     val currentTextColor = when (themeMode) {
-        "Warm Paper" -> Color(0xFF1C1A17)
+        "Warm Paper", "Warm Paper Light", "Pure White Light" -> Color(0xFF1C1A17)
         else -> LuxuryColors.CreamyWhite
     }
 
     val currentGrayColor = when (themeMode) {
-        "Warm Paper" -> Color(0xFF6B6661)
+        "Warm Paper", "Warm Paper Light", "Pure White Light" -> Color(0xFF6B6661)
         else -> LuxuryColors.WarmGray
     }
 
@@ -498,15 +499,31 @@ fun MainScreen(
                     }
                 }
                 AppMode.Counter -> {
-                    // Decrement Button
+                    // Reset Button (2-Second Continuous Press)
+                    var isPressingReset by remember { mutableStateOf(false) }
                     Box(
                         modifier = Modifier
                             .size(68.dp)
                             .clip(CircleShape)
                             .background(Color.Transparent)
-                            .clickable {
-                                hapticController.trigger(hapticIntensity, "Reset")
-                                viewModel.decrementCounter()
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = {
+                                        isPressingReset = true
+                                        var resetTriggered = false
+                                        val job = scope.launch {
+                                            kotlinx.coroutines.delay(2000L)
+                                            resetTriggered = true
+                                            hapticController.trigger(hapticIntensity, "Reset")
+                                            viewModel.resetCounter()
+                                        }
+                                        val released = tryAwaitRelease()
+                                        isPressingReset = false
+                                        if (!resetTriggered) {
+                                            job.cancel()
+                                        }
+                                    }
+                                )
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -514,12 +531,20 @@ fun MainScreen(
                             modifier = Modifier.fillMaxSize(),
                             shape = CircleShape,
                             color = Color.Transparent,
-                            border = BorderStroke(1.dp, currentGrayColor)
+                            border = BorderStroke(
+                                1.dp,
+                                if (isPressingReset) accentColor else currentGrayColor
+                            )
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
-                                    text = "- 1",
-                                    style = TextStyle(color = currentTextColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                    text = "RESET",
+                                    style = TextStyle(
+                                        color = if (isPressingReset) accentColor else currentTextColor,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Light,
+                                        letterSpacing = 1.sp
+                                    )
                                 )
                             }
                         }

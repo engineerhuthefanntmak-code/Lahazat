@@ -49,13 +49,13 @@ fun SettingsScreen(
     }
 
     val shapes = listOf("rounded", "capsule", "circle", "sharp", "glass")
-    val themeModes = listOf("Midnight", "Warm Paper", "Obsidian Dark")
+    val themeModes = listOf("Midnight Dark", "Warm Paper Light", "Obsidian Dark", "Pure White Light")
     val presets = listOf("Glass Premium", "Obsidian", "Titanium", "Ultra Minimal")
     val intensities = listOf("Off", "Light", "Medium", "Strong")
     val colorPresets = listOf("Gold", "Galaxy Blue", "Titanium", "Emerald", "Sapphire", "Violet", "Rose", "Ice", "Amber", "Pure White", "Custom")
 
     val categories = listOf(
-        "Appearance", "Main Screen", "Stopwatch", "Countdown", "Counter",
+        "Appearance", "Stopwatch", "Countdown", "Counter",
         "Floating Widgets", "Sounds & Haptics", "Advanced"
     )
 
@@ -102,13 +102,20 @@ fun SettingsScreen(
                         .padding(bottom = 12.dp)
                         .clickable { activeDialogCategory = cat }
                 ) {
+                    val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
+                    val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
+                    val activeAccentColor = if (colorPreset == "Custom") {
+                        try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
+                    } else {
+                        LuxuryColors.fromName(colorPreset)
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = cat.uppercase(), color = LuxuryColors.CreamyWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                        Text(text = "▸", color = LuxuryColors.AccentGold, fontSize = 14.sp)
+                        Text(text = "▸", color = activeAccentColor, fontSize = 14.sp)
                     }
                 }
             }
@@ -117,6 +124,11 @@ fun SettingsScreen(
 
     // Category Popup Dialogs
     activeDialogCategory?.let { category ->
+        val activeAccentColor = if (colorPreset == "Custom") {
+            try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
+        } else {
+            LuxuryColors.fromName(colorPreset)
+        }
         Dialog(onDismissRequest = { activeDialogCategory = null }) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
@@ -137,7 +149,7 @@ fun SettingsScreen(
                     ) {
                         Text(
                             text = category.uppercase(),
-                            style = TextStyle(color = LuxuryColors.AccentGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                            style = TextStyle(color = activeAccentColor, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                         )
                         Text(
                             text = "✕",
@@ -157,7 +169,7 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setThemeMode(mode) } }.padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    RadioButton(selected = themeMode == mode, onClick = { scope.launch { settingsRepository.setThemeMode(mode) } }, colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold))
+                                    RadioButton(selected = themeMode == mode, onClick = { scope.launch { settingsRepository.setThemeMode(mode) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(text = mode, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
                                 }
@@ -171,7 +183,7 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setStylePreset(preset) } }.padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    RadioButton(selected = stylePreset == preset, onClick = { scope.launch { settingsRepository.setStylePreset(preset) } }, colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold))
+                                    RadioButton(selected = stylePreset == preset, onClick = { scope.launch { settingsRepository.setStylePreset(preset) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(text = preset, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
                                 }
@@ -185,21 +197,10 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setColorPreset(color) } }.padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    RadioButton(selected = colorPreset == color, onClick = { scope.launch { settingsRepository.setColorPreset(color) } }, colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold))
+                                    RadioButton(selected = colorPreset == color, onClick = { scope.launch { settingsRepository.setColorPreset(color) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(text = color, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
                                 }
-                            }
-                        }
-                        "Main Screen" -> {
-                            val meshGradientEnabled by settingsRepository.meshGradientEnabled.collectAsState(initial = true)
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(text = "ANIMATED MESH GRADIENT BACKDROP", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                Switch(checked = meshGradientEnabled, onCheckedChange = { scope.launch { settingsRepository.setMeshGradientEnabled(it) } }, colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold))
                             }
                         }
                         "Stopwatch" -> WidgetCategorySettings(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
@@ -216,7 +217,7 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setShapePreset(shape) } }.padding(vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    RadioButton(selected = shapePreset == shape, onClick = { scope.launch { settingsRepository.setShapePreset(shape) } }, colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold))
+                                    RadioButton(selected = shapePreset == shape, onClick = { scope.launch { settingsRepository.setShapePreset(shape) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(text = shape.uppercase(), color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
                                 }
@@ -225,12 +226,12 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.height(12.dp))
 
                             Text(text = "PADDING: ${floatingPadding.toInt()}dp", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                            Slider(value = floatingPadding, onValueChange = { scope.launch { settingsRepository.setFloatingPadding(it) } }, valueRange = 0.0f..32.0f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
+                            Slider(value = floatingPadding, onValueChange = { scope.launch { settingsRepository.setFloatingPadding(it) } }, valueRange = 0.0f..32.0f, colors = SliderDefaults.colors(thumbColor = activeAccentColor))
 
                             Spacer(modifier = Modifier.height(8.dp))
 
                             Text(text = "OPACITY: ${(floatingOpacity * 100).toInt()}%", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                            Slider(value = floatingOpacity, onValueChange = { scope.launch { settingsRepository.setFloatingOpacity(it) } }, valueRange = 0.0f..1.0f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
+                            Slider(value = floatingOpacity, onValueChange = { scope.launch { settingsRepository.setFloatingOpacity(it) } }, valueRange = 0.0f..1.0f, colors = SliderDefaults.colors(thumbColor = activeAccentColor))
                         }
                         "Sounds & Haptics" -> {
                             Text(text = "HAPTIC FEEDBACK INTENSITY", color = LuxuryColors.WarmGray, fontSize = 10.sp)
@@ -239,7 +240,7 @@ fun SettingsScreen(
                                     modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setHapticIntensity(intensity) } }.padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    RadioButton(selected = hapticIntensity == intensity, onClick = { scope.launch { settingsRepository.setHapticIntensity(intensity) } }, colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold))
+                                    RadioButton(selected = hapticIntensity == intensity, onClick = { scope.launch { settingsRepository.setHapticIntensity(intensity) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(text = intensity, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
                                 }
@@ -255,7 +256,7 @@ fun SettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(text = "VOLUME KEYS COUNTER (SCREEN OFF)", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                Switch(checked = volumeCounterScreenOffEnabled, onCheckedChange = { scope.launch { settingsRepository.setVolumeCounterScreenOffEnabled(it) } }, colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold))
+                                Switch(checked = volumeCounterScreenOffEnabled, onCheckedChange = { scope.launch { settingsRepository.setVolumeCounterScreenOffEnabled(it) } }, colors = SwitchDefaults.colors(checkedThumbColor = activeAccentColor))
                             }
 
                             Row(
@@ -264,7 +265,7 @@ fun SettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(text = "VERTICAL DISPLAY ORIENTATION", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                Switch(checked = layoutOrientation == "vertical", onCheckedChange = { scope.launch { settingsRepository.setLayoutOrientation(if (it) "vertical" else "horizontal") } }, colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold))
+                                Switch(checked = layoutOrientation == "vertical", onCheckedChange = { scope.launch { settingsRepository.setLayoutOrientation(if (it) "vertical" else "horizontal") } }, colors = SwitchDefaults.colors(checkedThumbColor = activeAccentColor))
                             }
                         }
                     }
@@ -287,8 +288,6 @@ fun WidgetCategorySettings(
     val wHeight by settingsRepository.getWidgetHeight(index).collectAsState(initial = 56.0f)
     val saveDimensions by settingsRepository.getWidgetSaveDimensions(index).collectAsState(initial = true)
     val fontSizeScale by settingsRepository.getWidgetFontSizeScale(index).collectAsState(initial = 1.0f)
-    val gradientEnabled by settingsRepository.getWidgetGradientEnabled(index).collectAsState(initial = false)
-    val gradientColor by settingsRepository.getWidgetGradientColor(index).collectAsState(initial = "Gold")
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
@@ -322,30 +321,6 @@ fun WidgetCategorySettings(
         Text(text = "FONT SIZE SCALE: ${String.format("%.2f", fontSizeScale)}", color = LuxuryColors.WarmGray, fontSize = 10.sp)
         Slider(value = fontSizeScale, onValueChange = { scope.launch { settingsRepository.setWidgetFontSizeScale(index, it) } }, valueRange = 0.5f..1.5f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "GRADIENT DIGITS", color = LuxuryColors.CreamyWhite, fontSize = 10.sp)
-            Switch(checked = gradientEnabled, onCheckedChange = { scope.launch { settingsRepository.setWidgetGradientEnabled(index, it) } }, colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold))
-        }
-
-        if (gradientEnabled) {
-            Text(text = "GRADIENT COLOR", color = LuxuryColors.WarmGray, fontSize = 9.sp)
-            colorPresets.forEach { color ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setWidgetGradientColor(index, color) } }.padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(selected = gradientColor == color, onClick = { scope.launch { settingsRepository.setWidgetGradientColor(index, color) } }, colors = RadioButtonDefaults.colors(selectedColor = LuxuryColors.AccentGold))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = color, color = LuxuryColors.CreamyWhite, fontSize = 10.sp)
-                }
-            }
-        }
     }
 }
 

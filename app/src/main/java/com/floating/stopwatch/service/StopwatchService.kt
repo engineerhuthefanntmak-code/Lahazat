@@ -1028,8 +1028,8 @@ class StopwatchService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Floating Stopwatch & Focus Engine Active")
-            .setContentText("Tap to return to Settings and manage active widgets.")
+            .setContentTitle("FloatingSuite Active")
+            .setContentText("Tap to open FloatingSuite and manage active floating overlays.")
             .setSmallIcon(R.drawable.ic_stat_stopwatch)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)

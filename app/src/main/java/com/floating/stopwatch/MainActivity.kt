@@ -305,7 +305,7 @@ fun OverlayPermissionExplanationScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "The premium Luxury Minimal Stopwatch can float directly on top of your other active applications for real-time tracking. This requires the 'Display over other apps' system permission.",
+                text = "FloatingSuite allows your timers and overlays to float directly on top of active applications for real-time tracking. This requires system 'Display over other apps' permission.",
                 style = TextStyle(
                     color = LuxuryColors.WarmGray,
                     fontSize = 13.sp,

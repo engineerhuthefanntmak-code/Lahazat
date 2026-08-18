@@ -230,16 +230,29 @@ fun SettingsScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
+                            fun formatIntervalDuration(totalSecs: Int): String {
+                                val hrs = totalSecs / 3600
+                                val mins = (totalSecs % 3600) / 60
+                                val secs = totalSecs % 60
+                                return if (hrs > 0) {
+                                    String.format("%dh %02dm %02ds", hrs, mins, secs)
+                                } else if (mins > 0) {
+                                    String.format("%dm %02ds", mins, secs)
+                                } else {
+                                    "${secs}s"
+                                }
+                            }
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("WORK DURATION: ${workSecs}s", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                                Text("WORK DURATION: ${formatIntervalDuration(workSecs)}", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
                                 Slider(
                                     value = workSecs.toFloat(),
                                     onValueChange = { workSecs = it.toInt().coerceAtLeast(1) },
-                                    valueRange = 1f..300f,
+                                    valueRange = 1f..18000f,
                                     modifier = Modifier.width(140.dp),
                                     colors = SliderDefaults.colors(thumbColor = activeAccentColor)
                                 )
@@ -252,11 +265,11 @@ fun SettingsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("REST DURATION: ${restSecs}s", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                                Text("REST DURATION: ${formatIntervalDuration(restSecs)}", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
                                 Slider(
                                     value = restSecs.toFloat(),
                                     onValueChange = { restSecs = it.toInt().coerceAtLeast(1) },
-                                    valueRange = 1f..300f,
+                                    valueRange = 1f..3600f,
                                     modifier = Modifier.width(140.dp),
                                     colors = SliderDefaults.colors(thumbColor = activeAccentColor)
                                 )

@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.floating.stopwatch.domain.CompletionSoundPlayer
 import com.floating.stopwatch.domain.IntervalEngine
 import com.floating.stopwatch.domain.IntervalStage
 import com.floating.stopwatch.domain.IntervalStageType
@@ -102,6 +103,43 @@ fun MainScreen(
     DisposableEffect(Unit) {
         onDispose {
             autoHideJob?.cancel()
+        }
+    }
+
+    // Milestone Haptics for Counter (11, 33, 66, 99, 100)
+    val milestoneSet = remember { setOf(11L, 33L, 66L, 99L, 100L) }
+    var lastSignalledMilestone by remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(counterValue) {
+        if (counterValue in milestoneSet && counterValue != lastSignalledMilestone) {
+            hapticController.trigger(hapticIntensity, "CounterMilestone")
+            lastSignalledMilestone = counterValue
+        } else if (counterValue !in milestoneSet) {
+            lastSignalledMilestone = null
+        }
+    }
+
+    // Completion Sound Triggers
+    var lastCompletedCountdownTime by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(countdownRemainingMs, isCountdownRunning) {
+        if (countdownRemainingMs == 0L && !isCountdownRunning && lastCompletedCountdownTime != 0L && lastCompletedCountdownTime != null) {
+            CompletionSoundPlayer.playCompletionClick()
+            lastCompletedCountdownTime = 0L
+        } else if (countdownRemainingMs > 0L) {
+            lastCompletedCountdownTime = countdownRemainingMs
+        }
+    }
+
+    val intervalEngine = viewModel.intervalEngine
+    val intervalState by intervalEngine.state.collectAsState()
+    var lastSignalledIntervalState by remember { mutableStateOf<IntervalState?>(null) }
+
+    LaunchedEffect(intervalState) {
+        if (intervalState == IntervalState.COMPLETED && lastSignalledIntervalState != IntervalState.COMPLETED) {
+            CompletionSoundPlayer.playCompletionClick()
+            lastSignalledIntervalState = IntervalState.COMPLETED
+        } else if (intervalState != IntervalState.COMPLETED) {
+            lastSignalledIntervalState = intervalState
         }
     }
 
@@ -192,24 +230,78 @@ fun MainScreen(
                 )
             }
     ) {
-        // Settings click triggers navigation
-        Text(
-            text = "SETTINGS",
-            style = TextStyle(
-                color = currentGrayColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Light,
-                letterSpacing = 2.sp
-            ),
+        val context = androidx.compose.ui.platform.LocalContext.current
+
+        // Top Right: Floating Quick Access & Settings
+        Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .graphicsLayer { alpha = controlsAlpha }
-                .clickable {
-                    resetAutoHideTimer()
-                    onNavigateToSettings()
-                }
-                .padding(8.dp)
-        )
+                .graphicsLayer { alpha = controlsAlpha },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "FLOAT ↗",
+                style = TextStyle(
+                    color = accentColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 2.sp
+                ),
+                modifier = Modifier
+                    .clickable {
+                        resetAutoHideTimer()
+                        if (android.provider.Settings.canDrawOverlays(context)) {
+                            val intent = Intent(context, com.floating.stopwatch.service.StopwatchService::class.java)
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                context.startForegroundService(intent)
+                            } else {
+                                context.startService(intent)
+                            }
+                            val targetIndex = when (currentMode) {
+                                AppMode.Stopwatch -> 0
+                                AppMode.Countdown -> 1
+                                AppMode.Counter -> 2
+                                AppMode.Intervals -> 3
+                            }
+                            val targetType = when (currentMode) {
+                                AppMode.Stopwatch -> "stopwatch"
+                                AppMode.Countdown -> "countdown"
+                                AppMode.Counter -> "counter"
+                                AppMode.Intervals -> "intervals"
+                            }
+                            scope.launch {
+                                settingsRepository.setWidgetType(targetIndex, targetType)
+                                settingsRepository.setWidgetActive(targetIndex, true)
+                            }
+                        } else {
+                            val intent = Intent(
+                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:${context.packageName}")
+                            )
+                            context.startActivity(intent)
+                        }
+                    }
+                    .padding(8.dp)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = "SETTINGS",
+                style = TextStyle(
+                    color = currentGrayColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = 2.sp
+                ),
+                modifier = Modifier
+                    .clickable {
+                        resetAutoHideTimer()
+                        onNavigateToSettings()
+                    }
+                    .padding(8.dp)
+            )
+        }
 
         // Top label - Tapping cycles mode (Stopwatch -> Countdown -> Counter -> Intervals -> Stopwatch)
         Column(
@@ -460,8 +552,6 @@ fun MainScreen(
                     )
                 }
                 AppMode.Intervals -> {
-                    val intervalEngine = viewModel.intervalEngine
-                    val intervalState by intervalEngine.state.collectAsState()
                     val activeTemplate by intervalEngine.activeTemplate.collectAsState()
                     val currentRound by intervalEngine.currentRound.collectAsState()
                     val stageRemainingMs by intervalEngine.stageRemainingMs.collectAsState()
@@ -574,9 +664,6 @@ fun MainScreen(
         ) {
             when (currentMode) {
                 AppMode.Intervals -> {
-                    val intervalEngine = viewModel.intervalEngine
-                    val intervalState by intervalEngine.state.collectAsState()
-
                     // Reset / Stop button
                     Box(
                         modifier = Modifier
@@ -763,11 +850,11 @@ fun MainScreen(
                     }
                 }
                 AppMode.Counter -> {
-                    // Reset Button (2-Second Continuous Press)
+                    // Reset Button (0.5-Second Continuous Press)
                     var isPressingReset by remember { mutableStateOf(false) }
                     Box(
                         modifier = Modifier
-                            .size(68.dp)
+                            .size(64.dp)
                             .clip(CircleShape)
                             .background(Color.Transparent)
                             .pointerInput(Unit) {
@@ -815,10 +902,38 @@ fun MainScreen(
                         }
                     }
 
-                    // Increment Button
+                    // Decrement (-1) Button
                     Box(
                         modifier = Modifier
-                            .size(92.dp)
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(Color.Transparent)
+                            .clickable {
+                                resetAutoHideTimer()
+                                hapticController.trigger(hapticIntensity, "Lap")
+                                viewModel.decrementCounter()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            shape = CircleShape,
+                            color = Color.Transparent,
+                            border = BorderStroke(1.dp, currentGrayColor)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "− 1",
+                                    style = TextStyle(color = currentTextColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                )
+                            }
+                        }
+                    }
+
+                    // Increment (+1) Button
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
                             .clip(CircleShape)
                             .background(accentColor)
                             .clickable {
@@ -830,7 +945,7 @@ fun MainScreen(
                     ) {
                         Text(
                             text = "+ 1",
-                            style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         )
                     }
                 }
@@ -990,6 +1105,19 @@ fun MainScreen(
     }
 }
 
+fun formatIntervalDuration(totalSecs: Int): String {
+    val hrs = totalSecs / 3600
+    val mins = (totalSecs % 3600) / 60
+    val secs = totalSecs % 60
+    return if (hrs > 0) {
+        String.format("%dh %02dm %02ds", hrs, mins, secs)
+    } else if (mins > 0) {
+        String.format("%dm %02ds", mins, secs)
+    } else {
+        "${secs}s"
+    }
+}
+
 @Composable
 fun IntervalQuickEditDialog(
     initialTemplate: IntervalTemplate,
@@ -1037,11 +1165,11 @@ fun IntervalQuickEditDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("WORK DURATION: ${workSecs}s", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                    Text("WORK DURATION: ${formatIntervalDuration(workSecs)}", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
                     Slider(
                         value = workSecs.toFloat(),
                         onValueChange = { workSecs = it.toInt().coerceAtLeast(1) },
-                        valueRange = 1f..300f,
+                        valueRange = 1f..18000f,
                         modifier = Modifier.width(130.dp),
                         colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold)
                     )
@@ -1054,11 +1182,11 @@ fun IntervalQuickEditDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("REST DURATION: ${restSecs}s", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                    Text("REST DURATION: ${formatIntervalDuration(restSecs)}", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
                     Slider(
                         value = restSecs.toFloat(),
                         onValueChange = { restSecs = it.toInt().coerceAtLeast(1) },
-                        valueRange = 1f..300f,
+                        valueRange = 1f..3600f,
                         modifier = Modifier.width(130.dp),
                         colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold)
                     )

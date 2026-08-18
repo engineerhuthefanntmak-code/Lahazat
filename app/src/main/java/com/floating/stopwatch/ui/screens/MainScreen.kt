@@ -166,6 +166,35 @@ fun MainScreen(
         label = "Pulse"
     )
 
+    var isCounterAmbientDim by remember { mutableStateOf(false) }
+
+    if (currentMode == AppMode.Counter && isCounterAmbientDim) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF000000))
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            isCounterAmbientDim = false
+                        }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "$counterValue",
+                style = TextStyle(
+                    color = Color(0xFF3A3A3C),
+                    fontSize = 72.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                )
+            )
+        }
+        return
+    }
+
     // Layout configuration based on the illumination Mode
     val currentBgColor = when (themeMode) {
         "Midnight", "Midnight Dark", "Obsidian Dark" -> Color(0xFF000000)

@@ -25,6 +25,7 @@ import android.content.Intent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.liveRegion
@@ -74,6 +75,48 @@ fun MainScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showBottomSheet by remember { mutableStateOf(false) }
 
+    // Controls and Secondary Information Auto-Hide State
+    var areControlsVisible by remember { mutableStateOf(true) }
+    var isSecondaryVisible by remember { mutableStateOf(true) }
+    var autoHideJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+
+    fun resetAutoHideTimer() {
+        areControlsVisible = true
+        isSecondaryVisible = true
+        autoHideJob?.cancel()
+        autoHideJob = scope.launch {
+            val secondaryTimeout = if (currentMode == AppMode.Intervals) 2000L else 1000L
+            kotlinx.coroutines.delay(secondaryTimeout)
+            isSecondaryVisible = false
+            if (secondaryTimeout < 1000L) {
+                kotlinx.coroutines.delay(1000L - secondaryTimeout)
+            }
+            areControlsVisible = false
+        }
+    }
+
+    LaunchedEffect(currentMode) {
+        resetAutoHideTimer()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            autoHideJob?.cancel()
+        }
+    }
+
+    val controlsAlpha by animateFloatAsState(
+        targetValue = if (areControlsVisible) 1.0f else 0.0f,
+        animationSpec = tween(durationMillis = 250),
+        label = "ControlsAlpha"
+    )
+
+    val secondaryAlpha by animateFloatAsState(
+        targetValue = if (isSecondaryVisible) 1.0f else 0.0f,
+        animationSpec = tween(durationMillis = 250),
+        label = "SecondaryAlpha"
+    )
+
     // Start/Stop pulse animations
     var triggerPulse by remember { mutableStateOf(false) }
     val scalePulse by animateFloatAsState(
@@ -103,11 +146,51 @@ fun MainScreen(
         else -> LuxuryColors.WarmGray
     }
 
+    var totalDragY by remember { mutableFloatStateOf(0f) }
+    var totalDragX by remember { mutableFloatStateOf(0f) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(currentBgColor)
             .padding(24.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = {
+                        resetAutoHideTimer()
+                    }
+                )
+            }
+            .pointerInput(currentMode) {
+                detectDragGestures(
+                    onDragStart = {
+                        totalDragY = 0f
+                        totalDragX = 0f
+                        resetAutoHideTimer()
+                    },
+                    onDrag = { _, dragAmount ->
+                        totalDragY += dragAmount.y
+                        totalDragX += dragAmount.x
+                    },
+                    onDragEnd = {
+                        if (kotlin.math.abs(totalDragY) > 80f && kotlin.math.abs(totalDragY) > 1.5f * kotlin.math.abs(totalDragX)) {
+                            if (totalDragY < 0) {
+                                hapticController.trigger(hapticIntensity, "Lap")
+                                viewModel.cycleMode()
+                            } else {
+                                hapticController.trigger(hapticIntensity, "Lap")
+                                viewModel.previousMode()
+                            }
+                        }
+                        totalDragY = 0f
+                        totalDragX = 0f
+                    },
+                    onDragCancel = {
+                        totalDragY = 0f
+                        totalDragX = 0f
+                    }
+                )
+            }
     ) {
         // Settings click triggers navigation
         Text(
@@ -120,16 +203,22 @@ fun MainScreen(
             ),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .clickable { onNavigateToSettings() }
+                .graphicsLayer { alpha = controlsAlpha }
+                .clickable {
+                    resetAutoHideTimer()
+                    onNavigateToSettings()
+                }
                 .padding(8.dp)
         )
 
-        // Top label - Tapping cycles mode (Stopwatch -> Countdown -> Counter -> Stopwatch)
+        // Top label - Tapping cycles mode (Stopwatch -> Countdown -> Counter -> Intervals -> Stopwatch)
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = 16.dp)
+                .graphicsLayer { alpha = controlsAlpha }
                 .clickable {
+                    resetAutoHideTimer()
                     hapticController.trigger(hapticIntensity, "Lap")
                     viewModel.cycleMode()
                 }
@@ -198,7 +287,8 @@ fun MainScreen(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Light,
                             letterSpacing = 3.sp
-                        )
+                        ),
+                        modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
                     )
                 }
                 AppMode.Countdown -> {
@@ -216,7 +306,7 @@ fun MainScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.scale(scalePulse * breathingScale)
                         ) {
-                            // 1. Top: Countdown Digits (HH : MM : SS)
+                            // 1. Top: Countdown Digits (HH : MM : SS) - ALWAYS VISIBLE
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
@@ -225,6 +315,7 @@ fun MainScreen(
                                 Box(
                                     modifier = Modifier.pointerInput(Unit) {
                                         detectDragGestures(
+                                            onDragStart = { resetAutoHideTimer() },
                                             onDrag = { change, dragAmount ->
                                                 change.consume()
                                                 hDragAcc += dragAmount.y
@@ -252,6 +343,7 @@ fun MainScreen(
                                 Box(
                                     modifier = Modifier.pointerInput(Unit) {
                                         detectDragGestures(
+                                            onDragStart = { resetAutoHideTimer() },
                                             onDrag = { change, dragAmount ->
                                                 change.consume()
                                                 mDragAcc += dragAmount.y
@@ -279,6 +371,7 @@ fun MainScreen(
                                 Box(
                                     modifier = Modifier.pointerInput(Unit) {
                                         detectDragGestures(
+                                            onDragStart = { resetAutoHideTimer() },
                                             onDrag = { change, dragAmount ->
                                                 change.consume()
                                                 sDragAcc += dragAmount.y
@@ -306,7 +399,8 @@ fun MainScreen(
                             // 2. Middle: Sub-Labels HOURS : MINS : SECS aligned under numbers
                             Row(
                                 horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
                             ) {
                                 Text(
                                     text = "HOURS",
@@ -334,7 +428,8 @@ fun MainScreen(
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Light,
                                     letterSpacing = 2.sp
-                                )
+                                ),
+                                modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
                             )
                         }
                     }
@@ -360,7 +455,8 @@ fun MainScreen(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Light,
                             letterSpacing = 3.sp
-                        )
+                        ),
+                        modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
                     )
                 }
                 AppMode.Intervals -> {
@@ -374,33 +470,10 @@ fun MainScreen(
 
                     var showBuilderDialog by remember { mutableStateOf(false) }
 
-                    // 3-second auto-hide logic for EDIT control
-                    var isEditVisible by remember { mutableStateOf(true) }
-                    var autoHideJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-
-                    fun resetAutoHideTimer() {
-                        isEditVisible = true
-                        autoHideJob?.cancel()
-                        autoHideJob = scope.launch {
-                            kotlinx.coroutines.delay(3000L)
-                            if (!showBuilderDialog) {
-                                isEditVisible = false
-                            }
-                        }
-                    }
-
-                    LaunchedEffect(Unit) {
-                        resetAutoHideTimer()
-                    }
-
                     if (activeTemplate != null) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .pointerInput(Unit) {
-                                    detectTapGestures(onTap = { resetAutoHideTimer() })
-                                }
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -410,19 +483,18 @@ fun MainScreen(
                                     text = activeTemplate.name.uppercase(),
                                     style = TextStyle(color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                                 )
-                                if (isEditVisible || showBuilderDialog) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "[EDIT]",
-                                        style = TextStyle(color = currentGrayColor, fontSize = 10.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp),
-                                        modifier = Modifier
-                                            .clickable {
-                                                resetAutoHideTimer()
-                                                showBuilderDialog = true
-                                            }
-                                            .padding(4.dp)
-                                    )
-                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "[EDIT]",
+                                    style = TextStyle(color = currentGrayColor, fontSize = 10.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp),
+                                    modifier = Modifier
+                                        .graphicsLayer { alpha = secondaryAlpha }
+                                        .clickable {
+                                            resetAutoHideTimer()
+                                            showBuilderDialog = true
+                                        }
+                                        .padding(4.dp)
+                                )
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -452,7 +524,8 @@ fun MainScreen(
 
                             Text(
                                 text = "ROUND $currentRound / ${activeTemplate!!.repetitions}",
-                                style = TextStyle(color = currentGrayColor, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
+                                style = TextStyle(color = currentGrayColor, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp),
+                                modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
                             )
 
                             if (nextStage != null) {
@@ -460,7 +533,8 @@ fun MainScreen(
                                 val nextSecs = nextStage.durationMs / 1000
                                 Text(
                                     text = "NEXT: ${nextStage.name} (${nextSecs}s)",
-                                    style = TextStyle(color = currentGrayColor.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Normal, letterSpacing = 1.sp)
+                                    style = TextStyle(color = currentGrayColor.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Normal, letterSpacing = 1.sp),
+                                    modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
                                 )
                             }
                         }
@@ -493,7 +567,8 @@ fun MainScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(bottom = 54.dp),
+                .padding(bottom = 54.dp)
+                .graphicsLayer { alpha = controlsAlpha },
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -509,6 +584,7 @@ fun MainScreen(
                             .clip(CircleShape)
                             .background(Color.Transparent)
                             .clickable {
+                                resetAutoHideTimer()
                                 hapticController.trigger(hapticIntensity, "Reset")
                                 intervalEngine.reset()
                             },
@@ -537,6 +613,7 @@ fun MainScreen(
                             .clip(CircleShape)
                             .background(intervalBtnColor)
                             .clickable {
+                                resetAutoHideTimer()
                                 if (isRunning) {
                                     hapticController.trigger(hapticIntensity, "Stop")
                                     intervalEngine.pause()
@@ -561,6 +638,7 @@ fun MainScreen(
                             .clip(CircleShape)
                             .background(Color.Transparent)
                             .clickable {
+                                resetAutoHideTimer()
                                 if (state == StopwatchState.Running) {
                                     hapticController.trigger(hapticIntensity, "Lap")
                                     viewModel.lap()
@@ -601,11 +679,13 @@ fun MainScreen(
                             .pointerInput(Unit) {
                                 detectTapGestures(
                                     onPress = {
+                                        resetAutoHideTimer()
                                         triggerPulse = true
                                         tryAwaitRelease()
                                         triggerPulse = false
                                     },
                                     onTap = {
+                                        resetAutoHideTimer()
                                         if (state == StopwatchState.Running) {
                                             hapticController.trigger(hapticIntensity, "Stop")
                                             viewModel.pause()
@@ -637,6 +717,7 @@ fun MainScreen(
                             .clip(CircleShape)
                             .background(Color.Transparent)
                             .clickable {
+                                resetAutoHideTimer()
                                 hapticController.trigger(hapticIntensity, "Reset")
                                 viewModel.resetCountdown()
                             },
@@ -664,6 +745,7 @@ fun MainScreen(
                             .clip(CircleShape)
                             .background(countdownBtnColor)
                             .clickable {
+                                resetAutoHideTimer()
                                 if (isCountdownRunning) {
                                     hapticController.trigger(hapticIntensity, "Stop")
                                     viewModel.pauseCountdown()
@@ -691,6 +773,7 @@ fun MainScreen(
                             .pointerInput(Unit) {
                                 detectTapGestures(
                                     onPress = {
+                                        resetAutoHideTimer()
                                         isPressingReset = true
                                         var resetTriggered = false
                                         val job = scope.launch {
@@ -739,6 +822,7 @@ fun MainScreen(
                             .clip(CircleShape)
                             .background(accentColor)
                             .clickable {
+                                resetAutoHideTimer()
                                 hapticController.trigger(hapticIntensity, "Lap")
                                 viewModel.incrementCounter()
                             },
@@ -759,7 +843,11 @@ fun MainScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 12.dp)
-                    .clickable { showBottomSheet = true }
+                    .graphicsLayer { alpha = controlsAlpha }
+                    .clickable {
+                        resetAutoHideTimer()
+                        showBottomSheet = true
+                    }
                     .padding(8.dp)
             ) {
                 Text(

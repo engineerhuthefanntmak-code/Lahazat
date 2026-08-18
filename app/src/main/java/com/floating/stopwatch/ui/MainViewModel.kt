@@ -47,6 +47,16 @@ class MainViewModel(
         currentMode.value = nextMode
     }
 
+    fun previousMode() {
+        val prevMode = when (currentMode.value) {
+            AppMode.Stopwatch -> AppMode.Intervals
+            AppMode.Countdown -> AppMode.Stopwatch
+            AppMode.Counter -> AppMode.Countdown
+            AppMode.Intervals -> AppMode.Counter
+        }
+        currentMode.value = prevMode
+    }
+
     // Countdown Time Adjustment via Drag
     fun adjustCountdownHours(deltaHours: Int) {
         countdownEngine.adjustDuration(deltaHours * 3600000L)

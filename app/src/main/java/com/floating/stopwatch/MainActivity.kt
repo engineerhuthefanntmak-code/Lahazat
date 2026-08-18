@@ -326,7 +326,7 @@ fun OverlayPermissionExplanationScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "FloatingSuite allows your timers and overlays to float directly on top of active applications for real-time tracking. This requires system 'Display over other apps' permission.",
+                text = "لحَظات يتيح للتأقيت والأدوات العائمة الظهور مباشرة فوق التطبيقات المفتوحة للمتابعة الحية. يتطلب ذلك إذن 'الظهور فوق التطبيقات الأخرى'.",
                 style = TextStyle(
                     color = LuxuryColors.WarmGray,
                     fontSize = 13.sp,

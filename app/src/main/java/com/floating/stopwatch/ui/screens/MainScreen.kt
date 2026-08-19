@@ -579,6 +579,24 @@ fun MainScreen(
                         ),
                         modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
                     )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "Ambient Dim Mode",
+                        style = TextStyle(
+                            color = accentColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 2.sp
+                        ),
+                        modifier = Modifier
+                            .graphicsLayer { alpha = secondaryAlpha }
+                            .clickable {
+                                isCounterAmbientDim = true
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
                 }
                 AppMode.Intervals -> {
                     val activeTemplate by intervalEngine.activeTemplate.collectAsState()

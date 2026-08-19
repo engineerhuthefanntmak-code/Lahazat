@@ -463,11 +463,11 @@ fun MainScreen(
                                 ) {
                                     Text(
                                         text = String.format("%02d", hours),
-                                        style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                        style = TextStyle(color = currentTextColor, fontSize = (54f * mainCountdownSize).sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                                     )
                                 }
 
-                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontWeight = FontWeight.Light))
+                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = (54f * mainCountdownSize).sp, fontWeight = FontWeight.Light))
 
                                 // Minutes Drag Zone
                                 Box(
@@ -491,11 +491,11 @@ fun MainScreen(
                                 ) {
                                     Text(
                                         text = String.format("%02d", minutes),
-                                        style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                        style = TextStyle(color = currentTextColor, fontSize = (54f * mainCountdownSize).sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                                     )
                                 }
 
-                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontWeight = FontWeight.Light))
+                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = (54f * mainCountdownSize).sp, fontWeight = FontWeight.Light))
 
                                 // Seconds Drag Zone
                                 Box(
@@ -519,7 +519,7 @@ fun MainScreen(
                                 ) {
                                     Text(
                                         text = String.format("%02d", seconds),
-                                        style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                        style = TextStyle(color = currentTextColor, fontSize = (54f * mainCountdownSize).sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                                     )
                                 }
                             }
@@ -569,7 +569,7 @@ fun MainScreen(
                         text = "$counterValue",
                         style = TextStyle(
                             color = currentTextColor,
-                            fontSize = (72 * mainCounterSize).sp,
+                            fontSize = (72f * mainCounterSize).sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                         ),

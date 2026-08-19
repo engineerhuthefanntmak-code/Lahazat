@@ -76,6 +76,16 @@ fun MainScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showBottomSheet by remember { mutableStateOf(false) }
 
+    val intervalEngine = viewModel.intervalEngine
+    val intervalState by intervalEngine.state.collectAsState()
+
+    val isCurrentlyRunning = when (currentMode) {
+        AppMode.Stopwatch -> state == StopwatchState.Running
+        AppMode.Countdown -> isCountdownRunning
+        AppMode.Counter -> false
+        AppMode.Intervals -> intervalState == IntervalState.RUNNING
+    }
+
     // Controls and Secondary Information Auto-Hide State
     var areControlsVisible by remember { mutableStateOf(true) }
     var isSecondaryVisible by remember { mutableStateOf(true) }
@@ -85,18 +95,16 @@ fun MainScreen(
         areControlsVisible = true
         isSecondaryVisible = true
         autoHideJob?.cancel()
-        autoHideJob = scope.launch {
-            val secondaryTimeout = if (currentMode == AppMode.Intervals) 2000L else 1000L
-            kotlinx.coroutines.delay(secondaryTimeout)
-            isSecondaryVisible = false
-            if (secondaryTimeout < 1000L) {
-                kotlinx.coroutines.delay(1000L - secondaryTimeout)
+        if (isCurrentlyRunning) {
+            autoHideJob = scope.launch {
+                kotlinx.coroutines.delay(3000L)
+                areControlsVisible = false
+                isSecondaryVisible = false
             }
-            areControlsVisible = false
         }
     }
 
-    LaunchedEffect(currentMode) {
+    LaunchedEffect(isCurrentlyRunning, currentMode) {
         resetAutoHideTimer()
     }
 
@@ -130,8 +138,6 @@ fun MainScreen(
         }
     }
 
-    val intervalEngine = viewModel.intervalEngine
-    val intervalState by intervalEngine.state.collectAsState()
     var lastSignalledIntervalState by remember { mutableStateOf<IntervalState?>(null) }
 
     LaunchedEffect(intervalState) {

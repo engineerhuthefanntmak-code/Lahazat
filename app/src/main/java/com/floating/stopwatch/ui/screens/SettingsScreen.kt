@@ -203,9 +203,27 @@ fun SettingsScreen(
                                 }
                             }
                         }
-                        "Stopwatch" -> WidgetCategorySettings(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
-                        "Countdown" -> WidgetCategorySettings(index = 1, widgetTitle = "COUNTDOWN", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
-                        "Counter" -> WidgetCategorySettings(index = 2, widgetTitle = "COUNTER", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
+                        "Stopwatch" -> {
+                            val mainStopwatchSize by settingsRepository.mainStopwatchSize.collectAsState(initial = 1.0f)
+                            Text(text = "MAIN NUMBER SIZE: ${String.format("%.2f", mainStopwatchSize)}", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
+                            Slider(value = mainStopwatchSize, onValueChange = { scope.launch { settingsRepository.setMainStopwatchSize(it) } }, valueRange = 0.6f..1.6f, colors = SliderDefaults.colors(thumbColor = activeAccentColor))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            WidgetCategorySettings(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
+                        }
+                        "Countdown" -> {
+                            val mainCountdownSize by settingsRepository.mainCountdownSize.collectAsState(initial = 1.0f)
+                            Text(text = "MAIN NUMBER SIZE: ${String.format("%.2f", mainCountdownSize)}", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
+                            Slider(value = mainCountdownSize, onValueChange = { scope.launch { settingsRepository.setMainCountdownSize(it) } }, valueRange = 0.6f..1.6f, colors = SliderDefaults.colors(thumbColor = activeAccentColor))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            WidgetCategorySettings(index = 1, widgetTitle = "COUNTDOWN", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
+                        }
+                        "Counter" -> {
+                            val mainCounterSize by settingsRepository.mainCounterSize.collectAsState(initial = 1.0f)
+                            Text(text = "MAIN NUMBER SIZE: ${String.format("%.2f", mainCounterSize)}", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
+                            Slider(value = mainCounterSize, onValueChange = { scope.launch { settingsRepository.setMainCounterSize(it) } }, valueRange = 0.6f..1.6f, colors = SliderDefaults.colors(thumbColor = activeAccentColor))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            WidgetCategorySettings(index = 2, widgetTitle = "COUNTER", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
+                        }
                         "Interval" -> {
                             val intervalName by settingsRepository.intervalName.collectAsState(initial = "HIT")
                             val workMs by settingsRepository.intervalWorkMs.collectAsState(initial = 40000L)
@@ -216,6 +234,11 @@ fun SettingsScreen(
                             var workSecs by remember(workMs) { mutableIntStateOf((workMs / 1000).toInt()) }
                             var restSecs by remember(restMs) { mutableIntStateOf((restMs / 1000).toInt()) }
                             var roundsVal by remember(rounds) { mutableIntStateOf(rounds) }
+
+                            val mainIntervalSize by settingsRepository.mainIntervalSize.collectAsState(initial = 1.0f)
+                            Text(text = "MAIN NUMBER SIZE: ${String.format("%.2f", mainIntervalSize)}", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
+                            Slider(value = mainIntervalSize, onValueChange = { scope.launch { settingsRepository.setMainIntervalSize(it) } }, valueRange = 0.6f..1.6f, colors = SliderDefaults.colors(thumbColor = activeAccentColor))
+                            Spacer(modifier = Modifier.height(16.dp))
 
                             Text(text = "INTERVAL CONFIGURATION", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
                             Spacer(modifier = Modifier.height(8.dp))

@@ -29,6 +29,31 @@ class SettingsRepository(private val context: Context) {
         val INTERVAL_REST_MS = longPreferencesKey("interval_rest_ms")
         val INTERVAL_ROUNDS = intPreferencesKey("interval_rounds")
         val CUSTOM_INTERVAL_TEMPLATES = stringPreferencesKey("custom_interval_templates")
+        val MAIN_STOPWATCH_SIZE = floatPreferencesKey("main_stopwatch_size")
+        val MAIN_COUNTDOWN_SIZE = floatPreferencesKey("main_countdown_size")
+        val MAIN_COUNTER_SIZE = floatPreferencesKey("main_counter_size")
+        val MAIN_INTERVAL_SIZE = floatPreferencesKey("main_interval_size")
+    }
+
+    val mainStopwatchSize: Flow<Float> = context.dataStore.data.map { it[MAIN_STOPWATCH_SIZE] ?: 1.0f }
+    val mainCountdownSize: Flow<Float> = context.dataStore.data.map { it[MAIN_COUNTDOWN_SIZE] ?: 1.0f }
+    val mainCounterSize: Flow<Float> = context.dataStore.data.map { it[MAIN_COUNTER_SIZE] ?: 1.0f }
+    val mainIntervalSize: Flow<Float> = context.dataStore.data.map { it[MAIN_INTERVAL_SIZE] ?: 1.0f }
+
+    suspend fun setMainStopwatchSize(size: Float) {
+        context.dataStore.edit { it[MAIN_STOPWATCH_SIZE] = size }
+    }
+
+    suspend fun setMainCountdownSize(size: Float) {
+        context.dataStore.edit { it[MAIN_COUNTDOWN_SIZE] = size }
+    }
+
+    suspend fun setMainCounterSize(size: Float) {
+        context.dataStore.edit { it[MAIN_COUNTER_SIZE] = size }
+    }
+
+    suspend fun setMainIntervalSize(size: Float) {
+        context.dataStore.edit { it[MAIN_INTERVAL_SIZE] = size }
     }
 
     val intervalName: Flow<String> = context.dataStore.data.map { it[INTERVAL_NAME] ?: "HIT" }

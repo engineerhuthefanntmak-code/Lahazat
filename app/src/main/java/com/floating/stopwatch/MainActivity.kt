@@ -164,13 +164,21 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             } else {
                 when (currentScreen) {
                     "Main" -> {
+                        val mainStopwatchSize by settingsRepository.mainStopwatchSize.collectAsState(initial = 1.0f)
+                        val mainCountdownSize by settingsRepository.mainCountdownSize.collectAsState(initial = 1.0f)
+                        val mainCounterSize by settingsRepository.mainCounterSize.collectAsState(initial = 1.0f)
+                        val mainIntervalSize by settingsRepository.mainIntervalSize.collectAsState(initial = 1.0f)
+
                         MainScreen(
                             viewModel = mainViewModel,
                             settingsRepository = settingsRepository,
                             hapticController = hapticController,
                             hapticIntensity = hapticIntensity,
                             showCentiseconds = true,
-                            mainSize = 1.0f,
+                            mainStopwatchSize = mainStopwatchSize,
+                            mainCountdownSize = mainCountdownSize,
+                            mainCounterSize = mainCounterSize,
+                            mainIntervalSize = mainIntervalSize,
                             accentColor = accentColor,
                             themeMode = themeMode,
                             onNavigateToSettings = { currentScreen = "Settings" }

@@ -59,7 +59,10 @@ fun MainScreen(
     hapticController: HapticController,
     hapticIntensity: String,
     showCentiseconds: Boolean,
-    mainSize: Float,
+    mainStopwatchSize: Float = 1.0f,
+    mainCountdownSize: Float = 1.0f,
+    mainCounterSize: Float = 1.0f,
+    mainIntervalSize: Float = 1.0f,
     accentColor: Color,
     themeMode: String,
     onNavigateToSettings: () -> Unit
@@ -397,7 +400,7 @@ fun MainScreen(
                         elapsedTimeMs = elapsedTimeMs,
                         showCentiseconds = showCentiseconds,
                         baseStyle = TextStyle(color = currentTextColor, fontSize = 54.sp),
-                        scaleFactor = mainSize,
+                        scaleFactor = mainStopwatchSize,
                         accentColor = accentColor,
                         gradientGoldEnabled = false,
                         modifier = Modifier
@@ -460,11 +463,11 @@ fun MainScreen(
                                 ) {
                                     Text(
                                         text = String.format("%02d", hours),
-                                        style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                        style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                                     )
                                 }
 
-                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontWeight = FontWeight.Light))
+                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontWeight = FontWeight.Light))
 
                                 // Minutes Drag Zone
                                 Box(
@@ -488,11 +491,11 @@ fun MainScreen(
                                 ) {
                                     Text(
                                         text = String.format("%02d", minutes),
-                                        style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                        style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                                     )
                                 }
 
-                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontWeight = FontWeight.Light))
+                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontWeight = FontWeight.Light))
 
                                 // Seconds Drag Zone
                                 Box(
@@ -516,7 +519,7 @@ fun MainScreen(
                                 ) {
                                     Text(
                                         text = String.format("%02d", seconds),
-                                        style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                        style = TextStyle(color = currentTextColor, fontSize = (54 * mainCountdownSize).sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                                     )
                                 }
                             }
@@ -566,7 +569,7 @@ fun MainScreen(
                         text = "$counterValue",
                         style = TextStyle(
                             color = currentTextColor,
-                            fontSize = 72.sp,
+                            fontSize = (72 * mainCounterSize).sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                         ),
@@ -658,7 +661,7 @@ fun MainScreen(
                                 elapsedTimeMs = stageRemainingMs,
                                 showCentiseconds = true,
                                 baseStyle = TextStyle(color = currentTextColor, fontSize = 48.sp),
-                                scaleFactor = mainSize,
+                                scaleFactor = mainIntervalSize,
                                 accentColor = accentColor,
                                 modifier = Modifier.scale(scalePulse)
                             )

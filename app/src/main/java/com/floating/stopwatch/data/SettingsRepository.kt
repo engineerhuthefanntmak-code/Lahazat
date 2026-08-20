@@ -24,6 +24,7 @@ class SettingsRepository(private val context: Context) {
         val ACTIVE_WIDGETS_COUNT = intPreferencesKey("active_widgets_count")
         val FLOATING_PADDING = floatPreferencesKey("floating_padding")
         val FLOATING_OPACITY = floatPreferencesKey("floating_opacity")
+        val MAIN_DISPLAY_SCALE = floatPreferencesKey("main_display_scale")
         val INTERVAL_NAME = stringPreferencesKey("interval_name")
         val INTERVAL_WORK_MS = longPreferencesKey("interval_work_ms")
         val INTERVAL_REST_MS = longPreferencesKey("interval_rest_ms")
@@ -161,6 +162,7 @@ class SettingsRepository(private val context: Context) {
 
     val floatingPadding: Flow<Float> = context.dataStore.data.map { it[FLOATING_PADDING] ?: 6.0f }
     val floatingOpacity: Flow<Float> = context.dataStore.data.map { it[FLOATING_OPACITY] ?: 0.85f }
+    val mainDisplayScale: Flow<Float> = context.dataStore.data.map { it[MAIN_DISPLAY_SCALE] ?: 1.0f }
 
     val stylePreset: Flow<String> = context.dataStore.data.map { it[STYLE_PRESET] ?: "Glass" }
     val colorPreset: Flow<String> = context.dataStore.data.map { it[COLOR_PRESET] ?: "Gold" }
@@ -217,6 +219,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setFloatingOpacity(opacity: Float) {
         context.dataStore.edit { it[FLOATING_OPACITY] = opacity }
+    }
+
+    suspend fun setMainDisplayScale(scale: Float) {
+        context.dataStore.edit { it[MAIN_DISPLAY_SCALE] = scale.coerceIn(0.7f, 1.3f) }
     }
 
     suspend fun setActiveWidgetsCount(count: Int) {

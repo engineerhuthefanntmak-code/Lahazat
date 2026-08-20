@@ -107,6 +107,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
             val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
             val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
+            val mainDisplayScale by settingsRepository.mainDisplayScale.collectAsState(initial = 1.0f)
 
             val accentColor = if (colorPreset == "Custom") {
                 try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
@@ -170,7 +171,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                             hapticController = hapticController,
                             hapticIntensity = hapticIntensity,
                             showCentiseconds = true,
-                            mainSize = 1.0f,
+                            mainSize = mainDisplayScale,
                             accentColor = accentColor,
                             themeMode = themeMode,
                             onNavigateToSettings = { currentScreen = "Settings" }

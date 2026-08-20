@@ -72,6 +72,9 @@ fun MainScreen(
     val counterValue by viewModel.counterValue.collectAsState()
     val laps by viewModel.laps.collectAsState()
 
+    val countdownDigitSize = (54f * mainSize).sp
+    val counterDigitSize = (72f * mainSize).sp
+
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -192,7 +195,7 @@ fun MainScreen(
                 text = "$counterValue",
                 style = TextStyle(
                     color = Color(0xFF3A3A3C),
-                    fontSize = 72.sp,
+                    fontSize = counterDigitSize,
                     fontWeight = FontWeight.Bold,
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                 )
@@ -460,11 +463,11 @@ fun MainScreen(
                                 ) {
                                     Text(
                                         text = String.format("%02d", hours),
-                                        style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                        style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                                     )
                                 }
 
-                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontWeight = FontWeight.Light))
+                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontWeight = FontWeight.Light))
 
                                 // Minutes Drag Zone
                                 Box(
@@ -488,11 +491,11 @@ fun MainScreen(
                                 ) {
                                     Text(
                                         text = String.format("%02d", minutes),
-                                        style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                        style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                                     )
                                 }
 
-                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontWeight = FontWeight.Light))
+                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontWeight = FontWeight.Light))
 
                                 // Seconds Drag Zone
                                 Box(
@@ -516,7 +519,7 @@ fun MainScreen(
                                 ) {
                                     Text(
                                         text = String.format("%02d", seconds),
-                                        style = TextStyle(color = currentTextColor, fontSize = 54.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
+                                        style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
                                     )
                                 }
                             }
@@ -566,7 +569,7 @@ fun MainScreen(
                         text = "$counterValue",
                         style = TextStyle(
                             color = currentTextColor,
-                            fontSize = 72.sp,
+                            fontSize = counterDigitSize,
                             fontWeight = FontWeight.Bold,
                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                         ),

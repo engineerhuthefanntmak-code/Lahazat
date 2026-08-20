@@ -38,6 +38,7 @@ fun SettingsScreen(
     val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
     val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
     val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
+    val mainDisplayScale by settingsRepository.mainDisplayScale.collectAsState(initial = 1.0f)
 
     var customR by remember { mutableFloatStateOf(201f) }
     var customG by remember { mutableFloatStateOf(166f) }
@@ -202,6 +203,25 @@ fun SettingsScreen(
                                     Text(text = color, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Text(
+                                text = "MAIN DISPLAY SIZE: ${String.format("%.2fx", mainDisplayScale)}",
+                                color = LuxuryColors.WarmGray,
+                                fontSize = 10.sp,
+                                letterSpacing = 1.sp
+                            )
+                            Slider(
+                                value = mainDisplayScale,
+                                onValueChange = { scope.launch { settingsRepository.setMainDisplayScale(it) } },
+                                valueRange = 0.7f..1.3f,
+                                steps = 11,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = activeAccentColor,
+                                    activeTrackColor = activeAccentColor
+                                )
+                            )
                         }
                         "Stopwatch" -> WidgetCategorySettings(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
                         "Countdown" -> WidgetCategorySettings(index = 1, widgetTitle = "COUNTDOWN", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)

@@ -33,6 +33,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -659,21 +662,39 @@ class StopwatchService : Service() {
 
             setContent {
                 val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
+                var menuSize by remember { mutableStateOf(IntSize.Zero) }
+                var containerSize by remember { mutableStateOf(IntSize.Zero) }
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                val systemInsets = WindowInsets.systemBars
+                val bottomInset = systemInsets.getBottom(density)
+                val edgeMargin = with(density) { 8.dp.roundToPx() }
+                val gap = with(density) { 4.dp.roundToPx() }
+                val menuPosition = remember(initialMenuX, initialMenuY, menuSize, containerSize, bottomInset) {
+                    val maxX = (containerSize.width - menuSize.width - edgeMargin).coerceAtLeast(edgeMargin)
+                    val availableBottom = (containerSize.height - bottomInset - edgeMargin).coerceAtLeast(edgeMargin)
+                    val belowY = initialMenuY + gap
+                    val preferredY = if (belowY + menuSize.height <= availableBottom) {
+                        belowY
+                    } else {
+                        initialMenuY - menuSize.height - gap
+                    }
+                    IntOffset(
+                        x = initialMenuX.coerceIn(edgeMargin, maxX),
+                        y = preferredY.coerceIn(edgeMargin, (availableBottom - menuSize.height).coerceAtLeast(edgeMargin))
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .onGloballyPositioned { containerSize = it.size }
                         .pointerInput(Unit) {
                             detectTapGestures(onTap = { dismissMenuOverlay(index) })
                         }
                 ) {
-                    val clampedX = initialMenuX.coerceIn(16, (applicationContext.resources.displayMetrics.widthPixels - 220).coerceAtLeast(16))
-                    val clampedY = initialMenuY.coerceIn(16, (applicationContext.resources.displayMetrics.heightPixels - 320).coerceAtLeast(16))
-
                     Box(
-                        modifier = Modifier.offset(
-                            x = (clampedX / applicationContext.resources.displayMetrics.density).dp,
-                            y = (clampedY / applicationContext.resources.displayMetrics.density).dp
-                        )
+                        modifier = Modifier
+                            .offset { menuPosition }
+                            .onGloballyPositioned { menuSize = it.size }
                     ) {
                         LuxuryTextDropdownMenu(
                             widgetType = widgetType,
@@ -1140,12 +1161,10 @@ fun LuxuryTextDropdownMenu(
                 options.add((if (isVolumeActive) "DISABLE VOLUME" else "ENABLE VOLUME") to "ToggleVolume")
             } else {
                 options.add("START" to "Start")
-                options.add("STOP" to "Stop")
+                options.add("PAUSE" to "Stop")
                 options.add("RESET" to "Reset")
-                options.add("MILESTONE" to "Milestone")
             }
-            options.add("SETTINGS" to "OpenApp")
-            options.add("HIDE" to "Hide")
+            options.add("SETTING" to "OpenApp")
             options.add("CLOSE" to "Close")
 
             options.forEach { (label, action) ->
@@ -1154,7 +1173,7 @@ fun LuxuryTextDropdownMenu(
                     style = TextStyle(
                         color = when (label) {
                             "START", "INCREMENT" -> Color(0xFF4AC98F)
-                            "STOP" -> Color(0xFFF5A623)
+                            "PAUSE" -> Color(0xFFF5A623)
                             "CLOSE" -> Color(0xFFC94A4A)
                             else -> LuxuryColors.CreamyWhite
                         },

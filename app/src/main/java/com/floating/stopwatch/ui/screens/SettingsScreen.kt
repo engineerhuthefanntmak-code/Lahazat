@@ -173,13 +173,19 @@ fun SettingsScreen(
             }
 
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val columns = if (maxWidth >= 420.dp) 3 else 2
+                val gridGap = 7.dp
+                val minCardWidth = 148.dp
+                val columns = when {
+                    maxWidth >= minCardWidth * 3 + gridGap * 2 -> 3
+                    maxWidth >= minCardWidth * 2 + gridGap -> 2
+                    else -> 1
+                }
                 categories.chunked(columns).forEach { rowCategories ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 7.dp),
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        horizontalArrangement = Arrangement.spacedBy(gridGap)
                     ) {
                         rowCategories.forEach { categoryName ->
                             val isPriority = categoryName == "Appearance" || categoryName == "Stopwatch"
@@ -189,13 +195,13 @@ fun SettingsScreen(
                                 border = BorderStroke(1.dp, if (isPriority) activeAccentColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f)),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(if (isPriority) 70.dp else 62.dp)
+                                    .height(72.dp)
                                     .clickable { activeDialogCategory = categoryName }
                             ) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .padding(12.dp),
+                                        .padding(horizontal = 10.dp, vertical = 9.dp),
                                     verticalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Box(
@@ -215,6 +221,7 @@ fun SettingsScreen(
                                             lineHeight = 14.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             letterSpacing = 0.8.sp,
+                                            maxLines = 2,
                                             modifier = Modifier.weight(1f)
                                         )
                                         Text(text = "▸", color = activeAccentColor.copy(alpha = 0.8f), fontSize = 13.sp)
@@ -511,17 +518,19 @@ private fun ResponsiveOptionGrid(
     displayName: (String) -> String = { it }
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val gridGap = 8.dp
+        val minCardWidth = 148.dp
         val columns = when {
-            maxWidth >= 560.dp -> 3
-            maxWidth >= 360.dp -> 2
+            maxWidth >= minCardWidth * 3 + gridGap * 2 -> 3
+            maxWidth >= minCardWidth * 2 + gridGap -> 2
             else -> 1
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(gridGap)) {
             options.chunked(columns).forEach { rowOptions ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(gridGap)
                 ) {
                     rowOptions.forEach { option ->
                         val isSelected = selectedOption == option
@@ -536,13 +545,13 @@ private fun ResponsiveOptionGrid(
                             shape = RoundedCornerShape(9.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .heightIn(min = 48.dp)
+                                .height(60.dp)
                                 .clickable { onOptionSelected(option) }
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    .padding(horizontal = 6.dp, vertical = 3.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
@@ -556,8 +565,9 @@ private fun ResponsiveOptionGrid(
                                 Text(
                                     text = displayName(option),
                                     color = if (isSelected) LuxuryColors.CreamyWhite else LuxuryColors.WarmGray,
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
                                     lineHeight = 14.sp,
+                                    maxLines = 2,
                                     modifier = Modifier.weight(1f)
                                 )
                             }

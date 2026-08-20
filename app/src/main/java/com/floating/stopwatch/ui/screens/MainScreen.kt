@@ -46,6 +46,7 @@ import com.floating.stopwatch.domain.StopwatchState
 import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.components.TimeDisplay
+import com.floating.stopwatch.ui.components.DragAdjustField
 import com.floating.stopwatch.data.SettingsRepository
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import com.floating.stopwatch.domain.HapticController
@@ -1174,6 +1175,10 @@ fun formatIntervalDuration(totalSecs: Int): String {
     }
 }
 
+fun formatDurationHoursMinutes(totalSecs: Int): String {
+    return String.format("%02d:%02d", totalSecs / 3600, (totalSecs % 3600) / 60)
+}
+
 @Composable
 fun IntervalQuickEditDialog(
     initialTemplate: IntervalTemplate,
@@ -1216,37 +1221,29 @@ fun IntervalQuickEditDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("WORK DURATION: ${formatIntervalDuration(workSecs)}", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                    Slider(
-                        value = workSecs.toFloat(),
-                        onValueChange = { workSecs = it.toInt().coerceAtLeast(1) },
-                        valueRange = 1f..18000f,
-                        modifier = Modifier.width(130.dp),
-                        colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold)
-                    )
-                }
+                DragAdjustField(
+                    label = "WORK DURATION",
+                    value = workSecs.toFloat(),
+                    minValue = 1f,
+                    maxValue = 18000f,
+                    pixelsPerUnit = 4f,
+                    accentColor = LuxuryColors.AccentGold,
+                    valueFormatter = { formatDurationHoursMinutes(it.toInt()) },
+                    onValueChange = { workSecs = it.toInt().coerceIn(1, 18000) }
+                )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("REST DURATION: ${formatIntervalDuration(restSecs)}", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                    Slider(
-                        value = restSecs.toFloat(),
-                        onValueChange = { restSecs = it.toInt().coerceAtLeast(1) },
-                        valueRange = 1f..3600f,
-                        modifier = Modifier.width(130.dp),
-                        colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold)
-                    )
-                }
+                DragAdjustField(
+                    label = "REST DURATION",
+                    value = restSecs.toFloat(),
+                    minValue = 1f,
+                    maxValue = 3600f,
+                    pixelsPerUnit = 4f,
+                    accentColor = LuxuryColors.AccentGold,
+                    valueFormatter = { formatDurationHoursMinutes(it.toInt()) },
+                    onValueChange = { restSecs = it.toInt().coerceIn(1, 3600) }
+                )
 
                 Spacer(modifier = Modifier.height(8.dp))
 

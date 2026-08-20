@@ -4,28 +4,31 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.floating.stopwatch.data.SettingsRepository
+import com.floating.stopwatch.ui.components.DragAdjustField
 import com.floating.stopwatch.ui.theme.LuxuryColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,9 +38,10 @@ fun SettingsScreen(
 ) {
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val detailSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var activeDialogCategory by remember { mutableStateOf<String?>(null) }
+    var isClosing by remember { mutableStateOf(false) }
 
     val stylePreset by settingsRepository.stylePreset.collectAsState(initial = "Glass Premium")
     val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
@@ -63,13 +67,26 @@ fun SettingsScreen(
 
     val categories = listOf(
         "Appearance", "Stopwatch", "Countdown", "Counter", "Interval",
-        "Floating Widgets", "Sounds & Haptics", "Advanced"
+        "Sounds & Haptics", "Floating Widgets", "Advanced"
     )
 
     fun dismissSettings() {
-        scope.launch {
-            sheetState.hide()
+        isClosing = true
+    }
+
+    LaunchedEffect(isClosing) {
+        if (isClosing) {
+            delay(180)
             onBack()
+        }
+    }
+
+    BackHandler(onBack = { dismissSettings() })
+
+    fun dismissCategory() {
+        scope.launch {
+            detailSheetState.hide()
+            activeDialogCategory = null
         }
     }
 
@@ -79,35 +96,51 @@ fun SettingsScreen(
         LuxuryColors.fromName(colorPreset)
     }
 
-    ModalBottomSheet(
-        onDismissRequest = { dismissSettings() },
-        sheetState = sheetState,
-        containerColor = LuxuryColors.WarmBlack,
-        contentColor = LuxuryColors.CreamyWhite,
-        scrimColor = Color.Black.copy(alpha = 0.62f),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 10.dp, bottom = 4.dp)
-                    .width(38.dp)
-                    .height(3.dp)
-                    .background(LuxuryColors.WarmGray.copy(alpha = 0.55f), RoundedCornerShape(2.dp))
-            )
-        }
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.62f))
     ) {
-        Column(
+        val panelMaxHeight = (maxHeight - 32.dp).coerceAtMost(680.dp)
+        AnimatedVisibility(
+            visible = !isClosing,
+            modifier = Modifier.align(Alignment.TopCenter),
+            enter = slideInVertically(
+                animationSpec = tween(180),
+                initialOffsetY = { -it }
+            ) + fadeIn(animationSpec = tween(150)),
+            exit = slideOutVertically(
+                animationSpec = tween(150),
+                targetOffsetY = { -it }
+            ) + fadeOut(animationSpec = tween(120))
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 720.dp)
+                    .padding(horizontal = 12.dp)
+                    .heightIn(max = panelMaxHeight)
+                    .wrapContentHeight()
+                    .statusBarsPadding()
+                    .imePadding(),
+                shape = RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp),
+                color = LuxuryColors.WarmBlack,
+                tonalElevation = 0.dp,
+                shadowElevation = 8.dp
+            ) {
+                Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
                 .imePadding()
                 .verticalScroll(scrollState)
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 18.dp)
-        ) {
+                .widthIn(max = 720.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 12.dp)
+                ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 4.dp, bottom = 18.dp),
+                    .padding(top = 2.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -140,22 +173,23 @@ fun SettingsScreen(
             }
 
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val columns = if (maxWidth >= 560.dp) 3 else 2
+                val columns = if (maxWidth >= 420.dp) 3 else 2
                 categories.chunked(columns).forEach { rowCategories ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            .padding(bottom = 7.dp),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
                         rowCategories.forEach { categoryName ->
+                            val isPriority = categoryName == "Appearance" || categoryName == "Stopwatch"
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)),
+                                colors = CardDefaults.cardColors(containerColor = if (isPriority) Color(0xFF151412) else Color(0xFF111111)),
                                 shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                border = BorderStroke(1.dp, if (isPriority) activeAccentColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f)),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .heightIn(min = 72.dp)
+                                    .height(if (isPriority) 70.dp else 62.dp)
                                     .clickable { activeDialogCategory = categoryName }
                             ) {
                                 Column(
@@ -194,26 +228,45 @@ fun SettingsScreen(
                     }
                 }
             }
+                }
+            }
         }
     }
 
-    // Category Popup Dialogs
+    // Nested category panel
     activeDialogCategory?.let { category ->
         val activeAccentColor = if (colorPreset == "Custom") {
             try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
         } else {
             LuxuryColors.fromName(colorPreset)
         }
-        Dialog(onDismissRequest = { activeDialogCategory = null }) {
+        ModalBottomSheet(
+            onDismissRequest = { dismissCategory() },
+            sheetState = detailSheetState,
+            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+            containerColor = LuxuryColors.WarmBlack,
+            contentColor = LuxuryColors.CreamyWhite,
+            tonalElevation = 0.dp,
+            scrimColor = Color.Black.copy(alpha = 0.5f),
+            dragHandle = {
+                BottomSheetDefaults.DragHandle(color = LuxuryColors.WarmGray.copy(alpha = 0.55f))
+            }
+        ) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 720.dp)
+                    .align(Alignment.CenterHorizontally)
+                    .padding(horizontal = 12.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .imePadding()
                         .padding(20.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
@@ -230,7 +283,7 @@ fun SettingsScreen(
                             text = "✕",
                             color = LuxuryColors.WarmGray,
                             fontSize = 16.sp,
-                            modifier = Modifier.clickable { activeDialogCategory = null }.padding(4.dp)
+                            modifier = Modifier.clickable { dismissCategory() }.padding(4.dp)
                         )
                     }
 
@@ -239,62 +292,44 @@ fun SettingsScreen(
                     when (category) {
                         "Appearance" -> {
                             Text(text = "ILLUMINATION MODE", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
-                            themeModes.forEach { mode ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setThemeMode(mode) } }.padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = themeMode == mode, onClick = { scope.launch { settingsRepository.setThemeMode(mode) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = mode, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
-                                }
-                            }
+                            ResponsiveOptionGrid(
+                                options = themeModes,
+                                selectedOption = themeMode,
+                                accentColor = activeAccentColor,
+                                onOptionSelected = { mode -> scope.launch { settingsRepository.setThemeMode(mode) } }
+                            )
 
                             Spacer(modifier = Modifier.height(12.dp))
 
                             Text(text = "STYLE PRESET", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
-                            presets.forEach { preset ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setStylePreset(preset) } }.padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = stylePreset == preset, onClick = { scope.launch { settingsRepository.setStylePreset(preset) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = preset, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
-                                }
-                            }
+                            ResponsiveOptionGrid(
+                                options = presets,
+                                selectedOption = stylePreset,
+                                accentColor = activeAccentColor,
+                                onOptionSelected = { preset -> scope.launch { settingsRepository.setStylePreset(preset) } }
+                            )
 
                             Spacer(modifier = Modifier.height(12.dp))
 
                             Text(text = "COLOR ACCENT PRESET", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
-                            colorPresets.forEach { color ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setColorPreset(color) } }.padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = colorPreset == color, onClick = { scope.launch { settingsRepository.setColorPreset(color) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = color, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
-                                }
-                            }
+                            ResponsiveOptionGrid(
+                                options = colorPresets,
+                                selectedOption = colorPreset,
+                                accentColor = activeAccentColor,
+                                onOptionSelected = { color -> scope.launch { settingsRepository.setColorPreset(color) } }
+                            )
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            Text(
-                                text = "MAIN DISPLAY SIZE: ${String.format("%.2fx", mainDisplayScale)}",
-                                color = LuxuryColors.WarmGray,
-                                fontSize = 10.sp,
-                                letterSpacing = 1.sp
-                            )
-                            Slider(
+                            DragAdjustField(
+                                label = "MAIN DISPLAY SIZE",
                                 value = mainDisplayScale,
-                                onValueChange = { scope.launch { settingsRepository.setMainDisplayScale(it) } },
-                                valueRange = 0.7f..1.3f,
-                                steps = 11,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = activeAccentColor,
-                                    activeTrackColor = activeAccentColor
-                                )
+                                minValue = 0.7f,
+                                maxValue = 1.3f,
+                                pixelsPerUnit = 180f,
+                                accentColor = activeAccentColor,
+                                valueFormatter = { String.format("%.2fx", it) },
+                                onValueChange = { scope.launch { settingsRepository.setMainDisplayScale(it) } }
                             )
                         }
                         "Stopwatch" -> WidgetCategorySettings(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
@@ -324,24 +359,28 @@ fun SettingsScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            IntervalDurationDragField(
+                            DragAdjustField(
                                 label = "WORK DURATION",
-                                totalSeconds = workSecs,
-                                minSeconds = 1,
-                                maxSeconds = 18000,
+                                value = workSecs.toFloat(),
+                                minValue = 1f,
+                                maxValue = 18000f,
+                                pixelsPerUnit = 4f,
                                 accentColor = activeAccentColor,
-                                onValueChange = { workSecs = it }
+                                valueFormatter = { formatSettingsDuration(it.toInt()) },
+                                onValueChange = { workSecs = it.toInt().coerceIn(1, 18000) }
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            IntervalDurationDragField(
+                            DragAdjustField(
                                 label = "REST DURATION",
-                                totalSeconds = restSecs,
-                                minSeconds = 1,
-                                maxSeconds = 3600,
+                                value = restSecs.toFloat(),
+                                minValue = 1f,
+                                maxValue = 3600f,
+                                pixelsPerUnit = 4f,
                                 accentColor = activeAccentColor,
-                                onValueChange = { restSecs = it }
+                                valueFormatter = { formatSettingsDuration(it.toInt()) },
+                                onValueChange = { restSecs = it.toInt().coerceIn(1, 3600) }
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -391,39 +430,48 @@ fun SettingsScreen(
                             val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
 
                             Text(text = "SHAPE PRESET", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                            shapes.forEach { shape ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setShapePreset(shape) } }.padding(vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = shapePreset == shape, onClick = { scope.launch { settingsRepository.setShapePreset(shape) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = shape.uppercase(), color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                }
-                            }
+                            ResponsiveOptionGrid(
+                                options = shapes,
+                                selectedOption = shapePreset,
+                                accentColor = activeAccentColor,
+                                onOptionSelected = { shape -> scope.launch { settingsRepository.setShapePreset(shape) } },
+                                displayName = { it.uppercase() }
+                            )
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            Text(text = "PADDING: ${floatingPadding.toInt()}dp", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                            Slider(value = floatingPadding, onValueChange = { scope.launch { settingsRepository.setFloatingPadding(it) } }, valueRange = 0.0f..32.0f, colors = SliderDefaults.colors(thumbColor = activeAccentColor))
+                            DragAdjustField(
+                                label = "PADDING",
+                                value = floatingPadding,
+                                minValue = 0f,
+                                maxValue = 32f,
+                                pixelsPerUnit = 8f,
+                                accentColor = activeAccentColor,
+                                valueFormatter = { "${it.toInt()}dp" },
+                                onValueChange = { scope.launch { settingsRepository.setFloatingPadding(it) } }
+                            )
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            Text(text = "OPACITY: ${(floatingOpacity * 100).toInt()}%", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                            Slider(value = floatingOpacity, onValueChange = { scope.launch { settingsRepository.setFloatingOpacity(it) } }, valueRange = 0.0f..1.0f, colors = SliderDefaults.colors(thumbColor = activeAccentColor))
+                            DragAdjustField(
+                                label = "OPACITY",
+                                value = floatingOpacity,
+                                minValue = 0f,
+                                maxValue = 1f,
+                                pixelsPerUnit = 180f,
+                                accentColor = activeAccentColor,
+                                valueFormatter = { "${(it * 100).toInt()}%" },
+                                onValueChange = { scope.launch { settingsRepository.setFloatingOpacity(it) } }
+                            )
                         }
                         "Sounds & Haptics" -> {
                             Text(text = "HAPTIC FEEDBACK INTENSITY", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                            intensities.forEach { intensity ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { scope.launch { settingsRepository.setHapticIntensity(intensity) } }.padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(selected = hapticIntensity == intensity, onClick = { scope.launch { settingsRepository.setHapticIntensity(intensity) } }, colors = RadioButtonDefaults.colors(selectedColor = activeAccentColor))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = intensity, color = LuxuryColors.CreamyWhite, fontSize = 12.sp)
-                                }
-                            }
+                            ResponsiveOptionGrid(
+                                options = intensities,
+                                selectedOption = hapticIntensity,
+                                accentColor = activeAccentColor,
+                                onOptionSelected = { intensity -> scope.launch { settingsRepository.setHapticIntensity(intensity) } }
+                            )
                         }
                         "Advanced" -> {
                             val volumeCounterScreenOffEnabled by settingsRepository.volumeCounterScreenOffEnabled.collectAsState(initial = false)
@@ -455,96 +503,77 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun IntervalDurationDragField(
-    label: String,
-    totalSeconds: Int,
-    minSeconds: Int,
-    maxSeconds: Int,
+private fun ResponsiveOptionGrid(
+    options: List<String>,
+    selectedOption: String,
     accentColor: Color,
-    onValueChange: (Int) -> Unit
+    onOptionSelected: (String) -> Unit,
+    displayName: (String) -> String = { it }
 ) {
-    var isDragging by remember { mutableStateOf(false) }
-    val currentTotalSeconds by rememberUpdatedState(totalSeconds)
-    val currentOnValueChange by rememberUpdatedState(onValueChange)
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val pixelsPerSecond = with(density) { 4.dp.toPx() }
-    val dragHighlight by animateColorAsState(
-        targetValue = if (isDragging) accentColor.copy(alpha = 0.12f) else Color.Transparent,
-        label = "DurationDragHighlight"
-    )
-    val valueScale by animateFloatAsState(
-        targetValue = if (isDragging) 1.02f else 1.0f,
-        label = "DurationDragScale"
-    )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val columns = when {
+            maxWidth >= 560.dp -> 3
+            maxWidth >= 360.dp -> 2
+            else -> 1
+        }
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
-        shape = RoundedCornerShape(10.dp),
-        border = BorderStroke(1.dp, accentColor.copy(alpha = if (isDragging) 0.55f else 0.22f)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .pointerInput(minSeconds, maxSeconds) {
-                var pendingDistance = 0f
-                var draggedSeconds = currentTotalSeconds
-                detectDragGestures(
-                    onDragStart = {
-                        draggedSeconds = currentTotalSeconds
-                        isDragging = true
-                    },
-                    onDragEnd = {
-                        pendingDistance = 0f
-                        isDragging = false
-                    },
-                    onDragCancel = {
-                        pendingDistance = 0f
-                        isDragging = false
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        pendingDistance -= dragAmount.y
-                        val steps = (pendingDistance / pixelsPerSecond).toInt()
-                        if (steps != 0) {
-                            draggedSeconds = (draggedSeconds + steps).coerceIn(minSeconds, maxSeconds)
-                            currentOnValueChange(draggedSeconds)
-                            pendingDistance -= steps * pixelsPerSecond
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.chunked(columns).forEach { rowOptions ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    rowOptions.forEach { option ->
+                        val isSelected = selectedOption == option
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) accentColor.copy(alpha = 0.12f) else Color(0xFF121212)
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSelected) accentColor.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.07f)
+                            ),
+                            shape = RoundedCornerShape(9.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp)
+                                .clickable { onOptionSelected(option) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = isSelected,
+                                    onClick = { onOptionSelected(option) },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = accentColor,
+                                        unselectedColor = LuxuryColors.WarmGray.copy(alpha = 0.65f)
+                                    )
+                                )
+                                Text(
+                                    text = displayName(option),
+                                    color = if (isSelected) LuxuryColors.CreamyWhite else LuxuryColors.WarmGray,
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
-                )
+                    repeat(columns - rowOptions.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(dragHighlight)
-                .padding(vertical = 14.dp, horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = label,
-                color = LuxuryColors.WarmGray,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 2.sp
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = String.format("%02d:%02d", totalSeconds / 3600, (totalSeconds % 3600) / 60),
-                color = if (isDragging) accentColor else LuxuryColors.CreamyWhite,
-                fontSize = 26.sp,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                fontWeight = FontWeight.Light,
-                modifier = Modifier.scale(valueScale)
-            )
-            Spacer(modifier = Modifier.height(5.dp))
-            Text(
-                text = "DRAG UP/DOWN TO ADJUST",
-                color = LuxuryColors.WarmGray.copy(alpha = 0.72f),
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Light,
-                letterSpacing = 1.5.sp
-            )
         }
     }
+}
+
+private fun formatSettingsDuration(totalSeconds: Int): String {
+    return String.format("%02d:%02d", totalSeconds / 3600, (totalSeconds % 3600) / 60)
 }
 
 @Composable
@@ -573,11 +602,27 @@ fun WidgetCategorySettings(
     if (isWidgetActive) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(text = "WIDTH: ${wWidth.toInt()}dp", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-        Slider(value = wWidth, onValueChange = { scope.launch { settingsRepository.setWidgetWidth(index, it) } }, valueRange = 1.0f..320.0f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
+        DragAdjustField(
+            label = "WIDTH",
+            value = wWidth,
+            minValue = 1f,
+            maxValue = 320f,
+            pixelsPerUnit = 1.5f,
+            accentColor = LuxuryColors.AccentGold,
+            valueFormatter = { "${it.toInt()}dp" },
+            onValueChange = { scope.launch { settingsRepository.setWidgetWidth(index, it) } }
+        )
 
-        Text(text = "HEIGHT: ${wHeight.toInt()}dp", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-        Slider(value = wHeight, onValueChange = { scope.launch { settingsRepository.setWidgetHeight(index, it) } }, valueRange = 1.0f..120.0f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
+        DragAdjustField(
+            label = "HEIGHT",
+            value = wHeight,
+            minValue = 1f,
+            maxValue = 120f,
+            pixelsPerUnit = 2.5f,
+            accentColor = LuxuryColors.AccentGold,
+            valueFormatter = { "${it.toInt()}dp" },
+            onValueChange = { scope.launch { settingsRepository.setWidgetHeight(index, it) } }
+        )
 
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
@@ -590,8 +635,18 @@ fun WidgetCategorySettings(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        Text(text = "FONT SIZE SCALE: ${String.format("%.2f", fontSizeScale)}", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-        Slider(value = fontSizeScale, onValueChange = { scope.launch { settingsRepository.setWidgetFontSizeScale(index, it) } }, valueRange = 0.5f..1.5f, colors = SliderDefaults.colors(thumbColor = LuxuryColors.AccentGold))
+        Spacer(modifier = Modifier.height(6.dp))
+
+        DragAdjustField(
+            label = "FONT SIZE SCALE",
+            value = fontSizeScale,
+            minValue = 0.5f,
+            maxValue = 1.5f,
+            pixelsPerUnit = 180f,
+            accentColor = LuxuryColors.AccentGold,
+            valueFormatter = { String.format("%.2f", it) },
+            onValueChange = { scope.launch { settingsRepository.setWidgetFontSizeScale(index, it) } }
+        )
 
     }
 }

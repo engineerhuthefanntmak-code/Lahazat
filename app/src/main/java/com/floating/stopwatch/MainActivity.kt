@@ -44,6 +44,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var mainViewModel: MainViewModel
     private lateinit var hapticController: HapticController
+    private var pendingSettingsOpen by mutableStateOf(false)
 
     // Foldable postures window tracker
     private var foldingFeatureState = mutableStateOf<FoldingFeature?>(null)
@@ -99,9 +100,22 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
         setContent {
             var currentScreen by remember {
-                mutableStateOf(if (intent?.getBooleanExtra("OPEN_SETTINGS", false) == true) "Settings" else "Main")
+                mutableStateOf(
+                    if (intent?.getBooleanExtra("OPEN_SETTINGS", false) == true || pendingSettingsOpen) {
+                        "Settings"
+                    } else {
+                        "Main"
+                    }
+                )
             }
             var isUnlockedByBiometrics by remember { mutableStateOf(false) }
+
+            LaunchedEffect(pendingSettingsOpen) {
+                if (pendingSettingsOpen) {
+                    currentScreen = "Settings"
+                    pendingSettingsOpen = false
+                }
+            }
 
             val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
             val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
@@ -249,7 +263,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getBooleanExtra("OPEN_SETTINGS", false)) {
-            // Screen updated via state observation when required
+            pendingSettingsOpen = true
         }
     }
 

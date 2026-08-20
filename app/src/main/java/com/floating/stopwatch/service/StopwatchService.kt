@@ -54,6 +54,7 @@ import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.math.roundToInt
+import androidx.compose.animation.core.tween
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -126,7 +127,15 @@ class StopwatchService : Service() {
     // Multi-Widget context structures
     private val activeOverlays = mutableMapOf<Int, ActiveOverlay>()
     private val activeMenuOverlays = mutableMapOf<Int, ActiveMenuOverlay>()
+    private val menuAnchorStates = mutableMapOf<Int, MutableState<MenuAnchor>>()
     private val widgetStates = List(4) { index -> WidgetState(index) }
+
+    private data class MenuAnchor(
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val height: Int
+    )
 
     private class ActiveOverlay(
         val index: Int,
@@ -335,6 +344,7 @@ class StopwatchService : Service() {
                             overlay.params.height = hPx
                             try {
                                 windowManager.updateViewLayout(overlay.composeView, overlay.params)
+                                activeMenuOverlays[i]?.composeView?.post { updateMenuAnchor(i) }
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -396,6 +406,7 @@ class StopwatchService : Service() {
                         overlay.params.x = initialX.roundToInt()
                         overlay.params.y = initialY.roundToInt()
                         windowManager.updateViewLayout(overlay.composeView, overlay.params)
+                        activeMenuOverlays[index]?.composeView?.post { updateMenuAnchor(index) }
                     }
                 }
 
@@ -409,6 +420,7 @@ class StopwatchService : Service() {
                             overlay.params.height = hPx
                             try {
                                 windowManager.updateViewLayout(overlay.composeView, overlay.params)
+                                activeMenuOverlays[index]?.composeView?.post { updateMenuAnchor(index) }
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -422,6 +434,7 @@ class StopwatchService : Service() {
                     if (overlay != null) {
                         overlay.params.flags = overlay.params.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         windowManager.updateViewLayout(overlay.composeView, overlay.params)
+                        activeMenuOverlays[index]?.composeView?.post { updateMenuAnchor(index) }
                     }
                 }
 
@@ -451,13 +464,7 @@ class StopwatchService : Service() {
                                 it.params.x += dx.roundToInt()
                                 it.params.y += dy.roundToInt()
                                 windowManager.updateViewLayout(it.composeView, it.params)
-                                // Reposition menu overlay if visible
-                                activeMenuOverlays[index]?.let { menu ->
-                                    menu.params.x = it.params.x
-                                    menu.params.y = it.params.y + it.params.height + 4
-                                    clampMenuToScreen(menu.params)
-                                    windowManager.updateViewLayout(menu.composeView, menu.params)
-                                }
+                                activeMenuOverlays[index]?.composeView?.post { updateMenuAnchor(index) }
                             }
                         },
                         onMovementRelease = {
@@ -516,6 +523,7 @@ class StopwatchService : Service() {
                             overlay.params.height = hPx
                             try {
                                 windowManager.updateViewLayout(overlay.composeView, overlay.params)
+                                activeMenuOverlays[index]?.composeView?.post { updateMenuAnchor(index) }
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -652,8 +660,15 @@ class StopwatchService : Service() {
             gravity = Gravity.TOP or Gravity.START
         }
 
-        val initialMenuX = overlay.params.x
-        val initialMenuY = overlay.params.y + overlay.params.height + 4
+        val menuAnchorState = mutableStateOf(
+            MenuAnchor(
+                x = overlay.params.x,
+                y = overlay.params.y,
+                width = overlay.params.width,
+                height = overlay.params.height
+            )
+        )
+        menuAnchorStates[index] = menuAnchorState
 
         val composeView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(owner)
@@ -666,46 +681,66 @@ class StopwatchService : Service() {
                 var containerSize by remember { mutableStateOf(IntSize.Zero) }
                 val density = androidx.compose.ui.platform.LocalDensity.current
                 val systemInsets = WindowInsets.systemBars
+                val topInset = systemInsets.getTop(density)
                 val bottomInset = systemInsets.getBottom(density)
                 val edgeMargin = with(density) { 8.dp.roundToPx() }
-                val gap = with(density) { 4.dp.roundToPx() }
-                val menuPosition = remember(initialMenuX, initialMenuY, menuSize, containerSize, bottomInset) {
+                val anchor by menuAnchorState
+                var isDismissing by remember { mutableStateOf(false) }
+                LaunchedEffect(isDismissing) {
+                    if (isDismissing) {
+                        delay(140)
+                        dismissMenuOverlay(index)
+                    }
+                }
+                fun requestDismiss() {
+                    if (!isDismissing) isDismissing = true
+                }
+                val menuPosition = remember(anchor, menuSize, containerSize, topInset, bottomInset) {
                     val maxX = (containerSize.width - menuSize.width - edgeMargin).coerceAtLeast(edgeMargin)
                     val availableBottom = (containerSize.height - bottomInset - edgeMargin).coerceAtLeast(edgeMargin)
-                    val belowY = initialMenuY + gap
+                    val availableTop = (topInset + edgeMargin).coerceAtMost(availableBottom)
+                    val belowY = anchor.y + anchor.height
                     val preferredY = if (belowY + menuSize.height <= availableBottom) {
                         belowY
                     } else {
-                        initialMenuY - menuSize.height - gap
+                        anchor.y - menuSize.height
                     }
+                    val maxY = (availableBottom - menuSize.height).coerceAtLeast(availableTop)
                     IntOffset(
-                        x = initialMenuX.coerceIn(edgeMargin, maxX),
-                        y = preferredY.coerceIn(edgeMargin, (availableBottom - menuSize.height).coerceAtLeast(edgeMargin))
+                        x = anchor.x.coerceIn(edgeMargin, maxX),
+                        y = preferredY.coerceIn(availableTop, maxY)
                     )
                 }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .onGloballyPositioned { containerSize = it.size }
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { dismissMenuOverlay(index) })
+                        .pointerInput(isDismissing) {
+                            detectTapGestures(onTap = { requestDismiss() })
                         }
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .offset { menuPosition }
-                            .onGloballyPositioned { menuSize = it.size }
+                    AnimatedVisibility(
+                        visible = !isDismissing,
+                        enter = fadeIn(animationSpec = tween(160)) + scaleIn(animationSpec = tween(160), initialScale = 0.96f),
+                        exit = fadeOut(animationSpec = tween(120)) + scaleOut(animationSpec = tween(120), targetScale = 0.96f)
                     ) {
-                        LuxuryTextDropdownMenu(
-                            widgetType = widgetType,
-                            fontSizeScale = fontSizeScale,
-                            isVolumeActive = isVolumeActive,
-                            onAction = { action ->
-                                handleWidgetAction(index, action, hapticIntensity)
-                                dismissMenuOverlay(index)
-                            },
-                            onDismiss = { dismissMenuOverlay(index) }
-                        )
+                        Box(
+                            modifier = Modifier
+                                .width(with(density) { anchor.width.coerceAtLeast(1).toDp() })
+                                .offset { menuPosition }
+                                .onGloballyPositioned { menuSize = it.size }
+                        ) {
+                            LuxuryTextDropdownMenu(
+                                widgetType = widgetType,
+                                fontSizeScale = fontSizeScale,
+                                isVolumeActive = isVolumeActive,
+                                onAction = { action ->
+                                    handleWidgetAction(index, action, hapticIntensity)
+                                    requestDismiss()
+                                },
+                                onDismiss = { requestDismiss() }
+                            )
+                        }
                     }
                 }
             }
@@ -714,25 +749,15 @@ class StopwatchService : Service() {
         activeMenuOverlays[index] = ActiveMenuOverlay(index, owner, composeView, menuParams)
         try {
             windowManager.addView(composeView, menuParams)
+            composeView.post { updateMenuAnchor(index) }
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    private fun clampMenuToScreen(menuParams: WindowManager.LayoutParams) {
-        val metrics = applicationContext.resources.displayMetrics
-        val screenWidth = metrics.widthPixels
-        val screenHeight = metrics.heightPixels
-
-        val minMarginPx = (8 * metrics.density).roundToInt()
-        if (menuParams.x < minMarginPx) menuParams.x = minMarginPx
-        if (menuParams.x > screenWidth - (200 * metrics.density).roundToInt()) menuParams.x = (screenWidth - (200 * metrics.density).roundToInt()).coerceAtLeast(minMarginPx)
-        if (menuParams.y < minMarginPx) menuParams.y = minMarginPx
-        if (menuParams.y > screenHeight - (300 * metrics.density).roundToInt()) menuParams.y = (screenHeight - (300 * metrics.density).roundToInt()).coerceAtLeast(minMarginPx)
-    }
-
     private fun dismissMenuOverlay(index: Int) {
         val menuOverlay = activeMenuOverlays.remove(index) ?: return
+        menuAnchorStates.remove(index)
         menuOverlay.lifecycleOwner.apply {
             onPause()
             onStop()
@@ -741,6 +766,24 @@ class StopwatchService : Service() {
         try {
             windowManager.removeView(menuOverlay.composeView)
         } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    private fun updateMenuAnchor(index: Int) {
+        val overlay = activeOverlays[index] ?: return
+        val menu = activeMenuOverlays[index] ?: return
+        if (!overlay.composeView.isAttachedToWindow || !menu.composeView.isAttachedToWindow) return
+
+        val widgetLocation = IntArray(2)
+        val menuLocation = IntArray(2)
+        overlay.composeView.getLocationOnScreen(widgetLocation)
+        menu.composeView.getLocationOnScreen(menuLocation)
+
+        menuAnchorStates[index]?.value = MenuAnchor(
+            x = widgetLocation[0] - menuLocation[0],
+            y = widgetLocation[1] - menuLocation[1],
+            width = overlay.composeView.width.coerceAtLeast(overlay.params.width),
+            height = overlay.composeView.height.coerceAtLeast(overlay.params.height)
+        )
     }
 
     private var mediaSession: android.media.session.MediaSession? = null
@@ -881,6 +924,7 @@ class StopwatchService : Service() {
         super.onConfigurationChanged(newConfig)
         activeOverlays.values.forEach {
             smartEdgeSnapAndClamp(it.params)
+            activeMenuOverlays[it.index]?.composeView?.post { updateMenuAnchor(it.index) }
         }
     }
 
@@ -1139,19 +1183,18 @@ fun LuxuryTextDropdownMenu(
     val scaleFontSize = (10.sp.value * fontSizeScale).coerceAtLeast(9.0f).sp
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xF20A0A0A)),
-        shape = RoundedCornerShape(12.dp),
-        border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xF70B0B0B)),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
         modifier = Modifier
-            .wrapContentSize()
-            .padding(2.dp)
-            .shadow(8.dp, RoundedCornerShape(12.dp))
+            .fillMaxWidth()
+            .shadow(10.dp, RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.55f), spotColor = Color.Black.copy(alpha = 0.7f))
     ) {
         Column(
             modifier = Modifier
-                .width(IntrinsicSize.Max)
-                .padding(vertical = 4.dp, horizontal = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+                .fillMaxWidth()
+                .padding(vertical = 6.dp, horizontal = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
             horizontalAlignment = Alignment.Start
         ) {
             val options = mutableListOf<Pair<String, String>>()
@@ -1183,6 +1226,7 @@ fun LuxuryTextDropdownMenu(
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
                         .clickable {
                             if (action == "Hide") {
                                 onDismiss()
@@ -1191,7 +1235,7 @@ fun LuxuryTextDropdownMenu(
                                 onDismiss()
                             }
                         }
-                        .padding(vertical = 3.dp, horizontal = 6.dp)
+                        .padding(vertical = 8.dp, horizontal = 12.dp)
                 )
             }
         }

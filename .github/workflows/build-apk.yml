@@ -1,9 +1,14 @@
-name: Build Premium APK
+name: Build Android Debug APK
 
 on:
   push:
     branches:
       - '**'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -20,11 +25,16 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Set Executable Permission for gradlew (if exists)
-        run: chmod +x gradlew || true
+        with:
+          gradle-version: '9.4.0'
 
       - name: Build Debug APK
         run: gradle assembleDebug
@@ -34,3 +44,5 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -37,7 +40,6 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()
     val detailSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var activeDialogCategory by remember { mutableStateOf<String?>(null) }
@@ -129,13 +131,12 @@ fun SettingsScreen(
                 shadowElevation = 8.dp
             ) {
                 Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .imePadding()
-                .verticalScroll(scrollState)
-                .widthIn(max = 720.dp)
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .imePadding()
+                        .widthIn(max = 720.dp)
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp)
                 ) {
             Row(
                 modifier = Modifier
@@ -172,29 +173,32 @@ fun SettingsScreen(
                 )
             }
 
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val gridGap = 7.dp
-                val minCardWidth = 148.dp
-                val columns = when {
-                    maxWidth >= minCardWidth * 3 + gridGap * 2 -> 3
-                    maxWidth >= minCardWidth * 2 + gridGap -> 2
-                    else -> 1
-                }
-                categories.chunked(columns).forEach { rowCategories ->
-                    Row(
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 148.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 7.dp),
-                        horizontalArrangement = Arrangement.spacedBy(gridGap)
+                            .heightIn(
+                                min = 220.dp,
+                                max = (panelMaxHeight - 100.dp).coerceAtLeast(220.dp)
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                        contentPadding = PaddingValues(bottom = 4.dp)
                     ) {
-                        rowCategories.forEach { categoryName ->
+                        items(categories, key = { it }) { categoryName ->
                             val isPriority = categoryName == "Appearance" || categoryName == "Stopwatch"
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = if (isPriority) Color(0xFF151412) else Color(0xFF111111)),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isPriority) Color(0xFF151412) else Color(0xFF111111)
+                                ),
                                 shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, if (isPriority) activeAccentColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f)),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isPriority) activeAccentColor.copy(alpha = 0.2f)
+                                    else Color.White.copy(alpha = 0.08f)
+                                ),
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .fillMaxWidth()
                                     .height(72.dp)
                                     .clickable { activeDialogCategory = categoryName }
                             ) {
@@ -207,7 +211,10 @@ fun SettingsScreen(
                                     Box(
                                         modifier = Modifier
                                             .size(6.dp)
-                                            .background(activeAccentColor.copy(alpha = 0.8f), RoundedCornerShape(3.dp))
+                                            .background(
+                                                activeAccentColor.copy(alpha = 0.8f),
+                                                RoundedCornerShape(3.dp)
+                                            )
                                     )
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -224,17 +231,16 @@ fun SettingsScreen(
                                             maxLines = 2,
                                             modifier = Modifier.weight(1f)
                                         )
-                                        Text(text = "▸", color = activeAccentColor.copy(alpha = 0.8f), fontSize = 13.sp)
+                                        Text(
+                                            text = "▸",
+                                            color = activeAccentColor.copy(alpha = 0.8f),
+                                            fontSize = 13.sp
+                                        )
                                     }
                                 }
                             }
                         }
-                        repeat(columns - rowCategories.size) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
                     }
-                }
-            }
                 }
             }
         }

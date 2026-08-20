@@ -4,15 +4,20 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.consume
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -250,50 +255,25 @@ fun SettingsScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            fun formatIntervalDuration(totalSecs: Int): String {
-                                val hrs = totalSecs / 3600
-                                val mins = (totalSecs % 3600) / 60
-                                val secs = totalSecs % 60
-                                return if (hrs > 0) {
-                                    String.format("%dh %02dm %02ds", hrs, mins, secs)
-                                } else if (mins > 0) {
-                                    String.format("%dm %02ds", mins, secs)
-                                } else {
-                                    "${secs}s"
-                                }
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("WORK DURATION: ${formatIntervalDuration(workSecs)}", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                Slider(
-                                    value = workSecs.toFloat(),
-                                    onValueChange = { workSecs = it.toInt().coerceAtLeast(1) },
-                                    valueRange = 1f..18000f,
-                                    modifier = Modifier.width(140.dp),
-                                    colors = SliderDefaults.colors(thumbColor = activeAccentColor)
-                                )
-                            }
+                            IntervalDurationDragField(
+                                label = "WORK DURATION",
+                                totalSeconds = workSecs,
+                                minSeconds = 1,
+                                maxSeconds = 18000,
+                                accentColor = activeAccentColor,
+                                onValueChange = { workSecs = it }
+                            )
 
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("REST DURATION: ${formatIntervalDuration(restSecs)}", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                Slider(
-                                    value = restSecs.toFloat(),
-                                    onValueChange = { restSecs = it.toInt().coerceAtLeast(1) },
-                                    valueRange = 1f..3600f,
-                                    modifier = Modifier.width(140.dp),
-                                    colors = SliderDefaults.colors(thumbColor = activeAccentColor)
-                                )
-                            }
+                            IntervalDurationDragField(
+                                label = "REST DURATION",
+                                totalSeconds = restSecs,
+                                minSeconds = 1,
+                                maxSeconds = 3600,
+                                accentColor = activeAccentColor,
+                                onValueChange = { restSecs = it }
+                            )
 
                             Spacer(modifier = Modifier.height(8.dp))
 
@@ -401,6 +381,99 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun IntervalDurationDragField(
+    label: String,
+    totalSeconds: Int,
+    minSeconds: Int,
+    maxSeconds: Int,
+    accentColor: Color,
+    onValueChange: (Int) -> Unit
+) {
+    var isDragging by remember { mutableStateOf(false) }
+    val currentTotalSeconds by rememberUpdatedState(totalSeconds)
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val pixelsPerSecond = with(density) { 4.dp.toPx() }
+    val dragHighlight by animateColorAsState(
+        targetValue = if (isDragging) accentColor.copy(alpha = 0.12f) else Color.Transparent,
+        label = "DurationDragHighlight"
+    )
+    val valueScale by animateFloatAsState(
+        targetValue = if (isDragging) 1.02f else 1.0f,
+        label = "DurationDragScale"
+    )
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, accentColor.copy(alpha = if (isDragging) 0.55f else 0.22f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(minSeconds, maxSeconds) {
+                var pendingDistance = 0f
+                var draggedSeconds = currentTotalSeconds
+                detectDragGestures(
+                    onDragStart = {
+                        draggedSeconds = currentTotalSeconds
+                        isDragging = true
+                    },
+                    onDragEnd = {
+                        pendingDistance = 0f
+                        isDragging = false
+                    },
+                    onDragCancel = {
+                        pendingDistance = 0f
+                        isDragging = false
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        pendingDistance -= dragAmount.y
+                        val steps = (pendingDistance / pixelsPerSecond).toInt()
+                        if (steps != 0) {
+                            draggedSeconds = (draggedSeconds + steps).coerceIn(minSeconds, maxSeconds)
+                            currentOnValueChange(draggedSeconds)
+                            pendingDistance -= steps * pixelsPerSecond
+                        }
+                    }
+                )
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(dragHighlight)
+                .padding(vertical = 14.dp, horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = label,
+                color = LuxuryColors.WarmGray,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 2.sp
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = String.format("%02d:%02d", totalSeconds / 3600, (totalSeconds % 3600) / 60),
+                color = if (isDragging) accentColor else LuxuryColors.CreamyWhite,
+                fontSize = 26.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontWeight = FontWeight.Light,
+                modifier = Modifier.scale(valueScale)
+            )
+            Spacer(modifier = Modifier.height(5.dp))
+            Text(
+                text = "DRAG UP/DOWN TO ADJUST",
+                color = LuxuryColors.WarmGray.copy(alpha = 0.72f),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Light,
+                letterSpacing = 1.5.sp
+            )
         }
     }
 }

@@ -148,11 +148,6 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 }
             }
 
-            // Handle safe Back press to return to MainScreen instead of exiting the entire application (Section 2 - Item 5)
-            androidx.activity.compose.BackHandler(enabled = currentScreen == "Settings") {
-                currentScreen = "Main"
-            }
-
             if (!hasOverlayPermission) {
                 OverlayPermissionExplanationScreen(
                     onGrantClick = {
@@ -163,26 +158,23 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                     }
                 )
             } else {
-                when (currentScreen) {
-                    "Main" -> {
-                        MainScreen(
-                            viewModel = mainViewModel,
-                            settingsRepository = settingsRepository,
-                            hapticController = hapticController,
-                            hapticIntensity = hapticIntensity,
-                            showCentiseconds = true,
-                            mainSize = mainDisplayScale,
-                            accentColor = accentColor,
-                            themeMode = themeMode,
-                            onNavigateToSettings = { currentScreen = "Settings" }
-                        )
-                    }
-                    "Settings" -> {
-                        SettingsScreen(
-                            settingsRepository = settingsRepository,
-                            onBack = { currentScreen = "Main" }
-                        )
-                    }
+                MainScreen(
+                    viewModel = mainViewModel,
+                    settingsRepository = settingsRepository,
+                    hapticController = hapticController,
+                    hapticIntensity = hapticIntensity,
+                    showCentiseconds = true,
+                    mainSize = mainDisplayScale,
+                    accentColor = accentColor,
+                    themeMode = themeMode,
+                    onNavigateToSettings = { currentScreen = "Settings" }
+                )
+
+                if (currentScreen == "Settings") {
+                    SettingsScreen(
+                        settingsRepository = settingsRepository,
+                        onBack = { currentScreen = "Main" }
+                    )
                 }
             }
         }

@@ -35,6 +35,7 @@ fun SettingsScreen(
 ) {
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     var activeDialogCategory by remember { mutableStateOf<String?>(null) }
 
@@ -65,63 +66,131 @@ fun SettingsScreen(
         "Floating Widgets", "Sounds & Haptics", "Advanced"
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "SETTINGS",
-                        style = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 15.sp, fontWeight = FontWeight.Light, letterSpacing = 3.sp)
-                    )
-                },
-                navigationIcon = {
-                    Text(
-                        text = "BACK",
-                        style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 12.sp, fontWeight = FontWeight.Medium, letterSpacing = 1.sp),
-                        modifier = Modifier.clickable { onBack() }.padding(16.dp)
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = LuxuryColors.WarmBlack)
+    fun dismissSettings() {
+        scope.launch {
+            sheetState.hide()
+            onBack()
+        }
+    }
+
+    val activeAccentColor = if (colorPreset == "Custom") {
+        try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
+    } else {
+        LuxuryColors.fromName(colorPreset)
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = { dismissSettings() },
+        sheetState = sheetState,
+        containerColor = LuxuryColors.WarmBlack,
+        contentColor = LuxuryColors.CreamyWhite,
+        scrimColor = Color.Black.copy(alpha = 0.62f),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 10.dp, bottom = 4.dp)
+                    .width(38.dp)
+                    .height(3.dp)
+                    .background(LuxuryColors.WarmGray.copy(alpha = 0.55f), RoundedCornerShape(2.dp))
             )
-        },
-        containerColor = LuxuryColors.WarmBlack
-    ) { padding ->
+        }
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .imePadding()
                 .verticalScroll(scrollState)
-                .padding(24.dp)
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 18.dp)
         ) {
-            Text(
-                text = "SETTINGS CATEGORIES",
-                style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, letterSpacing = 2.sp),
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            categories.forEach { cat ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = LuxuryColors.WarmGray.copy(alpha = 0.1f)),
-                    shape = RoundedCornerShape(12.dp),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp, bottom = 18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "SETTINGS",
+                        color = LuxuryColors.CreamyWhite,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Light,
+                        letterSpacing = 3.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "SETTINGS CATEGORIES",
+                        color = LuxuryColors.WarmGray,
+                        fontSize = 10.sp,
+                        letterSpacing = 2.sp
+                    )
+                }
+                Text(
+                    text = "CLOSE",
+                    color = LuxuryColors.WarmGray,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.5.sp,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                        .clickable { activeDialogCategory = cat }
-                ) {
-                    val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
-                    val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
-                    val activeAccentColor = if (colorPreset == "Custom") {
-                        try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
-                    } else {
-                        LuxuryColors.fromName(colorPreset)
-                    }
+                        .clickable { dismissSettings() }
+                        .padding(10.dp)
+                )
+            }
+
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val columns = if (maxWidth >= 560.dp) 3 else 2
+                categories.chunked(columns).forEach { rowCategories ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(text = cat.uppercase(), color = LuxuryColors.CreamyWhite, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                        Text(text = "▸", color = activeAccentColor, fontSize = 14.sp)
+                        rowCategories.forEach { categoryName ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF111111)),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 72.dp)
+                                    .clickable { activeDialogCategory = categoryName }
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .background(activeAccentColor.copy(alpha = 0.8f), RoundedCornerShape(3.dp))
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.Bottom
+                                    ) {
+                                        Text(
+                                            text = categoryName.uppercase(),
+                                            color = LuxuryColors.CreamyWhite,
+                                            fontSize = 11.sp,
+                                            lineHeight = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            letterSpacing = 0.8.sp,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(text = "▸", color = activeAccentColor.copy(alpha = 0.8f), fontSize = 13.sp)
+                                    }
+                                }
+                            }
+                        }
+                        repeat(columns - rowCategories.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }

@@ -272,12 +272,28 @@ fun MainScreen(
         val context = androidx.compose.ui.platform.LocalContext.current
 
         // Top Right: Floating Quick Access & Settings
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .graphicsLayer { alpha = controlsAlpha },
-            verticalAlignment = Alignment.CenterVertically
+            horizontalAlignment = Alignment.End
         ) {
+            Text(
+                text = "SETTINGS",
+                style = TextStyle(
+                    color = currentGrayColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = 2.sp
+                ),
+                modifier = Modifier
+                    .clickable {
+                        resetAutoHideTimer()
+                        onNavigateToSettings()
+                    }
+                    .padding(8.dp)
+            )
+
             Text(
                 text = "FLOAT ↗",
                 style = TextStyle(
@@ -319,24 +335,6 @@ fun MainScreen(
                             )
                             context.startActivity(intent)
                         }
-                    }
-                    .padding(8.dp)
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = "SETTINGS",
-                style = TextStyle(
-                    color = currentGrayColor,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Light,
-                    letterSpacing = 2.sp
-                ),
-                modifier = Modifier
-                    .clickable {
-                        resetAutoHideTimer()
-                        onNavigateToSettings()
                     }
                     .padding(8.dp)
             )

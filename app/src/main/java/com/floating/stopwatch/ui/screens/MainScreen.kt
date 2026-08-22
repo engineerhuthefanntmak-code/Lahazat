@@ -42,6 +42,7 @@ import com.floating.stopwatch.domain.IntervalStageType
 import com.floating.stopwatch.domain.IntervalState
 import com.floating.stopwatch.domain.IntervalTemplate
 import com.floating.stopwatch.domain.Lap
+import com.floating.stopwatch.domain.LegacyState
 import com.floating.stopwatch.domain.StopwatchState
 import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
@@ -84,11 +85,15 @@ fun MainScreen(
     val intervalEngine = viewModel.intervalEngine
     val intervalState by intervalEngine.state.collectAsState()
 
+    val legacyEngine = viewModel.legacyEngine
+    val legacyState by legacyEngine.state.collectAsState()
+
     val isCurrentlyRunning = when (currentMode) {
         AppMode.Stopwatch -> state == StopwatchState.Running
         AppMode.Countdown -> isCountdownRunning
         AppMode.Counter -> false
         AppMode.Intervals -> intervalState == IntervalState.RUNNING
+        AppMode.Legacy -> legacyState == LegacyState.RUNNING
     }
 
     // Controls and Secondary Information Auto-Hide State
@@ -325,12 +330,14 @@ fun MainScreen(
                                 AppMode.Countdown -> 1
                                 AppMode.Counter -> 2
                                 AppMode.Intervals -> 3
+                                AppMode.Legacy -> 4
                             }
                             val targetType = when (currentMode) {
                                 AppMode.Stopwatch -> "stopwatch"
                                 AppMode.Countdown -> "countdown"
                                 AppMode.Counter -> "counter"
                                 AppMode.Intervals -> "intervals"
+                                AppMode.Legacy -> "legacy"
                             }
                             scope.launch {
                                 settingsRepository.setWidgetType(targetIndex, targetType)
@@ -367,6 +374,7 @@ fun MainScreen(
                     AppMode.Countdown -> "COUNTDOWN ▾"
                     AppMode.Counter -> "COUNTER ▾"
                     AppMode.Intervals -> "INTERVALS ▾"
+                    AppMode.Legacy -> "LEGACY ▾"
                 },
                 style = TextStyle(
                     color = currentTextColor,
@@ -712,6 +720,18 @@ fun MainScreen(
                         )
                     }
                 }
+                AppMode.Legacy -> {
+                    LegacyContent(
+                        legacyEngine = legacyEngine,
+                        accentColor = accentColor,
+                        currentTextColor = currentTextColor,
+                        currentGrayColor = currentGrayColor,
+                        mainSize = mainSize,
+                        secondaryAlpha = secondaryAlpha,
+                        scalePulse = scalePulse,
+                        resetAutoHideTimer = { resetAutoHideTimer() }
+                    )
+                }
             }
         }
 
@@ -1010,6 +1030,63 @@ fun MainScreen(
                             text = "+ 1",
                             style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         )
+                    }
+                }
+                AppMode.Legacy -> {
+                    val activeLegacy by legacyEngine.activeLegacy.collectAsState()
+                    if (activeLegacy != null) {
+                        // Stop button
+                        Box(
+                            modifier = Modifier
+                                .size(68.dp)
+                                .clip(CircleShape)
+                                .background(Color.Transparent)
+                                .clickable {
+                                    resetAutoHideTimer()
+                                    hapticController.trigger(hapticIntensity, "Reset")
+                                    legacyEngine.stop()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Surface(
+                                modifier = Modifier.fillMaxSize(),
+                                shape = CircleShape,
+                                color = Color.Transparent,
+                                border = BorderStroke(1.dp, currentGrayColor)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "STOP",
+                                        style = TextStyle(color = currentTextColor, fontSize = 11.sp, letterSpacing = 1.sp)
+                                    )
+                                }
+                            }
+                        }
+
+                        val isRunning = legacyState == LegacyState.RUNNING
+                        val legacyBtnColor = if (isRunning) Color(0xFF9E2A2B) else accentColor
+                        Box(
+                            modifier = Modifier
+                                .size(92.dp)
+                                .clip(CircleShape)
+                                .background(legacyBtnColor)
+                                .clickable {
+                                    resetAutoHideTimer()
+                                    if (isRunning) {
+                                        hapticController.trigger(hapticIntensity, "Stop")
+                                        legacyEngine.pause()
+                                    } else {
+                                        hapticController.trigger(hapticIntensity, "Start")
+                                        legacyEngine.start(scope)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (isRunning) "PAUSE" else if (legacyState == LegacyState.PAUSED) "RESUME" else "START",
+                                style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            )
+                        }
                     }
                 }
             }

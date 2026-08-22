@@ -24,8 +24,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
+import com.floating.stopwatch.data.LegacySerializer
 import com.floating.stopwatch.data.SettingsRepository
 import com.floating.stopwatch.domain.HapticController
+import com.floating.stopwatch.domain.LegacyEngine
 import com.floating.stopwatch.domain.StopwatchEngine
 import com.floating.stopwatch.service.StopwatchService
 import com.floating.stopwatch.ui.AppMode
@@ -57,9 +59,30 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         mainViewModel = MainViewModel(
             engine = StopwatchService.getEngine(),
             countdownEngine = StopwatchService.getCountdownEngine(),
-            intervalEngine = StopwatchService.getIntervalEngine()
+            intervalEngine = StopwatchService.getIntervalEngine(),
+            legacyEngine = LegacyEngine()
         )
         hapticController = HapticController(applicationContext)
+
+        // Observe DataStore for persisted Legacy configuration
+        lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(
+                settingsRepository.legaciesJson,
+                settingsRepository.selectedLegacyId
+            ) { json, selectedId ->
+                Pair(json, selectedId)
+            }.collectLatest { (json, selectedId) ->
+                val list = LegacySerializer.jsonToLegacies(json)
+                mainViewModel.legacyEngine.loadLegacies(list, selectedId.ifBlank { null })
+            }
+        }
+
+        mainViewModel.legacyEngine.onLegacyDataChanged = { legacies, selectedId ->
+            lifecycleScope.launch {
+                val json = LegacySerializer.toJson(legacies)
+                settingsRepository.saveLegaciesData(json, selectedId ?: "")
+            }
+        }
 
         // Observe DataStore for persisted Interval configuration and update shared IntervalEngine
         lifecycleScope.launch {

@@ -30,6 +30,18 @@ class SettingsRepository(private val context: Context) {
         val INTERVAL_REST_MS = longPreferencesKey("interval_rest_ms")
         val INTERVAL_ROUNDS = intPreferencesKey("interval_rounds")
         val CUSTOM_INTERVAL_TEMPLATES = stringPreferencesKey("custom_interval_templates")
+        val LEGACIES_JSON = stringPreferencesKey("legacies_json")
+        val SELECTED_LEGACY_ID = stringPreferencesKey("selected_legacy_id")
+    }
+
+    val legaciesJson: Flow<String> = context.dataStore.data.map { it[LEGACIES_JSON] ?: "" }
+    val selectedLegacyId: Flow<String> = context.dataStore.data.map { it[SELECTED_LEGACY_ID] ?: "" }
+
+    suspend fun saveLegaciesData(json: String, selectedId: String) {
+        context.dataStore.edit {
+            it[LEGACIES_JSON] = json
+            it[SELECTED_LEGACY_ID] = selectedId
+        }
     }
 
     val intervalName: Flow<String> = context.dataStore.data.map { it[INTERVAL_NAME] ?: "HIT" }

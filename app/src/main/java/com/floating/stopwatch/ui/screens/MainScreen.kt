@@ -47,6 +47,7 @@ import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.components.DragAdjustField
+import com.floating.stopwatch.ui.components.StellarBackground
 import com.floating.stopwatch.data.SettingsRepository
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import com.floating.stopwatch.domain.HapticController
@@ -227,48 +228,54 @@ fun MainScreen(
     var totalDragX by remember { mutableFloatStateOf(0f) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(currentBgColor)
-            .padding(24.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        resetAutoHideTimer()
-                    }
-                )
-            }
-            .pointerInput(currentMode) {
-                detectDragGestures(
-                    onDragStart = {
-                        totalDragY = 0f
-                        totalDragX = 0f
-                        resetAutoHideTimer()
-                    },
-                    onDrag = { _, dragAmount ->
-                        totalDragY += dragAmount.y
-                        totalDragX += dragAmount.x
-                    },
-                    onDragEnd = {
-                        if (kotlin.math.abs(totalDragY) > 80f && kotlin.math.abs(totalDragY) > 1.5f * kotlin.math.abs(totalDragX)) {
-                            if (totalDragY < 0) {
-                                hapticController.trigger(hapticIntensity, "Lap")
-                                viewModel.cycleMode()
-                            } else {
-                                hapticController.trigger(hapticIntensity, "Lap")
-                                viewModel.previousMode()
-                            }
-                        }
-                        totalDragY = 0f
-                        totalDragX = 0f
-                    },
-                    onDragCancel = {
-                        totalDragY = 0f
-                        totalDragX = 0f
-                    }
-                )
-            }
+        modifier = Modifier.fillMaxSize()
     ) {
+        // Root STELLAR Background Atmosphere
+        StellarBackground(modifier = Modifier.fillMaxSize())
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(if (themeMode in listOf("Warm Paper", "Warm Paper Light", "Pure White Light")) currentBgColor else Color.Transparent)
+                .padding(24.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = {
+                            resetAutoHideTimer()
+                        }
+                    )
+                }
+                .pointerInput(currentMode) {
+                    detectDragGestures(
+                        onDragStart = {
+                            totalDragY = 0f
+                            totalDragX = 0f
+                            resetAutoHideTimer()
+                        },
+                        onDrag = { _, dragAmount ->
+                            totalDragY += dragAmount.y
+                            totalDragX += dragAmount.x
+                        },
+                        onDragEnd = {
+                            if (kotlin.math.abs(totalDragY) > 80f && kotlin.math.abs(totalDragY) > 1.5f * kotlin.math.abs(totalDragX)) {
+                                if (totalDragY < 0) {
+                                    hapticController.trigger(hapticIntensity, "Lap")
+                                    viewModel.cycleMode()
+                                } else {
+                                    hapticController.trigger(hapticIntensity, "Lap")
+                                    viewModel.previousMode()
+                                }
+                            }
+                            totalDragY = 0f
+                            totalDragX = 0f
+                        },
+                        onDragCancel = {
+                            totalDragY = 0f
+                            totalDragX = 0f
+                        }
+                    )
+                }
+        ) {
         val context = androidx.compose.ui.platform.LocalContext.current
 
         // Top Right: Floating Quick Access & Settings
@@ -1031,6 +1038,7 @@ fun MainScreen(
                 )
             }
         }
+    }
     }
 
     // Slide-up bottom sheet for luxury clean laps listing

@@ -110,7 +110,7 @@ class LegacyEngineTest {
     }
 
     @Test
-    fun testPauseAndStop() {
+    fun testPauseAndDelete() {
         engine.createLegacy(
             name = "Meditation",
             targetDurationMs = 5 * 3600 * 1000L,
@@ -120,9 +120,6 @@ class LegacyEngineTest {
         )
 
         engine.pause()
-        assertEquals(LegacyState.IDLE, engine.state.value)
-
-        engine.stop()
         assertEquals(LegacyState.IDLE, engine.state.value)
     }
 

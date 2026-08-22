@@ -149,12 +149,6 @@ class LegacyEngine {
         start(scope)
     }
 
-    fun stop() {
-        pause()
-        _state.value = LegacyState.IDLE
-        notifyChange()
-    }
-
     fun addManualTime(hours: Int, minutes: Int) {
         val current = _activeLegacy.value ?: return
         val extraMs = (hours * 3600L + minutes * 60L) * 1000L

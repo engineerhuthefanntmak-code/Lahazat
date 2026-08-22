@@ -86,6 +86,10 @@ class MainViewModel(
         countdownEngine.reset()
     }
 
+    fun resetCountdownToZero() {
+        countdownEngine.resetToZero()
+    }
+
     fun incrementCounter() {
         engine.incrementCounter()
     }

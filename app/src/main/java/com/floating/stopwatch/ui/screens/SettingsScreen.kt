@@ -89,40 +89,40 @@ fun SettingsOverlay(
     currentTextColor: Color,
     presentationState: SettingsPresentationState,
     onStateChange: (SettingsPresentationState) -> Unit,
-    onFloatClick: () -> Unit
+    onFloatClick: () -> Unit,
+    onFloatLongClick: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
 
-    val stylePreset by settingsRepository.stylePreset.collectAsState(initial = "Glass Premium")
-    val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
+    val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Champagne Gold")
     val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
-    val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
     val mainDisplayScale by settingsRepository.mainDisplayScale.collectAsState(initial = 1.0f)
-    val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
-    val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
-    val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
     val volumeCounterScreenOffEnabled by settingsRepository.volumeCounterScreenOffEnabled.collectAsState(initial = false)
     val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
 
     val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
     val atmospheres = remember { listOf("Pure Black", "Stellar", "Ambient", "Dust", "Ember", "Aurora", "Void") }
 
+    val masterSoundEnabled by settingsRepository.masterSoundEnabled.collectAsState(initial = true)
+    val selectedSoundType by settingsRepository.selectedSoundType.collectAsState(initial = "Soft Click")
+
     val categories = remember {
-        listOf(
-            "APPEARANCE", "DIGIT SIZE", "BACKGROUND ATMOSPHERE", "STOPWATCH", "COUNTDOWN", "COUNTER",
-            "INTERVAL", "SOUNDS & HAPTICS", "FLOATING WIDGETS", "ADVANCED"
-        )
+        listOf("APPEARANCE", "SOUNDS & HAPTICS", "ADVANCED")
     }
 
-    val shapes = remember { listOf("rounded", "capsule", "circle", "sharp", "glass") }
-    val themeModes = remember { listOf("Midnight Dark", "Warm Paper Light", "Obsidian Dark", "Pure White Light") }
-    val presets = remember { listOf("Glass Premium", "Obsidian", "Titanium", "Ultra Minimal") }
     val intensities = remember { listOf("Off", "Light", "Medium", "Strong") }
+    val soundTypes = remember {
+        listOf(
+            "Soft Click", "Gentle Tap", "Light Tick", "Soft Knock",
+            "Button Click", "Subtle Pop", "Finger Snap", "Bell",
+            "Soft Chime", "Wooden Tap", "Paper Tap"
+        )
+    }
     val colorPresets = remember {
         listOf(
-            "Gold", "Galaxy Blue", "Titanium", "Emerald", "Sapphire", "Violet",
-            "Rose", "Ice", "Amber", "Pure White", "Champagne", "Platinum",
-            "Rose Gold", "Copper", "Amethyst", "Ruby", "Custom"
+            "Champagne Gold", "Soft Gold", "Platinum", "Silver", "Pearl",
+            "Ivory", "Sand", "Bronze", "Copper", "Deep Olive",
+            "Slate", "Royal Navy", "Burgundy", "Espresso", "Graphite"
         )
     }
 
@@ -131,7 +131,6 @@ fun SettingsOverlay(
     val scaleCounter by settingsRepository.scaleCounter.collectAsState(initial = 1.0f)
     val scaleInterval by settingsRepository.scaleInterval.collectAsState(initial = 1.0f)
     val scaleLegacy by settingsRepository.scaleLegacy.collectAsState(initial = 1.0f)
-    val scaleFloatingWidget by settingsRepository.scaleFloatingWidget.collectAsState(initial = 1.0f)
 
     if (presentationState is SettingsPresentationState.Closed) {
         // Closed state: SETTINGS and FLOAT visible in top end
@@ -161,7 +160,12 @@ fun SettingsOverlay(
                     letterSpacing = 2.sp
                 ),
                 modifier = Modifier
-                    .clickable { onFloatClick() }
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { onFloatClick() },
+                            onLongPress = { onFloatLongClick() }
+                        )
+                    }
                     .padding(8.dp)
             )
         }
@@ -210,7 +214,12 @@ fun SettingsOverlay(
                     letterSpacing = 2.sp
                 ),
                 modifier = Modifier
-                    .clickable { onFloatClick() }
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { onFloatClick() },
+                            onLongPress = { onFloatLongClick() }
+                        )
+                    }
                     .padding(8.dp)
             )
 
@@ -303,109 +312,7 @@ fun SettingsOverlay(
 
                             // Category Controls
                             when (categoryName) {
-                                "DIGIT SIZE" -> {
-                                    Text(text = "INDEPENDENT DIGIT SIZE SCALES", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    DragAdjustField(
-                                        label = "STOPWATCH",
-                                        value = scaleStopwatch,
-                                        minValue = 0.60f,
-                                        maxValue = 2.00f,
-                                        pixelsPerUnit = 120f,
-                                        accentColor = accentColor,
-                                        valueFormatter = { "${(it * 100).toInt()}%" },
-                                        onValueChange = { scope.launch { settingsRepository.setScaleStopwatch(it) } }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(6.dp))
-
-                                    DragAdjustField(
-                                        label = "COUNTDOWN",
-                                        value = scaleCountdown,
-                                        minValue = 0.60f,
-                                        maxValue = 2.00f,
-                                        pixelsPerUnit = 120f,
-                                        accentColor = accentColor,
-                                        valueFormatter = { "${(it * 100).toInt()}%" },
-                                        onValueChange = { scope.launch { settingsRepository.setScaleCountdown(it) } }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(6.dp))
-
-                                    DragAdjustField(
-                                        label = "COUNTER",
-                                        value = scaleCounter,
-                                        minValue = 0.60f,
-                                        maxValue = 2.00f,
-                                        pixelsPerUnit = 120f,
-                                        accentColor = accentColor,
-                                        valueFormatter = { "${(it * 100).toInt()}%" },
-                                        onValueChange = { scope.launch { settingsRepository.setScaleCounter(it) } }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(6.dp))
-
-                                    DragAdjustField(
-                                        label = "INTERVAL",
-                                        value = scaleInterval,
-                                        minValue = 0.60f,
-                                        maxValue = 2.00f,
-                                        pixelsPerUnit = 120f,
-                                        accentColor = accentColor,
-                                        valueFormatter = { "${(it * 100).toInt()}%" },
-                                        onValueChange = { scope.launch { settingsRepository.setScaleInterval(it) } }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(6.dp))
-
-                                    DragAdjustField(
-                                        label = "LEGACY",
-                                        value = scaleLegacy,
-                                        minValue = 0.60f,
-                                        maxValue = 2.00f,
-                                        pixelsPerUnit = 120f,
-                                        accentColor = accentColor,
-                                        valueFormatter = { "${(it * 100).toInt()}%" },
-                                        onValueChange = { scope.launch { settingsRepository.setScaleLegacy(it) } }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(6.dp))
-
-                                    DragAdjustField(
-                                        label = "FLOATING WIDGET",
-                                        value = scaleFloatingWidget,
-                                        minValue = 0.60f,
-                                        maxValue = 2.00f,
-                                        pixelsPerUnit = 120f,
-                                        accentColor = accentColor,
-                                        valueFormatter = { "${(it * 100).toInt()}%" },
-                                        onValueChange = { scope.launch { settingsRepository.setScaleFloatingWidget(it) } }
-                                    )
-                                }
                                 "APPEARANCE" -> {
-                                    Text(text = "ILLUMINATION MODE", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    OptionGridCompact(
-                                        options = themeModes,
-                                        selectedOption = themeMode,
-                                        accentColor = accentColor,
-                                        onOptionSelected = { mode -> scope.launch { settingsRepository.setThemeMode(mode) } }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(10.dp))
-
-                                    Text(text = "STYLE PRESET", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    OptionGridCompact(
-                                        options = presets,
-                                        selectedOption = stylePreset,
-                                        accentColor = accentColor,
-                                        onOptionSelected = { preset -> scope.launch { settingsRepository.setStylePreset(preset) } }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(10.dp))
-
                                     Text(text = "COLOR ACCENT", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     OptionGridCompact(
@@ -413,6 +320,17 @@ fun SettingsOverlay(
                                         selectedOption = colorPreset,
                                         accentColor = accentColor,
                                         onOptionSelected = { color -> scope.launch { settingsRepository.setColorPreset(color) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Text(text = "BACKGROUND ATMOSPHERE", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OptionGridCompact(
+                                        options = atmospheres,
+                                        selectedOption = backgroundAtmosphere,
+                                        accentColor = accentColor,
+                                        onOptionSelected = { atmosphere -> scope.launch { settingsRepository.setBackgroundAtmosphere(atmosphere) } }
                                     )
 
                                     Spacer(modifier = Modifier.height(10.dp))
@@ -427,141 +345,108 @@ fun SettingsOverlay(
                                         valueFormatter = { String.format(Locale.US, "%.2fx", it) },
                                         onValueChange = { scope.launch { settingsRepository.setMainDisplayScale(it) } }
                                     )
-                                }
-                                "BACKGROUND ATMOSPHERE" -> {
-                                    Text(text = "BACKGROUND ATMOSPHERE", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    OptionGridCompact(
-                                        options = atmospheres,
-                                        selectedOption = backgroundAtmosphere,
-                                        accentColor = accentColor,
-                                        onOptionSelected = { atmosphere -> scope.launch { settingsRepository.setBackgroundAtmosphere(atmosphere) } }
-                                    )
-                                }
-                                "STOPWATCH" -> WidgetCategorySettingsCompact(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, accentColor = accentColor, currentTextColor = currentTextColor, scope = scope)
-                                "COUNTDOWN" -> WidgetCategorySettingsCompact(index = 1, widgetTitle = "COUNTDOWN", settingsRepository = settingsRepository, accentColor = accentColor, currentTextColor = currentTextColor, scope = scope)
-                                "COUNTER" -> WidgetCategorySettingsCompact(index = 2, widgetTitle = "COUNTER", settingsRepository = settingsRepository, accentColor = accentColor, currentTextColor = currentTextColor, scope = scope)
-                                "INTERVAL" -> {
-                                    val intervalName by settingsRepository.intervalName.collectAsState(initial = "HIT")
-                                    val workMs by settingsRepository.intervalWorkMs.collectAsState(initial = 40000L)
-                                    val restMs by settingsRepository.intervalRestMs.collectAsState(initial = 20000L)
-                                    val rounds by settingsRepository.intervalRounds.collectAsState(initial = 8)
-
-                                    var nameInput by remember(intervalName) { mutableStateOf(intervalName) }
-                                    var workSecs by remember(workMs) { mutableIntStateOf((workMs / 1000).toInt()) }
-                                    var restSecs by remember(restMs) { mutableIntStateOf((restMs / 1000).toInt()) }
-                                    var roundsVal by remember(rounds) { mutableIntStateOf(rounds) }
-
-                                    OutlinedTextField(
-                                        value = nameInput,
-                                        onValueChange = { nameInput = it },
-                                        label = { Text("Interval Name", color = currentGrayColor, fontSize = 9.sp) },
-                                        textStyle = TextStyle(color = currentTextColor, fontSize = 11.sp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    DragAdjustField(
-                                        label = "WORK DURATION",
-                                        value = workSecs.toFloat(),
-                                        minValue = 1f,
-                                        maxValue = 18000f,
-                                        pixelsPerUnit = 4f,
-                                        accentColor = accentColor,
-                                        valueFormatter = { String.format(Locale.US, "%02d:%02d", it.toInt() / 3600, (it.toInt() % 3600) / 60) },
-                                        onValueChange = { workSecs = it.toInt().coerceIn(1, 18000) }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(6.dp))
-
-                                    DragAdjustField(
-                                        label = "REST DURATION",
-                                        value = restSecs.toFloat(),
-                                        minValue = 1f,
-                                        maxValue = 3600f,
-                                        pixelsPerUnit = 4f,
-                                        accentColor = accentColor,
-                                        valueFormatter = { String.format(Locale.US, "%02d:%02d", it.toInt() / 3600, (it.toInt() % 3600) / 60) },
-                                        onValueChange = { restSecs = it.toInt().coerceIn(1, 3600) }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(6.dp))
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text("ROUNDS: $roundsVal", color = currentTextColor, fontSize = 10.sp)
-                                        Row {
-                                            Text("-", color = accentColor, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { if (roundsVal > 1) roundsVal -= 1 }.padding(6.dp))
-                                            Text("+", color = accentColor, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { roundsVal += 1 }.padding(6.dp))
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    Button(
-                                        onClick = {
-                                            scope.launch {
-                                                settingsRepository.setIntervalConfig(
-                                                    name = nameInput.ifBlank { "HIT" },
-                                                    workMs = workSecs * 1000L,
-                                                    restMs = restSecs * 1000L,
-                                                    rounds = roundsVal
-                                                )
-                                            }
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentPadding = PaddingValues(vertical = 4.dp)
-                                    ) {
-                                        Text("SAVE INTERVAL", color = LuxuryColors.WarmBlack, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                    }
 
                                     Spacer(modifier = Modifier.height(10.dp))
 
-                                    WidgetCategorySettingsCompact(index = 3, widgetTitle = "INTERVAL", settingsRepository = settingsRepository, accentColor = accentColor, currentTextColor = currentTextColor, scope = scope)
-                                }
-                                "FLOATING WIDGETS" -> {
-                                    Text(text = "SHAPE PRESET", color = currentGrayColor, fontSize = 9.sp)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    OptionGridCompact(
-                                        options = shapes,
-                                        selectedOption = shapePreset,
-                                        accentColor = accentColor,
-                                        onOptionSelected = { shape -> scope.launch { settingsRepository.setShapePreset(shape) } }
-                                    )
-
-                                    Spacer(modifier = Modifier.height(10.dp))
-
-                                    DragAdjustField(
-                                        label = "PADDING",
-                                        value = floatingPadding,
-                                        minValue = 0f,
-                                        maxValue = 32f,
-                                        pixelsPerUnit = 8f,
-                                        accentColor = accentColor,
-                                        valueFormatter = { "${it.toInt()}dp" },
-                                        onValueChange = { scope.launch { settingsRepository.setFloatingPadding(it) } }
-                                    )
-
+                                    Text(text = "INDEPENDENT DIGIT SIZE SCALES", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
                                     Spacer(modifier = Modifier.height(6.dp))
 
                                     DragAdjustField(
-                                        label = "OPACITY",
-                                        value = floatingOpacity,
-                                        minValue = 0f,
-                                        maxValue = 1f,
-                                        pixelsPerUnit = 180f,
+                                        label = "STOPWATCH",
+                                        value = scaleStopwatch,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
                                         accentColor = accentColor,
                                         valueFormatter = { "${(it * 100).toInt()}%" },
-                                        onValueChange = { scope.launch { settingsRepository.setFloatingOpacity(it) } }
+                                        onValueChange = { scope.launch { settingsRepository.setScaleStopwatch(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    DragAdjustField(
+                                        label = "COUNTDOWN",
+                                        value = scaleCountdown,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleCountdown(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    DragAdjustField(
+                                        label = "COUNTER",
+                                        value = scaleCounter,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleCounter(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    DragAdjustField(
+                                        label = "INTERVAL",
+                                        value = scaleInterval,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleInterval(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    DragAdjustField(
+                                        label = "LEGACY",
+                                        value = scaleLegacy,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleLegacy(it) } }
                                     )
                                 }
                                 "SOUNDS & HAPTICS" -> {
-                                    Text(text = "HAPTIC FEEDBACK INTENSITY", color = currentGrayColor, fontSize = 9.sp)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = "MASTER SOUND", color = currentTextColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        SlimLuxuryToggle(
+                                            checked = masterSoundEnabled,
+                                            onCheckedChange = { scope.launch { settingsRepository.setMasterSoundEnabled(it) } },
+                                            accentColor = accentColor
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Text(text = "NATURAL SOUND PRESET", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OptionGridCompact(
+                                        options = soundTypes,
+                                        selectedOption = selectedSoundType,
+                                        accentColor = accentColor,
+                                        onOptionSelected = { sound ->
+                                            scope.launch {
+                                                settingsRepository.setSelectedSoundType(sound)
+                                                com.floating.stopwatch.domain.CompletionSoundPlayer.playSound(sound, masterSoundEnabled)
+                                            }
+                                        }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Text(text = "HAPTIC FEEDBACK INTENSITY", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     OptionGridCompact(
                                         options = intensities,
@@ -584,6 +469,8 @@ fun SettingsOverlay(
                                         )
                                     }
 
+                                    Spacer(modifier = Modifier.height(4.dp))
+
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -602,6 +489,160 @@ fun SettingsOverlay(
                     }
                 }
                 else -> {}
+            }
+        }
+    }
+}
+
+@Composable
+fun FloatingModeConfigDialog(
+    modeIndex: Int,
+    modeName: String,
+    settingsRepository: SettingsRepository,
+    accentColor: Color,
+    onDismiss: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+
+    val wWidth by settingsRepository.getWidgetWidth(modeIndex).collectAsState(initial = 170.0f)
+    val wHeight by settingsRepository.getWidgetHeight(modeIndex).collectAsState(initial = 56.0f)
+    val fontSizeScale by settingsRepository.getWidgetFontSizeScale(modeIndex).collectAsState(initial = 1.0f)
+    val saveDimensions by settingsRepository.getWidgetSaveDimensions(modeIndex).collectAsState(initial = true)
+
+    val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
+    val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
+    val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
+
+    val shapes = remember { listOf("rounded", "capsule", "circle", "sharp", "glass") }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF0A0A0A),
+            border = BorderStroke(1.dp, accentColor),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = "${modeName.uppercase()} FLOATING CONFIG",
+                    style = TextStyle(color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                DragAdjustField(
+                    label = "WIDTH",
+                    value = wWidth,
+                    minValue = 1f,
+                    maxValue = 320f,
+                    pixelsPerUnit = 1.5f,
+                    accentColor = accentColor,
+                    valueFormatter = { "${it.toInt()}dp" },
+                    onValueChange = { scope.launch { settingsRepository.setWidgetWidth(modeIndex, it) } }
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DragAdjustField(
+                    label = "HEIGHT",
+                    value = wHeight,
+                    minValue = 1f,
+                    maxValue = 120f,
+                    pixelsPerUnit = 2.5f,
+                    accentColor = accentColor,
+                    valueFormatter = { "${it.toInt()}dp" },
+                    onValueChange = { scope.launch { settingsRepository.setWidgetHeight(modeIndex, it) } }
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DragAdjustField(
+                    label = "FONT SIZE SCALE",
+                    value = fontSizeScale,
+                    minValue = 0.5f,
+                    maxValue = 2.0f,
+                    pixelsPerUnit = 120f,
+                    accentColor = accentColor,
+                    valueFormatter = { String.format(Locale.US, "%.2fx", it) },
+                    onValueChange = { scope.launch { settingsRepository.setWidgetFontSizeScale(modeIndex, it) } }
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DragAdjustField(
+                    label = "OPACITY",
+                    value = floatingOpacity,
+                    minValue = 0.10f,
+                    maxValue = 1.00f,
+                    pixelsPerUnit = 180f,
+                    accentColor = accentColor,
+                    valueFormatter = { "${(it * 100).toInt()}%" },
+                    onValueChange = { scope.launch { settingsRepository.setFloatingOpacity(it) } }
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DragAdjustField(
+                    label = "INTERNAL PADDING",
+                    value = floatingPadding,
+                    minValue = 0f,
+                    maxValue = 32f,
+                    pixelsPerUnit = 8f,
+                    accentColor = accentColor,
+                    valueFormatter = { "${it.toInt()}dp" },
+                    onValueChange = { scope.launch { settingsRepository.setFloatingPadding(it) } }
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(text = "SHAPE PRESET", color = LuxuryColors.WarmGray, fontSize = 9.sp, letterSpacing = 1.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                OptionGridCompact(
+                    options = shapes,
+                    selectedOption = shapePreset,
+                    accentColor = accentColor,
+                    onOptionSelected = { shape -> scope.launch { settingsRepository.setShapePreset(shape) } }
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "SAVE DIMENSIONS", color = LuxuryColors.CreamyWhite, fontSize = 10.sp)
+                    SlimLuxuryToggle(
+                        checked = saveDimensions,
+                        onCheckedChange = { scope.launch { settingsRepository.setWidgetSaveDimensions(modeIndex, it) } },
+                        accentColor = accentColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = "DONE",
+                        color = accentColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier
+                            .clickable { onDismiss() }
+                            .padding(8.dp)
+                    )
+                }
             }
         }
     }
@@ -642,90 +683,5 @@ private fun OptionGridCompact(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun WidgetCategorySettingsCompact(
-    index: Int,
-    widgetTitle: String,
-    settingsRepository: SettingsRepository,
-    accentColor: Color,
-    currentTextColor: Color,
-    scope: kotlinx.coroutines.CoroutineScope
-) {
-    val isWidgetActive by settingsRepository.isWidgetActive(index).collectAsState(initial = index == 0)
-    val wWidth by settingsRepository.getWidgetWidth(index).collectAsState(initial = 170.0f)
-    val wHeight by settingsRepository.getWidgetHeight(index).collectAsState(initial = 56.0f)
-    val saveDimensions by settingsRepository.getWidgetSaveDimensions(index).collectAsState(initial = true)
-    val fontSizeScale by settingsRepository.getWidgetFontSizeScale(index).collectAsState(initial = 1.0f)
-
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = "ENABLE $widgetTitle OVERLAY", color = currentTextColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        SlimLuxuryToggle(
-            checked = isWidgetActive,
-            onCheckedChange = { scope.launch { settingsRepository.setWidgetActive(index, it) } },
-            accentColor = accentColor
-        )
-    }
-
-    if (isWidgetActive) {
-        Spacer(modifier = Modifier.height(6.dp))
-
-        DragAdjustField(
-            label = "WIDTH",
-            value = wWidth,
-            minValue = 1f,
-            maxValue = 320f,
-            pixelsPerUnit = 1.5f,
-            accentColor = accentColor,
-            valueFormatter = { "${it.toInt()}dp" },
-            onValueChange = { scope.launch { settingsRepository.setWidgetWidth(index, it) } }
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        DragAdjustField(
-            label = "HEIGHT",
-            value = wHeight,
-            minValue = 1f,
-            maxValue = 120f,
-            pixelsPerUnit = 2.5f,
-            accentColor = accentColor,
-            valueFormatter = { "${it.toInt()}dp" },
-            onValueChange = { scope.launch { settingsRepository.setWidgetHeight(index, it) } }
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "SAVE FLOATING DIMENSIONS", color = currentTextColor, fontSize = 9.sp)
-            SlimLuxuryToggle(
-                checked = saveDimensions,
-                onCheckedChange = { scope.launch { settingsRepository.setWidgetSaveDimensions(index, it) } },
-                accentColor = accentColor
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        DragAdjustField(
-            label = "FONT SIZE SCALE",
-            value = fontSizeScale,
-            minValue = 0.5f,
-            maxValue = 1.5f,
-            pixelsPerUnit = 180f,
-            accentColor = accentColor,
-            valueFormatter = { String.format(Locale.US, "%.2f", it) },
-            onValueChange = { scope.launch { settingsRepository.setWidgetFontSizeScale(index, it) } }
-        )
     }
 }

@@ -86,6 +86,7 @@ fun MainScreen(
 
     val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
     var settingsPresentationState by remember { mutableStateOf<SettingsPresentationState>(SettingsPresentationState.Closed) }
+    var showFloatingConfigDialog by remember { mutableStateOf(false) }
 
     val isCurrentlyRunning = when (currentMode) {
         AppMode.Stopwatch -> state == StopwatchState.Running
@@ -133,11 +134,14 @@ fun MainScreen(
         }
     }
 
+    val masterSoundEnabled by settingsRepository.masterSoundEnabled.collectAsState(initial = true)
+    val selectedSoundType by settingsRepository.selectedSoundType.collectAsState(initial = "Soft Click")
+
     // Completion Sound Triggers
     var lastCompletedCountdownTime by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(countdownRemainingMs, isCountdownRunning) {
         if (countdownRemainingMs == 0L && !isCountdownRunning && lastCompletedCountdownTime != 0L && lastCompletedCountdownTime != null) {
-            CompletionSoundPlayer.playCompletionClick()
+            CompletionSoundPlayer.playSound(selectedSoundType, masterSoundEnabled)
             lastCompletedCountdownTime = 0L
         } else if (countdownRemainingMs > 0L) {
             lastCompletedCountdownTime = countdownRemainingMs
@@ -147,7 +151,7 @@ fun MainScreen(
     var lastSignalledIntervalState by remember { mutableStateOf<IntervalState?>(null) }
     LaunchedEffect(intervalState) {
         if (intervalState == IntervalState.COMPLETED && lastSignalledIntervalState != IntervalState.COMPLETED) {
-            CompletionSoundPlayer.playCompletionClick()
+            CompletionSoundPlayer.playSound(selectedSoundType, masterSoundEnabled)
             lastSignalledIntervalState = IntervalState.COMPLETED
         } else if (intervalState != IntervalState.COMPLETED) {
             lastSignalledIntervalState = intervalState
@@ -296,6 +300,10 @@ fun MainScreen(
                             )
                             context.startActivity(intent)
                         }
+                    },
+                    onFloatLongClick = {
+                        resetAutoHideTimer()
+                        showFloatingConfigDialog = true
                     }
                 )
             }
@@ -495,6 +503,30 @@ fun MainScreen(
             grayColor = currentGrayColor,
             accentColor = accentColor,
             onDismiss = { showBottomSheet = false }
+        )
+    }
+
+    if (showFloatingConfigDialog) {
+        val targetIndex = when (currentMode) {
+            AppMode.Stopwatch -> 0
+            AppMode.Countdown -> 1
+            AppMode.Counter -> 2
+            AppMode.Intervals -> 3
+            AppMode.Legacy -> 4
+        }
+        val modeName = when (currentMode) {
+            AppMode.Stopwatch -> "Stopwatch"
+            AppMode.Countdown -> "Countdown"
+            AppMode.Counter -> "Counter"
+            AppMode.Intervals -> "Intervals"
+            AppMode.Legacy -> "Legacy"
+        }
+        FloatingModeConfigDialog(
+            modeIndex = targetIndex,
+            modeName = modeName,
+            settingsRepository = settingsRepository,
+            accentColor = accentColor,
+            onDismiss = { showFloatingConfigDialog = false }
         )
     }
 }
@@ -950,15 +982,35 @@ private fun ModeActionButtons(
             }
         }
         AppMode.Countdown -> {
+            var isPressingCountdownReset by remember { mutableStateOf(false) }
             Box(
                 modifier = Modifier
                     .size(68.dp)
                     .clip(CircleShape)
                     .background(Color.Transparent)
-                    .clickable {
-                        onInteraction()
-                        hapticController.trigger(hapticIntensity, "Reset")
-                        viewModel.resetCountdown()
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                onInteraction()
+                                isPressingCountdownReset = true
+                                var zeroTriggered = false
+                                val job = scope.launch {
+                                    kotlinx.coroutines.delay(500L)
+                                    zeroTriggered = true
+                                    hapticController.trigger(hapticIntensity, "Reset")
+                                    viewModel.resetCountdownToZero()
+                                }
+                                val released = tryAwaitRelease()
+                                isPressingCountdownReset = false
+                                if (released && !zeroTriggered) {
+                                    job.cancel()
+                                    hapticController.trigger(hapticIntensity, "Reset")
+                                    viewModel.resetCountdown()
+                                } else if (!released) {
+                                    job.cancel()
+                                }
+                            }
+                        )
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -966,10 +1018,10 @@ private fun ModeActionButtons(
                     modifier = Modifier.fillMaxSize(),
                     shape = CircleShape,
                     color = Color.Transparent,
-                    border = BorderStroke(1.dp, grayColor)
+                    border = BorderStroke(1.dp, if (isPressingCountdownReset) accentColor else grayColor)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("RESET", style = TextStyle(color = textColor, fontSize = 11.sp, letterSpacing = 1.sp))
+                        Text("RESET", style = TextStyle(color = if (isPressingCountdownReset) accentColor else textColor, fontSize = 11.sp, letterSpacing = 1.sp))
                     }
                 }
             }
@@ -1140,7 +1192,7 @@ private fun ModeActionButtons(
                         .clickable {
                             onInteraction()
                             hapticController.trigger(hapticIntensity, "Reset")
-                            legacyEngine.stop()
+                            activeLegacy?.id?.let { legacyEngine.deleteLegacy(it) }
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -1148,10 +1200,10 @@ private fun ModeActionButtons(
                         modifier = Modifier.fillMaxSize(),
                         shape = CircleShape,
                         color = Color.Transparent,
-                        border = BorderStroke(1.dp, grayColor)
+                        border = BorderStroke(1.dp, Color(0xFFC94A4A))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text("STOP", style = TextStyle(color = textColor, fontSize = 11.sp, letterSpacing = 1.sp))
+                            Text("DELETE", style = TextStyle(color = Color(0xFFC94A4A), fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold))
                         }
                     }
                 }

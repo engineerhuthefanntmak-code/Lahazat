@@ -43,6 +43,19 @@ class SettingsRepository(private val context: Context) {
 
         val SEAM_ENABLED = booleanPreferencesKey("seam_enabled")
         val GRAVITY_ENABLED = booleanPreferencesKey("gravity_enabled")
+        val MASTER_SOUND_ENABLED = booleanPreferencesKey("master_sound_enabled")
+        val SELECTED_SOUND_TYPE = stringPreferencesKey("selected_sound_type")
+    }
+
+    val masterSoundEnabled: Flow<Boolean> = context.dataStore.data.map { it[MASTER_SOUND_ENABLED] ?: true }
+    val selectedSoundType: Flow<String> = context.dataStore.data.map { it[SELECTED_SOUND_TYPE] ?: "Soft Click" }
+
+    suspend fun setMasterSoundEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[MASTER_SOUND_ENABLED] = enabled }
+    }
+
+    suspend fun setSelectedSoundType(soundType: String) {
+        context.dataStore.edit { it[SELECTED_SOUND_TYPE] = soundType }
     }
 
     val seamEnabled: Flow<Boolean> = context.dataStore.data.map { it[SEAM_ENABLED] ?: true }

@@ -73,6 +73,12 @@ fun MainScreen(
     val legacyEngine = viewModel.legacyEngine
     val legacyState by legacyEngine.state.collectAsState()
 
+    val scaleStopwatch by settingsRepository.scaleStopwatch.collectAsState(initial = 1.0f)
+    val scaleCountdown by settingsRepository.scaleCountdown.collectAsState(initial = 1.0f)
+    val scaleCounter by settingsRepository.scaleCounter.collectAsState(initial = 1.0f)
+    val scaleInterval by settingsRepository.scaleInterval.collectAsState(initial = 1.0f)
+    val scaleLegacy by settingsRepository.scaleLegacy.collectAsState(initial = 1.0f)
+
     val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
     var settingsPresentationState by remember { mutableStateOf<SettingsPresentationState>(SettingsPresentationState.Closed) }
 
@@ -333,7 +339,7 @@ fun MainScreen(
                         elapsedTimeMs = elapsedTimeMs,
                         showCentiseconds = showCentiseconds,
                         state = state,
-                        mainSize = mainSize,
+                        mainSize = mainSize * scaleStopwatch,
                         accentColor = accentColor,
                         textColor = currentTextColor,
                         grayColor = currentGrayColor,
@@ -344,7 +350,7 @@ fun MainScreen(
                         viewModel = viewModel,
                         countdownRemainingMs = countdownRemainingMs,
                         isCountdownRunning = isCountdownRunning,
-                        mainSize = mainSize,
+                        mainSize = mainSize * scaleCountdown,
                         textColor = currentTextColor,
                         grayColor = currentGrayColor,
                         secondaryAlpha = secondaryAlpha,
@@ -353,7 +359,7 @@ fun MainScreen(
                     )
                     AppMode.Counter -> CounterDisplay(
                         counterValue = counterValue,
-                        mainSize = mainSize,
+                        mainSize = mainSize * scaleCounter,
                         accentColor = accentColor,
                         textColor = currentTextColor,
                         grayColor = currentGrayColor,
@@ -364,7 +370,7 @@ fun MainScreen(
                     AppMode.Intervals -> IntervalsDisplay(
                         intervalEngine = intervalEngine,
                         settingsRepository = settingsRepository,
-                        mainSize = mainSize,
+                        mainSize = mainSize * scaleInterval,
                         accentColor = accentColor,
                         textColor = currentTextColor,
                         grayColor = currentGrayColor,
@@ -377,7 +383,7 @@ fun MainScreen(
                         accentColor = accentColor,
                         currentTextColor = currentTextColor,
                         currentGrayColor = currentGrayColor,
-                        mainSize = mainSize,
+                        mainSize = mainSize * scaleLegacy,
                         secondaryAlpha = secondaryAlpha,
                         scalePulse = scalePulse,
                         resetAutoHideTimer = { resetAutoHideTimer() }

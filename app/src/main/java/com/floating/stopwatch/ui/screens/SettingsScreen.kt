@@ -118,7 +118,20 @@ fun SettingsOverlay(
     val themeModes = remember { listOf("Midnight Dark", "Warm Paper Light", "Obsidian Dark", "Pure White Light") }
     val presets = remember { listOf("Glass Premium", "Obsidian", "Titanium", "Ultra Minimal") }
     val intensities = remember { listOf("Off", "Light", "Medium", "Strong") }
-    val colorPresets = remember { listOf("Gold", "Galaxy Blue", "Titanium", "Emerald", "Sapphire", "Violet", "Rose", "Ice", "Amber", "Pure White", "Custom") }
+    val colorPresets = remember {
+        listOf(
+            "Gold", "Galaxy Blue", "Titanium", "Emerald", "Sapphire", "Violet",
+            "Rose", "Ice", "Amber", "Pure White", "Champagne", "Platinum",
+            "Rose Gold", "Copper", "Amethyst", "Ruby", "Custom"
+        )
+    }
+
+    val scaleStopwatch by settingsRepository.scaleStopwatch.collectAsState(initial = 1.0f)
+    val scaleCountdown by settingsRepository.scaleCountdown.collectAsState(initial = 1.0f)
+    val scaleCounter by settingsRepository.scaleCounter.collectAsState(initial = 1.0f)
+    val scaleInterval by settingsRepository.scaleInterval.collectAsState(initial = 1.0f)
+    val scaleLegacy by settingsRepository.scaleLegacy.collectAsState(initial = 1.0f)
+    val scaleFloatingWidget by settingsRepository.scaleFloatingWidget.collectAsState(initial = 1.0f)
 
     if (presentationState is SettingsPresentationState.Closed) {
         // Closed state: SETTINGS and FLOAT visible in top end
@@ -290,6 +303,86 @@ fun SettingsOverlay(
 
                             // Category Controls
                             when (categoryName) {
+                                "DIGIT SIZE" -> {
+                                    Text(text = "INDEPENDENT DIGIT SIZE SCALES", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    DragAdjustField(
+                                        label = "STOPWATCH",
+                                        value = scaleStopwatch,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleStopwatch(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    DragAdjustField(
+                                        label = "COUNTDOWN",
+                                        value = scaleCountdown,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleCountdown(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    DragAdjustField(
+                                        label = "COUNTER",
+                                        value = scaleCounter,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleCounter(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    DragAdjustField(
+                                        label = "INTERVAL",
+                                        value = scaleInterval,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleInterval(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    DragAdjustField(
+                                        label = "LEGACY",
+                                        value = scaleLegacy,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleLegacy(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    DragAdjustField(
+                                        label = "FLOATING WIDGET",
+                                        value = scaleFloatingWidget,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleFloatingWidget(it) } }
+                                    )
+                                }
                                 "APPEARANCE" -> {
                                     Text(text = "ILLUMINATION MODE", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
                                     Spacer(modifier = Modifier.height(4.dp))

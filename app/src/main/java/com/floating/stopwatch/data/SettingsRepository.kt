@@ -33,6 +33,44 @@ class SettingsRepository(private val context: Context) {
         val LEGACIES_JSON = stringPreferencesKey("legacies_json")
         val SELECTED_LEGACY_ID = stringPreferencesKey("selected_legacy_id")
         val BACKGROUND_ATMOSPHERE = stringPreferencesKey("background_atmosphere")
+
+        val SCALE_STOPWATCH = floatPreferencesKey("scale_stopwatch")
+        val SCALE_COUNTDOWN = floatPreferencesKey("scale_countdown")
+        val SCALE_COUNTER = floatPreferencesKey("scale_counter")
+        val SCALE_INTERVAL = floatPreferencesKey("scale_interval")
+        val SCALE_LEGACY = floatPreferencesKey("scale_legacy")
+        val SCALE_FLOATING_WIDGET = floatPreferencesKey("scale_floating_widget")
+    }
+
+    val scaleStopwatch: Flow<Float> = context.dataStore.data.map { it[SCALE_STOPWATCH] ?: 1.0f }
+    val scaleCountdown: Flow<Float> = context.dataStore.data.map { it[SCALE_COUNTDOWN] ?: 1.0f }
+    val scaleCounter: Flow<Float> = context.dataStore.data.map { it[SCALE_COUNTER] ?: 1.0f }
+    val scaleInterval: Flow<Float> = context.dataStore.data.map { it[SCALE_INTERVAL] ?: 1.0f }
+    val scaleLegacy: Flow<Float> = context.dataStore.data.map { it[SCALE_LEGACY] ?: 1.0f }
+    val scaleFloatingWidget: Flow<Float> = context.dataStore.data.map { it[SCALE_FLOATING_WIDGET] ?: 1.0f }
+
+    suspend fun setScaleStopwatch(scale: Float) {
+        context.dataStore.edit { it[SCALE_STOPWATCH] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleCountdown(scale: Float) {
+        context.dataStore.edit { it[SCALE_COUNTDOWN] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleCounter(scale: Float) {
+        context.dataStore.edit { it[SCALE_COUNTER] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleInterval(scale: Float) {
+        context.dataStore.edit { it[SCALE_INTERVAL] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleLegacy(scale: Float) {
+        context.dataStore.edit { it[SCALE_LEGACY] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleFloatingWidget(scale: Float) {
+        context.dataStore.edit { it[SCALE_FLOATING_WIDGET] = scale.coerceIn(0.60f, 2.00f) }
     }
 
     val backgroundAtmosphere: Flow<String> = context.dataStore.data.map { it[BACKGROUND_ATMOSPHERE] ?: "Pure Black" }

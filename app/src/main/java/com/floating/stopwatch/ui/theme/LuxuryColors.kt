@@ -9,7 +9,7 @@ object LuxuryColors {
     val WarmGray = Color(0xFF8A8680)
     val AccentGold = Color(0xFFC9A66B)
 
-    // Additional Accent presets
+    // Existing Accent presets (preserved 100% backward compatible)
     val GalaxyBlue = Color(0xFF2C5E8A)
     val Titanium = Color(0xFF5A6065)
     val Emerald = Color(0xFF3F826D)
@@ -19,6 +19,14 @@ object LuxuryColors {
     val Ice = Color(0xFF8BB5C4)
     val Amber = Color(0xFFD97D36)
     val PureWhite = Color(0xFFFFFFFF)
+
+    // Additional Premium Luxury Minimal presets
+    val Champagne = Color(0xFFE8D3A7)
+    val Platinum = Color(0xFFE5E4E2)
+    val RoseGold = Color(0xFFB76E79)
+    val Copper = Color(0xFFB87333)
+    val Amethyst = Color(0xFF9966CC)
+    val Ruby = Color(0xFF9B111E)
 
     fun fromName(name: String): Color {
         return when (name) {
@@ -32,6 +40,12 @@ object LuxuryColors {
             "Ice" -> Ice
             "Amber" -> Amber
             "Pure White" -> PureWhite
+            "Champagne" -> Champagne
+            "Platinum" -> Platinum
+            "Rose Gold" -> RoseGold
+            "Copper" -> Copper
+            "Amethyst" -> Amethyst
+            "Ruby" -> Ruby
             else -> AccentGold
         }
     }

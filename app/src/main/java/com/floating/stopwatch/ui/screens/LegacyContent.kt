@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.floating.stopwatch.domain.*
 import com.floating.stopwatch.ui.components.DragAdjustField
+import java.util.Locale
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.theme.LuxuryColors
 
@@ -197,7 +198,7 @@ fun LegacyContent(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "${String.format("%.1f", legacy.progressPercentage)}%",
+                    text = "${String.format(Locale.US, "%.1f", legacy.progressPercentage)}%",
                     style = TextStyle(
                         color = currentTextColor,
                         fontSize = 12.sp,
@@ -395,7 +396,7 @@ fun formatMsToHoursMinutes(ms: Long): String {
     val totalSecs = ms / 1000
     val hrs = totalSecs / 3600
     val mins = (totalSecs % 3600) / 60
-    return String.format("%02dh %02dm", hrs, mins)
+    return String.format(Locale.US, "%02dh %02dm", hrs, mins)
 }
 
 @Composable
@@ -705,7 +706,7 @@ fun LegacySelectorDialog(
                                 )
                             )
                             Text(
-                                text = "${String.format("%.1f", item.progressPercentage)}% completed",
+                                text = "${String.format(Locale.US, "%.1f", item.progressPercentage)}% completed",
                                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 10.sp)
                             )
                         }

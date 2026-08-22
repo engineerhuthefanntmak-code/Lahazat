@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.floating.stopwatch.data.SettingsRepository
 import com.floating.stopwatch.ui.components.DragAdjustField
 import com.floating.stopwatch.ui.theme.LuxuryColors
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 sealed class SettingsPresentationState {
@@ -330,7 +331,7 @@ fun SettingsOverlay(
                                         maxValue = 1.3f,
                                         pixelsPerUnit = 180f,
                                         accentColor = accentColor,
-                                        valueFormatter = { String.format("%.2fx", it) },
+                                        valueFormatter = { String.format(Locale.US, "%.2fx", it) },
                                         onValueChange = { scope.launch { settingsRepository.setMainDisplayScale(it) } }
                                     )
                                 }
@@ -375,7 +376,7 @@ fun SettingsOverlay(
                                         maxValue = 18000f,
                                         pixelsPerUnit = 4f,
                                         accentColor = accentColor,
-                                        valueFormatter = { String.format("%02d:%02d", it.toInt() / 3600, (it.toInt() % 3600) / 60) },
+                                        valueFormatter = { String.format(Locale.US, "%02d:%02d", it.toInt() / 3600, (it.toInt() % 3600) / 60) },
                                         onValueChange = { workSecs = it.toInt().coerceIn(1, 18000) }
                                     )
 
@@ -388,7 +389,7 @@ fun SettingsOverlay(
                                         maxValue = 3600f,
                                         pixelsPerUnit = 4f,
                                         accentColor = accentColor,
-                                        valueFormatter = { String.format("%02d:%02d", it.toInt() / 3600, (it.toInt() % 3600) / 60) },
+                                        valueFormatter = { String.format(Locale.US, "%02d:%02d", it.toInt() / 3600, (it.toInt() % 3600) / 60) },
                                         onValueChange = { restSecs = it.toInt().coerceIn(1, 3600) }
                                     )
 
@@ -630,7 +631,7 @@ private fun WidgetCategorySettingsCompact(
             maxValue = 1.5f,
             pixelsPerUnit = 180f,
             accentColor = accentColor,
-            valueFormatter = { String.format("%.2f", it) },
+            valueFormatter = { String.format(Locale.US, "%.2f", it) },
             onValueChange = { scope.launch { settingsRepository.setWidgetFontSizeScale(index, it) } }
         )
     }

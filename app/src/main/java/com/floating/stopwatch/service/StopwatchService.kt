@@ -896,7 +896,7 @@ class StopwatchService : Service() {
         val mins = (totalSeconds % 3600) / 60
         val secs = totalSeconds % 60
         val cents = (ms % 1000) / 10
-        return String.format("%02d:%02d.%02d", mins, secs, cents)
+        return String.format(java.util.Locale.US, "%02d:%02d.%02d", mins, secs, cents)
     }
 
     private fun smartEdgeSnapAndClamp(lp: WindowManager.LayoutParams) {

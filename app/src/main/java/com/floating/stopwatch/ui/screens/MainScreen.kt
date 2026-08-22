@@ -39,6 +39,7 @@ import com.floating.stopwatch.ui.components.DragAdjustField
 import com.floating.stopwatch.ui.components.BackgroundAtmosphere
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.theme.LuxuryColors
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -586,7 +587,7 @@ private fun CountdownDisplay(
                     }
                 ) {
                     Text(
-                        text = String.format("%02d", hours),
+                        text = String.format(Locale.US, "%02d", hours),
                         style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Light)
                     )
                 }
@@ -614,7 +615,7 @@ private fun CountdownDisplay(
                     }
                 ) {
                     Text(
-                        text = String.format("%02d", minutes),
+                        text = String.format(Locale.US, "%02d", minutes),
                         style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Light)
                     )
                 }
@@ -642,7 +643,7 @@ private fun CountdownDisplay(
                     }
                 ) {
                     Text(
-                        text = String.format("%02d", seconds),
+                        text = String.format(Locale.US, "%02d", seconds),
                         style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Light)
                     )
                 }
@@ -1199,7 +1200,7 @@ private fun LapsBottomSheet(
                 val avgMins = (avgLapTime / 1000) / 60
                 val avgSecs = (avgLapTime / 1000) % 60
                 val avgCents = (avgLapTime % 1000) / 10
-                val formattedAvg = String.format("%02d:%02d.%02d", avgMins, avgSecs, avgCents)
+                val formattedAvg = String.format(Locale.US, "%02d:%02d.%02d", avgMins, avgSecs, avgCents)
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = grayColor.copy(alpha = 0.1f)),
@@ -1288,16 +1289,16 @@ fun formatIntervalDuration(totalSecs: Int): String {
     val mins = (totalSecs % 3600) / 60
     val secs = totalSecs % 60
     return if (hrs > 0) {
-        String.format("%dh %02dm %02ds", hrs, mins, secs)
+        String.format(Locale.US, "%dh %02dm %02ds", hrs, mins, secs)
     } else if (mins > 0) {
-        String.format("%dm %02ds", mins, secs)
+        String.format(Locale.US, "%dm %02ds", mins, secs)
     } else {
         "${secs}s"
     }
 }
 
 fun formatDurationHoursMinutes(totalSecs: Int): String {
-    return String.format("%02d:%02d", totalSecs / 3600, (totalSecs % 3600) / 60)
+    return String.format(Locale.US, "%02d:%02d", totalSecs / 3600, (totalSecs % 3600) / 60)
 }
 
 @Composable
@@ -1434,13 +1435,13 @@ fun LapRowItem(lap: Lap, textColor: Color, grayColor: Color) {
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
     val centiseconds = (lap.cumulativeTimeMs % 1000) / 10
-    val formattedCum = String.format("%02d:%02d.%02d", minutes, seconds, centiseconds)
+    val formattedCum = String.format(Locale.US, "%02d:%02d.%02d", minutes, seconds, centiseconds)
 
     val lapSecs = lap.lapTimeMs / 1000
     val lapMins = (lapSecs % 3600) / 60
     val lapS = lapSecs % 60
     val lapCent = (lap.lapTimeMs % 1000) / 10
-    val formattedLap = String.format("%02d:%02d.%02d", lapMins, lapS, lapCent)
+    val formattedLap = String.format(Locale.US, "%02d:%02d.%02d", lapMins, lapS, lapCent)
 
     val deltaSign = if (lap.diffFromPreviousMs >= 0) "+" else ""
     val deltaSecs = lap.diffFromPreviousMs / 1000

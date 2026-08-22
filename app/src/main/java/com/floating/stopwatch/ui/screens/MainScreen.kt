@@ -36,6 +36,7 @@ import com.floating.stopwatch.domain.*
 import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.components.DragAdjustField
+import com.floating.stopwatch.ui.components.AmbientDimOverlay
 import com.floating.stopwatch.ui.components.BackgroundAtmosphere
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.theme.LuxuryColors
@@ -169,13 +170,11 @@ fun MainScreen(
         label = "Pulse"
     )
 
-    var isCounterAmbientDim by remember { mutableStateOf(false) }
+    var isAmbientDimActive by remember { mutableStateOf(false) }
 
-    if (currentMode == AppMode.Counter && isCounterAmbientDim) {
-        CounterAmbientDimOverlay(
-            counterValue = counterValue,
-            mainSize = mainSize,
-            onDismiss = { isCounterAmbientDim = false }
+    if (isAmbientDimActive) {
+        AmbientDimOverlay(
+            onExitDoubleTap = { isAmbientDimActive = false }
         )
         return
     }
@@ -201,7 +200,7 @@ fun MainScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         BackgroundAtmosphere(
-            atmosphere = backgroundAtmosphere,
+            atmosphere = if (isAmbientDimActive) "Pure Black" else backgroundAtmosphere,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -365,7 +364,7 @@ fun MainScreen(
                         grayColor = currentGrayColor,
                         secondaryAlpha = secondaryAlpha,
                         scalePulse = scalePulse,
-                        onAmbientDimClick = { isCounterAmbientDim = true }
+                        onAmbientDimClick = { isAmbientDimActive = true }
                     )
                     AppMode.Intervals -> IntervalsDisplay(
                         intervalEngine = intervalEngine,
@@ -459,31 +458,6 @@ fun MainScreen(
     }
 }
 
-@Composable
-private fun CounterAmbientDimOverlay(
-    counterValue: Long,
-    mainSize: Float,
-    onDismiss: () -> Unit
-) {
-    val counterDigitSize = (72f * mainSize).sp
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF000000))
-            .pointerInput(Unit) { detectTapGestures(onTap = { onDismiss() }) },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "$counterValue",
-            style = TextStyle(
-                color = Color(0xFF3A3A3C),
-                fontSize = counterDigitSize,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
-            )
-        )
-    }
-}
 
 @Composable
 private fun StopwatchDisplay(

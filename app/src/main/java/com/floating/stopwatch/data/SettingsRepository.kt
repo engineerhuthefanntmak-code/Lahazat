@@ -30,6 +30,90 @@ class SettingsRepository(private val context: Context) {
         val INTERVAL_REST_MS = longPreferencesKey("interval_rest_ms")
         val INTERVAL_ROUNDS = intPreferencesKey("interval_rounds")
         val CUSTOM_INTERVAL_TEMPLATES = stringPreferencesKey("custom_interval_templates")
+        val LEGACIES_JSON = stringPreferencesKey("legacies_json")
+        val SELECTED_LEGACY_ID = stringPreferencesKey("selected_legacy_id")
+        val BACKGROUND_ATMOSPHERE = stringPreferencesKey("background_atmosphere")
+
+        val SCALE_STOPWATCH = floatPreferencesKey("scale_stopwatch")
+        val SCALE_COUNTDOWN = floatPreferencesKey("scale_countdown")
+        val SCALE_COUNTER = floatPreferencesKey("scale_counter")
+        val SCALE_INTERVAL = floatPreferencesKey("scale_interval")
+        val SCALE_LEGACY = floatPreferencesKey("scale_legacy")
+        val SCALE_FLOATING_WIDGET = floatPreferencesKey("scale_floating_widget")
+
+        val SEAM_ENABLED = booleanPreferencesKey("seam_enabled")
+        val GRAVITY_ENABLED = booleanPreferencesKey("gravity_enabled")
+        val MASTER_SOUND_ENABLED = booleanPreferencesKey("master_sound_enabled")
+        val SELECTED_SOUND_TYPE = stringPreferencesKey("selected_sound_type")
+    }
+
+    val masterSoundEnabled: Flow<Boolean> = context.dataStore.data.map { it[MASTER_SOUND_ENABLED] ?: true }
+    val selectedSoundType: Flow<String> = context.dataStore.data.map { it[SELECTED_SOUND_TYPE] ?: "Soft Click" }
+
+    suspend fun setMasterSoundEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[MASTER_SOUND_ENABLED] = enabled }
+    }
+
+    suspend fun setSelectedSoundType(soundType: String) {
+        context.dataStore.edit { it[SELECTED_SOUND_TYPE] = soundType }
+    }
+
+    val seamEnabled: Flow<Boolean> = context.dataStore.data.map { it[SEAM_ENABLED] ?: true }
+    val gravityEnabled: Flow<Boolean> = context.dataStore.data.map { it[GRAVITY_ENABLED] ?: true }
+
+    suspend fun setSeamEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[SEAM_ENABLED] = enabled }
+    }
+
+    suspend fun setGravityEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[GRAVITY_ENABLED] = enabled }
+    }
+
+    val scaleStopwatch: Flow<Float> = context.dataStore.data.map { it[SCALE_STOPWATCH] ?: 1.0f }
+    val scaleCountdown: Flow<Float> = context.dataStore.data.map { it[SCALE_COUNTDOWN] ?: 1.0f }
+    val scaleCounter: Flow<Float> = context.dataStore.data.map { it[SCALE_COUNTER] ?: 1.0f }
+    val scaleInterval: Flow<Float> = context.dataStore.data.map { it[SCALE_INTERVAL] ?: 1.0f }
+    val scaleLegacy: Flow<Float> = context.dataStore.data.map { it[SCALE_LEGACY] ?: 1.0f }
+    val scaleFloatingWidget: Flow<Float> = context.dataStore.data.map { it[SCALE_FLOATING_WIDGET] ?: 1.0f }
+
+    suspend fun setScaleStopwatch(scale: Float) {
+        context.dataStore.edit { it[SCALE_STOPWATCH] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleCountdown(scale: Float) {
+        context.dataStore.edit { it[SCALE_COUNTDOWN] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleCounter(scale: Float) {
+        context.dataStore.edit { it[SCALE_COUNTER] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleInterval(scale: Float) {
+        context.dataStore.edit { it[SCALE_INTERVAL] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleLegacy(scale: Float) {
+        context.dataStore.edit { it[SCALE_LEGACY] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    suspend fun setScaleFloatingWidget(scale: Float) {
+        context.dataStore.edit { it[SCALE_FLOATING_WIDGET] = scale.coerceIn(0.60f, 2.00f) }
+    }
+
+    val backgroundAtmosphere: Flow<String> = context.dataStore.data.map { it[BACKGROUND_ATMOSPHERE] ?: "Pure Black" }
+
+    suspend fun setBackgroundAtmosphere(atmosphere: String) {
+        context.dataStore.edit { it[BACKGROUND_ATMOSPHERE] = atmosphere }
+    }
+
+    val legaciesJson: Flow<String> = context.dataStore.data.map { it[LEGACIES_JSON] ?: "" }
+    val selectedLegacyId: Flow<String> = context.dataStore.data.map { it[SELECTED_LEGACY_ID] ?: "" }
+
+    suspend fun saveLegaciesData(json: String, selectedId: String) {
+        context.dataStore.edit {
+            it[LEGACIES_JSON] = json
+            it[SELECTED_LEGACY_ID] = selectedId
+        }
     }
 
     val intervalName: Flow<String> = context.dataStore.data.map { it[INTERVAL_NAME] ?: "HIT" }

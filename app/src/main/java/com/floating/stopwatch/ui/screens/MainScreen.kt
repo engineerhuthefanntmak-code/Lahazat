@@ -1,13 +1,12 @@
 package com.floating.stopwatch.ui.screens
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import android.content.Intent
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,40 +16,33 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.RepeatMode
-import android.content.Intent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.floating.stopwatch.domain.CompletionSoundPlayer
-import com.floating.stopwatch.domain.IntervalEngine
-import com.floating.stopwatch.domain.IntervalStage
-import com.floating.stopwatch.domain.IntervalStageType
-import com.floating.stopwatch.domain.IntervalState
-import com.floating.stopwatch.domain.IntervalTemplate
-import com.floating.stopwatch.domain.Lap
-import com.floating.stopwatch.domain.StopwatchState
+import com.floating.stopwatch.data.SettingsRepository
+import com.floating.stopwatch.domain.*
 import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
-import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.components.DragAdjustField
-import com.floating.stopwatch.ui.components.StellarBackground
-import com.floating.stopwatch.data.SettingsRepository
+import com.floating.stopwatch.ui.components.AmbientDimOverlay
+import com.floating.stopwatch.ui.components.BackgroundAtmosphere
+import com.floating.stopwatch.ui.components.CompanionIndicator
+import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.theme.LuxuryColors
-import com.floating.stopwatch.domain.HapticController
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,9 +66,6 @@ fun MainScreen(
     val counterValue by viewModel.counterValue.collectAsState()
     val laps by viewModel.laps.collectAsState()
 
-    val countdownDigitSize = (54f * mainSize).sp
-    val counterDigitSize = (72f * mainSize).sp
-
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -84,14 +73,30 @@ fun MainScreen(
     val intervalEngine = viewModel.intervalEngine
     val intervalState by intervalEngine.state.collectAsState()
 
+    val legacyEngine = viewModel.legacyEngine
+    val legacyState by legacyEngine.state.collectAsState()
+
+    val scaleStopwatch by settingsRepository.scaleStopwatch.collectAsState(initial = 1.0f)
+    val scaleCountdown by settingsRepository.scaleCountdown.collectAsState(initial = 1.0f)
+    val scaleCounter by settingsRepository.scaleCounter.collectAsState(initial = 1.0f)
+    val scaleInterval by settingsRepository.scaleInterval.collectAsState(initial = 1.0f)
+    val scaleLegacy by settingsRepository.scaleLegacy.collectAsState(initial = 1.0f)
+
+    val seamEnabled by settingsRepository.seamEnabled.collectAsState(initial = true)
+    val gravityEnabled by settingsRepository.gravityEnabled.collectAsState(initial = true)
+
+    val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
+    var settingsPresentationState by remember { mutableStateOf<SettingsPresentationState>(SettingsPresentationState.Closed) }
+    var showFloatingConfigDialog by remember { mutableStateOf(false) }
+
     val isCurrentlyRunning = when (currentMode) {
         AppMode.Stopwatch -> state == StopwatchState.Running
         AppMode.Countdown -> isCountdownRunning
         AppMode.Counter -> false
         AppMode.Intervals -> intervalState == IntervalState.RUNNING
+        AppMode.Legacy -> legacyState == LegacyState.RUNNING
     }
 
-    // Controls and Secondary Information Auto-Hide State
     var areControlsVisible by remember { mutableStateOf(true) }
     var isSecondaryVisible by remember { mutableStateOf(true) }
     var autoHideJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -114,12 +119,10 @@ fun MainScreen(
     }
 
     DisposableEffect(Unit) {
-        onDispose {
-            autoHideJob?.cancel()
-        }
+        onDispose { autoHideJob?.cancel() }
     }
 
-    // Milestone Haptics for Counter (11, 33, 66, 99, 100)
+    // Milestone Haptics for Counter
     val milestoneSet = remember { setOf(11L, 33L, 66L, 99L, 100L) }
     var lastSignalledMilestone by remember { mutableStateOf<Long?>(null) }
 
@@ -132,11 +135,14 @@ fun MainScreen(
         }
     }
 
+    val masterSoundEnabled by settingsRepository.masterSoundEnabled.collectAsState(initial = true)
+    val selectedSoundType by settingsRepository.selectedSoundType.collectAsState(initial = "Soft Click")
+
     // Completion Sound Triggers
     var lastCompletedCountdownTime by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(countdownRemainingMs, isCountdownRunning) {
         if (countdownRemainingMs == 0L && !isCountdownRunning && lastCompletedCountdownTime != 0L && lastCompletedCountdownTime != null) {
-            CompletionSoundPlayer.playCompletionClick()
+            CompletionSoundPlayer.playSound(selectedSoundType, masterSoundEnabled)
             lastCompletedCountdownTime = 0L
         } else if (countdownRemainingMs > 0L) {
             lastCompletedCountdownTime = countdownRemainingMs
@@ -144,10 +150,9 @@ fun MainScreen(
     }
 
     var lastSignalledIntervalState by remember { mutableStateOf<IntervalState?>(null) }
-
     LaunchedEffect(intervalState) {
         if (intervalState == IntervalState.COMPLETED && lastSignalledIntervalState != IntervalState.COMPLETED) {
-            CompletionSoundPlayer.playCompletionClick()
+            CompletionSoundPlayer.playSound(selectedSoundType, masterSoundEnabled)
             lastSignalledIntervalState = IntervalState.COMPLETED
         } else if (intervalState != IntervalState.COMPLETED) {
             lastSignalledIntervalState = intervalState
@@ -166,49 +171,24 @@ fun MainScreen(
         label = "SecondaryAlpha"
     )
 
-    // Start/Stop pulse animations
     var triggerPulse by remember { mutableStateOf(false) }
     val scalePulse by animateFloatAsState(
         targetValue = if (triggerPulse) 1.04f else 1.0f,
         animationSpec = tween(durationMillis = 150),
-        finishedListener = {
-            if (triggerPulse) triggerPulse = false
-        },
+        finishedListener = { if (triggerPulse) triggerPulse = false },
         label = "Pulse"
     )
 
-    var isCounterAmbientDim by remember { mutableStateOf(false) }
+    var isAmbientDimActive by remember { mutableStateOf(false) }
 
-    if (currentMode == AppMode.Counter && isCounterAmbientDim) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF000000))
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            isCounterAmbientDim = false
-                        }
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "$counterValue",
-                style = TextStyle(
-                    color = Color(0xFF3A3A3C),
-                    fontSize = counterDigitSize,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                )
-            )
-        }
+    if (isAmbientDimActive) {
+        AmbientDimOverlay(
+            onExitDoubleTap = { isAmbientDimActive = false }
+        )
         return
     }
 
-    // Layout configuration based on the illumination Mode
     val currentBgColor = when (themeMode) {
-        "Midnight", "Midnight Dark", "Obsidian Dark" -> Color(0xFF000000)
         "Warm Paper", "Warm Paper Light" -> Color(0xFFF7F5F0)
         "Pure White Light" -> Color(0xFFFFFFFF)
         else -> LuxuryColors.WarmBlack
@@ -227,11 +207,9 @@ fun MainScreen(
     var totalDragY by remember { mutableFloatStateOf(0f) }
     var totalDragX by remember { mutableFloatStateOf(0f) }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // STELLAR background atmosphere layer behind application UI
-        StellarBackground(
+    Box(modifier = Modifier.fillMaxSize()) {
+        BackgroundAtmosphere(
+            atmosphere = if (isAmbientDimActive) "Pure Black" else backgroundAtmosphere,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -239,79 +217,244 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(24.dp)
-                .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        resetAutoHideTimer()
-                    }
-                )
-            }
-            .pointerInput(currentMode) {
-                detectDragGestures(
-                    onDragStart = {
-                        totalDragY = 0f
-                        totalDragX = 0f
-                        resetAutoHideTimer()
-                    },
-                    onDrag = { _, dragAmount ->
-                        totalDragY += dragAmount.y
-                        totalDragX += dragAmount.x
-                    },
-                    onDragEnd = {
-                        if (kotlin.math.abs(totalDragY) > 80f && kotlin.math.abs(totalDragY) > 1.5f * kotlin.math.abs(totalDragX)) {
-                            if (totalDragY < 0) {
-                                hapticController.trigger(hapticIntensity, "Lap")
-                                viewModel.cycleMode()
-                            } else {
-                                hapticController.trigger(hapticIntensity, "Lap")
-                                viewModel.previousMode()
+                .pointerInput(Unit) { detectTapGestures(onTap = { resetAutoHideTimer() }) }
+                .pointerInput(currentMode) {
+                    detectDragGestures(
+                        onDragStart = {
+                            totalDragY = 0f
+                            totalDragX = 0f
+                            resetAutoHideTimer()
+                        },
+                        onDrag = { _, dragAmount ->
+                            totalDragY += dragAmount.y
+                            totalDragX += dragAmount.x
+                        },
+                        onDragEnd = {
+                            if (kotlin.math.abs(totalDragY) > 80f && kotlin.math.abs(totalDragY) > 1.5f * kotlin.math.abs(totalDragX)) {
+                                if (totalDragY < 0) {
+                                    hapticController.trigger(hapticIntensity, "Lap")
+                                    viewModel.cycleMode()
+                                } else {
+                                    hapticController.trigger(hapticIntensity, "Lap")
+                                    viewModel.previousMode()
+                                }
                             }
+                            totalDragY = 0f
+                            totalDragX = 0f
+                        },
+                        onDragCancel = {
+                            totalDragY = 0f
+                            totalDragX = 0f
                         }
-                        totalDragY = 0f
-                        totalDragX = 0f
-                    },
-                    onDragCancel = {
-                        totalDragY = 0f
-                        totalDragX = 0f
-                    }
+                    )
+                }
+        ) {
+            val context = LocalContext.current
+
+            // Top Left Mode Header & Floating Companion (SEAM / GRAVITY)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 16.dp)
+                    .graphicsLayer { alpha = controlsAlpha }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .clickable {
+                            resetAutoHideTimer()
+                            hapticController.trigger(hapticIntensity, "Lap")
+                            viewModel.cycleMode()
+                        }
+                        .padding(4.dp)
+                ) {
+                    Text(
+                        text = when (currentMode) {
+                            AppMode.Stopwatch -> "STOPWATCH ▾"
+                            AppMode.Countdown -> "COUNTDOWN ▾"
+                            AppMode.Counter -> "COUNTER ▾"
+                            AppMode.Intervals -> "INTERVALS ▾"
+                            AppMode.Legacy -> "LEGACY ▾"
+                        },
+                        style = TextStyle(
+                            color = currentTextColor,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraLight,
+                            letterSpacing = 4.sp
+                        )
+                    )
+                }
+
+                // Companion Indicator directly below mode header
+                if (currentMode == AppMode.Countdown) {
+                    val countdownInitialMs by viewModel.countdownInitialMs.collectAsState()
+                    val ratio = if (countdownInitialMs > 0L) (1f - (countdownRemainingMs.toFloat() / countdownInitialMs.toFloat())) else 0f
+                    CompanionIndicator(
+                        mode = currentMode,
+                        progressRatio = ratio,
+                        isEnabled = seamEnabled,
+                        accentColor = accentColor,
+                        grayColor = currentGrayColor,
+                        onToggle = {
+                            resetAutoHideTimer()
+                            scope.launch { settingsRepository.setSeamEnabled(!seamEnabled) }
+                        },
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                    )
+                } else if (currentMode == AppMode.Legacy) {
+                    val activeLegacy by legacyEngine.activeLegacy.collectAsState()
+                    val ratio = activeLegacy?.progressPercentage?.div(100f) ?: 0f
+                    CompanionIndicator(
+                        mode = currentMode,
+                        progressRatio = ratio,
+                        isEnabled = gravityEnabled,
+                        accentColor = accentColor,
+                        grayColor = currentGrayColor,
+                        onToggle = {
+                            resetAutoHideTimer()
+                            scope.launch { settingsRepository.setGravityEnabled(!gravityEnabled) }
+                        },
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                    )
+                }
+            }
+
+            // Center Content Region
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                when (currentMode) {
+                    AppMode.Stopwatch -> StopwatchDisplay(
+                        elapsedTimeMs = elapsedTimeMs,
+                        showCentiseconds = showCentiseconds,
+                        state = state,
+                        mainSize = mainSize * scaleStopwatch,
+                        accentColor = accentColor,
+                        textColor = currentTextColor,
+                        grayColor = currentGrayColor,
+                        secondaryAlpha = secondaryAlpha,
+                        scalePulse = scalePulse
+                    )
+                    AppMode.Countdown -> CountdownDisplay(
+                        viewModel = viewModel,
+                        countdownRemainingMs = countdownRemainingMs,
+                        isCountdownRunning = isCountdownRunning,
+                        mainSize = mainSize * scaleCountdown,
+                        textColor = currentTextColor,
+                        grayColor = currentGrayColor,
+                        secondaryAlpha = secondaryAlpha,
+                        scalePulse = scalePulse,
+                        onInteraction = { resetAutoHideTimer() }
+                    )
+                    AppMode.Counter -> CounterDisplay(
+                        counterValue = counterValue,
+                        mainSize = mainSize * scaleCounter,
+                        accentColor = accentColor,
+                        textColor = currentTextColor,
+                        grayColor = currentGrayColor,
+                        secondaryAlpha = secondaryAlpha,
+                        scalePulse = scalePulse,
+                        onAmbientDimClick = { isAmbientDimActive = true }
+                    )
+                    AppMode.Intervals -> IntervalsDisplay(
+                        intervalEngine = intervalEngine,
+                        settingsRepository = settingsRepository,
+                        mainSize = mainSize * scaleInterval,
+                        accentColor = accentColor,
+                        textColor = currentTextColor,
+                        grayColor = currentGrayColor,
+                        secondaryAlpha = secondaryAlpha,
+                        scalePulse = scalePulse,
+                        resetAutoHideTimer = { resetAutoHideTimer() }
+                    )
+                    AppMode.Legacy -> LegacyContent(
+                        legacyEngine = legacyEngine,
+                        accentColor = accentColor,
+                        currentTextColor = currentTextColor,
+                        currentGrayColor = currentGrayColor,
+                        mainSize = mainSize * scaleLegacy,
+                        secondaryAlpha = secondaryAlpha,
+                        scalePulse = scalePulse,
+                        resetAutoHideTimer = { resetAutoHideTimer() }
+                    )
+                }
+            }
+
+            // Bottom Action Buttons
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(bottom = 54.dp)
+                    .graphicsLayer { alpha = controlsAlpha },
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ModeActionButtons(
+                    currentMode = currentMode,
+                    viewModel = viewModel,
+                    intervalEngine = intervalEngine,
+                    legacyEngine = legacyEngine,
+                    state = state,
+                    isCountdownRunning = isCountdownRunning,
+                    intervalState = intervalState,
+                    legacyState = legacyState,
+                    accentColor = accentColor,
+                    textColor = currentTextColor,
+                    grayColor = currentGrayColor,
+                    hapticController = hapticController,
+                    hapticIntensity = hapticIntensity,
+                    onInteraction = { resetAutoHideTimer() },
+                    onPressPulse = { triggerPulse = it }
                 )
             }
-    ) {
-        val context = androidx.compose.ui.platform.LocalContext.current
 
-        // Top Right: Floating Quick Access & Settings
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .graphicsLayer { alpha = controlsAlpha },
-            horizontalAlignment = Alignment.End
-        ) {
-            Text(
-                text = "SETTINGS",
-                style = TextStyle(
-                    color = currentGrayColor,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Light,
-                    letterSpacing = 2.sp
-                ),
+            if (laps.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 12.dp)
+                        .graphicsLayer { alpha = controlsAlpha }
+                        .clickable {
+                            resetAutoHideTimer()
+                            showBottomSheet = true
+                        }
+                        .padding(8.dp)
+                ) {
+                    Text(
+                        text = "VIEW LAPS (${laps.size})",
+                        style = TextStyle(
+                            color = accentColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 2.sp
+                        )
+                    )
+                }
+            }
+
+            // Top Right: Floating Quick Access & Settings Overlay (Rendered with zIndex=100f above Center Content)
+            Box(
                 modifier = Modifier
-                    .clickable {
-                        resetAutoHideTimer()
-                        onNavigateToSettings()
+                    .align(Alignment.TopEnd)
+                    .zIndex(100f)
+                    .graphicsLayer {
+                        alpha = if (settingsPresentationState != SettingsPresentationState.Closed || showFloatingConfigDialog) 1.0f else controlsAlpha
                     }
-                    .padding(8.dp)
-            )
-
-            Text(
-                text = "FLOAT ↗",
-                style = TextStyle(
-                    color = accentColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 2.sp
-                ),
-                modifier = Modifier
-                    .clickable {
+            ) {
+                SettingsOverlay(
+                    settingsRepository = settingsRepository,
+                    accentColor = accentColor,
+                    currentGrayColor = currentGrayColor,
+                    currentTextColor = currentTextColor,
+                    presentationState = settingsPresentationState,
+                    onStateChange = { newState ->
+                        resetAutoHideTimer()
+                        settingsPresentationState = newState
+                    },
+                    onFloatClick = {
                         resetAutoHideTimer()
                         if (android.provider.Settings.canDrawOverlays(context)) {
                             val intent = Intent(context, com.floating.stopwatch.service.StopwatchService::class.java)
@@ -325,12 +468,14 @@ fun MainScreen(
                                 AppMode.Countdown -> 1
                                 AppMode.Counter -> 2
                                 AppMode.Intervals -> 3
+                                AppMode.Legacy -> 4
                             }
                             val targetType = when (currentMode) {
                                 AppMode.Stopwatch -> "stopwatch"
                                 AppMode.Countdown -> "countdown"
                                 AppMode.Counter -> "counter"
                                 AppMode.Intervals -> "intervals"
+                                AppMode.Legacy -> "legacy"
                             }
                             scope.launch {
                                 settingsRepository.setWidgetType(targetIndex, targetType)
@@ -343,826 +488,900 @@ fun MainScreen(
                             )
                             context.startActivity(intent)
                         }
+                    },
+                    onFloatLongClick = {
+                        resetAutoHideTimer()
+                        showFloatingConfigDialog = true
                     }
-                    .padding(8.dp)
+                )
+            }
+        }
+    }
+
+    if (showBottomSheet) {
+        LapsBottomSheet(
+            laps = laps,
+            sheetState = sheetState,
+            bgColor = currentBgColor,
+            textColor = currentTextColor,
+            grayColor = currentGrayColor,
+            accentColor = accentColor,
+            onDismiss = { showBottomSheet = false }
+        )
+    }
+
+    if (showFloatingConfigDialog) {
+        val targetIndex = when (currentMode) {
+            AppMode.Stopwatch -> 0
+            AppMode.Countdown -> 1
+            AppMode.Counter -> 2
+            AppMode.Intervals -> 3
+            AppMode.Legacy -> 4
+        }
+        val modeName = when (currentMode) {
+            AppMode.Stopwatch -> "Stopwatch"
+            AppMode.Countdown -> "Countdown"
+            AppMode.Counter -> "Counter"
+            AppMode.Intervals -> "Intervals"
+            AppMode.Legacy -> "Legacy"
+        }
+        FloatingModeConfigDialog(
+            modeIndex = targetIndex,
+            modeName = modeName,
+            settingsRepository = settingsRepository,
+            accentColor = accentColor,
+            onDismiss = { showFloatingConfigDialog = false }
+        )
+    }
+}
+
+
+@Composable
+private fun StopwatchDisplay(
+    elapsedTimeMs: Long,
+    showCentiseconds: Boolean,
+    state: StopwatchState,
+    mainSize: Float,
+    accentColor: Color,
+    textColor: Color,
+    grayColor: Color,
+    secondaryAlpha: Float,
+    scalePulse: Float
+) {
+    val isAtZeroForFiveSecs = elapsedTimeMs == 0L && state == StopwatchState.Ready
+    val infiniteTransition = rememberInfiniteTransition(label = "PulseAtZero")
+    val breathingScale by if (isAtZeroForFiveSecs) {
+        infiniteTransition.animateFloat(
+            initialValue = 1.0f,
+            targetValue = 1.03f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1500, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "BreathingScale"
+        )
+    } else {
+        remember { mutableStateOf(1.0f) }
+    }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        TimeDisplay(
+            elapsedTimeMs = elapsedTimeMs,
+            showCentiseconds = showCentiseconds,
+            baseStyle = TextStyle(color = textColor, fontSize = 54.sp),
+            scaleFactor = mainSize,
+            accentColor = accentColor,
+            gradientGoldEnabled = false,
+            modifier = Modifier
+                .scale(scalePulse * breathingScale)
+                .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = state.name.uppercase(),
+            style = TextStyle(
+                color = grayColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Light,
+                letterSpacing = 3.sp
+            ),
+            modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
+        )
+    }
+}
+
+@Composable
+private fun CountdownDisplay(
+    viewModel: MainViewModel,
+    countdownRemainingMs: Long,
+    isCountdownRunning: Boolean,
+    mainSize: Float,
+    textColor: Color,
+    grayColor: Color,
+    secondaryAlpha: Float,
+    scalePulse: Float,
+    onInteraction: () -> Unit
+) {
+    val countdownDigitSize = (54f * mainSize).sp
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val dragThreshold = 18f * density
+    var hDragAcc by remember { mutableFloatStateOf(0f) }
+    var mDragAcc by remember { mutableFloatStateOf(0f) }
+    var sDragAcc by remember { mutableFloatStateOf(0f) }
+
+    val totalSeconds = countdownRemainingMs / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.scale(scalePulse)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                // Hours Drag Zone
+                Box(
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = { onInteraction() },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                hDragAcc += dragAmount.y
+                                if (hDragAcc <= -dragThreshold) {
+                                    viewModel.adjustCountdownHours(1)
+                                    hDragAcc = 0f
+                                } else if (hDragAcc >= dragThreshold) {
+                                    viewModel.adjustCountdownHours(-1)
+                                    hDragAcc = 0f
+                                }
+                            },
+                            onDragEnd = { hDragAcc = 0f }
+                        )
+                    }
+                ) {
+                    Text(
+                        text = String.format(Locale.US, "%02d", hours),
+                        style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Light)
+                    )
+                }
+
+                Text(" : ", style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontWeight = FontWeight.Light))
+
+                // Minutes Drag Zone
+                Box(
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = { onInteraction() },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                mDragAcc += dragAmount.y
+                                if (mDragAcc <= -dragThreshold) {
+                                    viewModel.adjustCountdownMinutes(1)
+                                    mDragAcc = 0f
+                                } else if (mDragAcc >= dragThreshold) {
+                                    viewModel.adjustCountdownMinutes(-1)
+                                    mDragAcc = 0f
+                                }
+                            },
+                            onDragEnd = { mDragAcc = 0f }
+                        )
+                    }
+                ) {
+                    Text(
+                        text = String.format(Locale.US, "%02d", minutes),
+                        style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Light)
+                    )
+                }
+
+                Text(" : ", style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontWeight = FontWeight.Light))
+
+                // Seconds Drag Zone
+                Box(
+                    modifier = Modifier.pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = { onInteraction() },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                sDragAcc += dragAmount.y
+                                if (sDragAcc <= -dragThreshold) {
+                                    viewModel.adjustCountdownSeconds(1)
+                                    sDragAcc = 0f
+                                } else if (sDragAcc >= dragThreshold) {
+                                    viewModel.adjustCountdownSeconds(-1)
+                                    sDragAcc = 0f
+                                }
+                            },
+                            onDragEnd = { sDragAcc = 0f }
+                        )
+                    }
+                ) {
+                    Text(
+                        text = String.format(Locale.US, "%02d", seconds),
+                        style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Light)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
+            ) {
+                Text(text = "HOURS", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp))
+                Text(" : ", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light))
+                Text(text = "MINS", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp))
+                Text(" : ", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light))
+                Text(text = "SECS", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp))
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = if (!isCountdownRunning) "DRAG UP/DOWN TO ADJUST" else "FOCUS COUNTDOWN",
+                style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp),
+                modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
             )
         }
+    }
+}
 
-        // Top label - Tapping cycles mode (Stopwatch -> Countdown -> Counter -> Intervals -> Stopwatch)
-        Column(
+@Composable
+private fun CounterDisplay(
+    counterValue: Long,
+    mainSize: Float,
+    accentColor: Color,
+    textColor: Color,
+    grayColor: Color,
+    secondaryAlpha: Float,
+    scalePulse: Float,
+    onAmbientDimClick: () -> Unit
+) {
+    val counterDigitSize = (72f * mainSize).sp
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = "$counterValue",
+            style = TextStyle(
+                color = textColor,
+                fontSize = counterDigitSize,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            ),
+            modifier = Modifier.scale(scalePulse)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "TAP COUNTER",
+            style = TextStyle(
+                color = grayColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Light,
+                letterSpacing = 3.sp
+            ),
+            modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "Ambient Dim Mode",
+            style = TextStyle(
+                color = accentColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 2.sp
+            ),
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 16.dp)
-                .graphicsLayer { alpha = controlsAlpha }
-                .clickable {
-                    resetAutoHideTimer()
-                    hapticController.trigger(hapticIntensity, "Lap")
-                    viewModel.cycleMode()
-                }
-                .padding(4.dp)
+                .graphicsLayer { alpha = secondaryAlpha }
+                .clickable { onAmbientDimClick() }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun IntervalsDisplay(
+    intervalEngine: IntervalEngine,
+    settingsRepository: SettingsRepository,
+    mainSize: Float,
+    accentColor: Color,
+    textColor: Color,
+    grayColor: Color,
+    secondaryAlpha: Float,
+    scalePulse: Float,
+    resetAutoHideTimer: () -> Unit
+) {
+    val activeTemplate by intervalEngine.activeTemplate.collectAsState()
+    val currentRound by intervalEngine.currentRound.collectAsState()
+    val stageRemainingMs by intervalEngine.stageRemainingMs.collectAsState()
+    val currentStage = intervalEngine.getCurrentStage()
+    val nextStage = intervalEngine.getNextStage()
+    val scope = rememberCoroutineScope()
+
+    var showBuilderDialog by remember { mutableStateOf(false) }
+
+    if (activeTemplate != null) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = activeTemplate!!.name.uppercase(),
+                    style = TextStyle(color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "[EDIT]",
+                    style = TextStyle(color = grayColor, fontSize = 10.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp),
+                    modifier = Modifier
+                        .graphicsLayer { alpha = secondaryAlpha }
+                        .clickable {
+                            resetAutoHideTimer()
+                            showBuilderDialog = true
+                        }
+                        .padding(4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
-                text = when (currentMode) {
-                    AppMode.Stopwatch -> "STOPWATCH ▾"
-                    AppMode.Countdown -> "COUNTDOWN ▾"
-                    AppMode.Counter -> "COUNTER ▾"
-                    AppMode.Intervals -> "INTERVALS ▾"
-                },
+                text = currentStage?.name?.uppercase() ?: "READY",
                 style = TextStyle(
-                    color = currentTextColor,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.ExtraLight,
-                    letterSpacing = 4.sp
+                    color = if (currentStage?.type == IntervalStageType.WORK) accentColor else textColor,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 3.sp
                 )
             )
-        }
 
-        // Breathing pulse animation when stopwatch is at 0 for more than 5 seconds
-        val isAtZeroForFiveSecs = elapsedTimeMs == 0L && state == StopwatchState.Ready
-        val infiniteTransition = rememberInfiniteTransition(label = "PulseAtZero")
-        val breathingScale by if (isAtZeroForFiveSecs) {
-            infiniteTransition.animateFloat(
-                initialValue = 1.0f,
-                targetValue = 1.03f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "BreathingScale"
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TimeDisplay(
+                elapsedTimeMs = stageRemainingMs,
+                showCentiseconds = true,
+                baseStyle = TextStyle(color = textColor, fontSize = 48.sp),
+                scaleFactor = mainSize,
+                accentColor = accentColor,
+                modifier = Modifier.scale(scalePulse)
             )
-        } else {
-            remember { mutableStateOf(1.0f) }
-        }
 
-        // Center display & controls depending on current AppMode
-        Column(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            when (currentMode) {
-                AppMode.Stopwatch -> {
-                    TimeDisplay(
-                        elapsedTimeMs = elapsedTimeMs,
-                        showCentiseconds = showCentiseconds,
-                        baseStyle = TextStyle(color = currentTextColor, fontSize = 54.sp),
-                        scaleFactor = mainSize,
-                        accentColor = accentColor,
-                        gradientGoldEnabled = false,
-                        modifier = Modifier
-                            .scale(scalePulse * breathingScale)
-                            .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite }
-                    )
+            Spacer(modifier = Modifier.height(12.dp))
 
-                    Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "ROUND $currentRound / ${activeTemplate!!.repetitions}",
+                style = TextStyle(color = grayColor, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp),
+                modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
+            )
 
-                    Text(
-                        text = state.name.uppercase(),
-                        style = TextStyle(
-                            color = currentGrayColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Light,
-                            letterSpacing = 3.sp
-                        ),
-                        modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
-                    )
-                }
-                AppMode.Countdown -> {
-                    var hDragAcc by remember { mutableFloatStateOf(0f) }
-                    var mDragAcc by remember { mutableFloatStateOf(0f) }
-                    var sDragAcc by remember { mutableFloatStateOf(0f) }
-
-                    val totalSeconds = countdownRemainingMs / 1000
-                    val hours = totalSeconds / 3600
-                    val minutes = (totalSeconds % 3600) / 60
-                    val seconds = totalSeconds % 60
-
-                    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.scale(scalePulse * breathingScale)
-                        ) {
-                            // 1. Top: Countdown Digits (HH : MM : SS) - ALWAYS VISIBLE
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                // Hours Drag Zone
-                                Box(
-                                    modifier = Modifier.pointerInput(Unit) {
-                                        detectDragGestures(
-                                            onDragStart = { resetAutoHideTimer() },
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                hDragAcc += dragAmount.y
-                                                if (hDragAcc <= -25f) {
-                                                    viewModel.adjustCountdownHours(1)
-                                                    hDragAcc = 0f
-                                                } else if (hDragAcc >= 25f) {
-                                                    viewModel.adjustCountdownHours(-1)
-                                                    hDragAcc = 0f
-                                                }
-                                            },
-                                            onDragEnd = { hDragAcc = 0f }
-                                        )
-                                    }
-                                ) {
-                                    Text(
-                                        text = String.format("%02d", hours),
-                                        style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
-                                    )
-                                }
-
-                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontWeight = FontWeight.Light))
-
-                                // Minutes Drag Zone
-                                Box(
-                                    modifier = Modifier.pointerInput(Unit) {
-                                        detectDragGestures(
-                                            onDragStart = { resetAutoHideTimer() },
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                mDragAcc += dragAmount.y
-                                                if (mDragAcc <= -25f) {
-                                                    viewModel.adjustCountdownMinutes(1)
-                                                    mDragAcc = 0f
-                                                } else if (mDragAcc >= 25f) {
-                                                    viewModel.adjustCountdownMinutes(-1)
-                                                    mDragAcc = 0f
-                                                }
-                                            },
-                                            onDragEnd = { mDragAcc = 0f }
-                                        )
-                                    }
-                                ) {
-                                    Text(
-                                        text = String.format("%02d", minutes),
-                                        style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
-                                    )
-                                }
-
-                                Text(" : ", style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontWeight = FontWeight.Light))
-
-                                // Seconds Drag Zone
-                                Box(
-                                    modifier = Modifier.pointerInput(Unit) {
-                                        detectDragGestures(
-                                            onDragStart = { resetAutoHideTimer() },
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                sDragAcc += dragAmount.y
-                                                if (sDragAcc <= -25f) {
-                                                    viewModel.adjustCountdownSeconds(1)
-                                                    sDragAcc = 0f
-                                                } else if (sDragAcc >= 25f) {
-                                                    viewModel.adjustCountdownSeconds(-1)
-                                                    sDragAcc = 0f
-                                                }
-                                            },
-                                            onDragEnd = { sDragAcc = 0f }
-                                        )
-                                    }
-                                ) {
-                                    Text(
-                                        text = String.format("%02d", seconds),
-                                        style = TextStyle(color = currentTextColor, fontSize = countdownDigitSize, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontWeight = FontWeight.Light)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // 2. Middle: Sub-Labels HOURS : MINS : SECS aligned under numbers
-                            Row(
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
-                            ) {
-                                Text(
-                                    text = "HOURS",
-                                    style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
-                                )
-                                Text(" : ", style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light))
-                                Text(
-                                    text = "MINS",
-                                    style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
-                                )
-                                Text(" : ", style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light))
-                                Text(
-                                    text = "SECS",
-                                    style = TextStyle(color = currentGrayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // 3. Bottom: Instruction text
-                            Text(
-                                text = if (!isCountdownRunning) "DRAG UP/DOWN TO ADJUST" else "FOCUS COUNTDOWN",
-                                style = TextStyle(
-                                    color = currentGrayColor,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Light,
-                                    letterSpacing = 2.sp
-                                ),
-                                modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
-                            )
-                        }
-                    }
-                }
-                AppMode.Counter -> {
-                    Text(
-                        text = "$counterValue",
-                        style = TextStyle(
-                            color = currentTextColor,
-                            fontSize = counterDigitSize,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                        ),
-                        modifier = Modifier.scale(scalePulse)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "TAP COUNTER",
-                        style = TextStyle(
-                            color = currentGrayColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Light,
-                            letterSpacing = 3.sp
-                        ),
-                        modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "Ambient Dim Mode",
-                        style = TextStyle(
-                            color = accentColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 2.sp
-                        ),
-                        modifier = Modifier
-                            .graphicsLayer { alpha = secondaryAlpha }
-                            .clickable {
-                                isCounterAmbientDim = true
-                            }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-                AppMode.Intervals -> {
-                    val activeTemplate by intervalEngine.activeTemplate.collectAsState()
-                    val currentRound by intervalEngine.currentRound.collectAsState()
-                    val stageRemainingMs by intervalEngine.stageRemainingMs.collectAsState()
-                    val currentStage = intervalEngine.getCurrentStage()
-                    val nextStage = intervalEngine.getNextStage()
-
-                    var showBuilderDialog by remember { mutableStateOf(false) }
-
-                    if (activeTemplate != null) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = activeTemplate.name.uppercase(),
-                                    style = TextStyle(color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "[EDIT]",
-                                    style = TextStyle(color = currentGrayColor, fontSize = 10.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp),
-                                    modifier = Modifier
-                                        .graphicsLayer { alpha = secondaryAlpha }
-                                        .clickable {
-                                            resetAutoHideTimer()
-                                            showBuilderDialog = true
-                                        }
-                                        .padding(4.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text(
-                                text = currentStage?.name?.uppercase() ?: "READY",
-                                style = TextStyle(
-                                    color = if (currentStage?.type == IntervalStageType.WORK) accentColor else currentTextColor,
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 3.sp
-                                )
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            TimeDisplay(
-                                elapsedTimeMs = stageRemainingMs,
-                                showCentiseconds = true,
-                                baseStyle = TextStyle(color = currentTextColor, fontSize = 48.sp),
-                                scaleFactor = mainSize,
-                                accentColor = accentColor,
-                                modifier = Modifier.scale(scalePulse)
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Text(
-                                text = "ROUND $currentRound / ${activeTemplate!!.repetitions}",
-                                style = TextStyle(color = currentGrayColor, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp),
-                                modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
-                            )
-
-                            if (nextStage != null) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                val nextSecs = nextStage.durationMs / 1000
-                                Text(
-                                    text = "NEXT: ${nextStage.name} (${nextSecs}s)",
-                                    style = TextStyle(color = currentGrayColor.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Normal, letterSpacing = 1.sp),
-                                    modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
-                                )
-                            }
-                        }
-                    }
-
-                    if (showBuilderDialog && activeTemplate != null) {
-                        IntervalQuickEditDialog(
-                            initialTemplate = activeTemplate,
-                            onDismiss = { showBuilderDialog = false },
-                            onSave = { updatedTemplate ->
-                                intervalEngine.loadTemplate(updatedTemplate)
-                                scope.launch {
-                                    settingsRepository.setIntervalConfig(
-                                        name = updatedTemplate.name,
-                                        workMs = updatedTemplate.workDurationMs,
-                                        restMs = updatedTemplate.restDurationMs,
-                                        rounds = updatedTemplate.repetitions
-                                    )
-                                }
-                                showBuilderDialog = false
-                            }
-                        )
-                    }
-                }
+            if (nextStage != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val nextSecs = nextStage.durationMs / 1000
+                Text(
+                    text = "NEXT: ${nextStage.name} (${nextSecs}s)",
+                    style = TextStyle(color = grayColor.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Normal, letterSpacing = 1.sp),
+                    modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
+                )
             }
         }
+    }
 
-        // Action Buttons Row depending on AppMode
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(bottom = 54.dp)
-                .graphicsLayer { alpha = controlsAlpha },
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            when (currentMode) {
-                AppMode.Intervals -> {
-                    // Reset / Stop button
-                    Box(
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(CircleShape)
-                            .background(Color.Transparent)
-                            .clickable {
-                                resetAutoHideTimer()
-                                hapticController.trigger(hapticIntensity, "Reset")
-                                intervalEngine.reset()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            shape = CircleShape,
-                            color = Color.Transparent,
-                            border = BorderStroke(1.dp, currentGrayColor)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "RESET",
-                                    style = TextStyle(color = currentTextColor, fontSize = 11.sp, letterSpacing = 1.sp)
-                                )
-                            }
-                        }
-                    }
-
-                    val isRunning = intervalState == IntervalState.RUNNING
-                    val intervalBtnColor = if (isRunning) Color(0xFF9E2A2B) else accentColor
-                    Box(
-                        modifier = Modifier
-                            .size(92.dp)
-                            .clip(CircleShape)
-                            .background(intervalBtnColor)
-                            .clickable {
-                                resetAutoHideTimer()
-                                if (isRunning) {
-                                    hapticController.trigger(hapticIntensity, "Stop")
-                                    intervalEngine.pause()
-                                } else {
-                                    hapticController.trigger(hapticIntensity, "Start")
-                                    intervalEngine.start(scope)
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (isRunning) "PAUSE" else "START",
-                            style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                        )
-                    }
+    if (showBuilderDialog && activeTemplate != null) {
+        IntervalQuickEditDialog(
+            initialTemplate = activeTemplate!!,
+            onDismiss = { showBuilderDialog = false },
+            onSave = { updatedTemplate ->
+                intervalEngine.loadTemplate(updatedTemplate)
+                scope.launch {
+                    settingsRepository.setIntervalConfig(
+                        name = updatedTemplate.name,
+                        workMs = updatedTemplate.workDurationMs,
+                        restMs = updatedTemplate.restDurationMs,
+                        rounds = updatedTemplate.repetitions
+                    )
                 }
-                AppMode.Stopwatch -> {
-                    // Lap / Reset button
-                    Box(
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(CircleShape)
-                            .background(Color.Transparent)
-                            .clickable {
-                                resetAutoHideTimer()
-                                if (state == StopwatchState.Running) {
-                                    hapticController.trigger(hapticIntensity, "Lap")
-                                    viewModel.lap()
-                                } else if (state == StopwatchState.Paused) {
-                                    hapticController.trigger(hapticIntensity, "Reset")
-                                    viewModel.reset()
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            shape = CircleShape,
-                            color = Color.Transparent,
-                            border = BorderStroke(1.dp, currentGrayColor)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = if (state == StopwatchState.Paused) "RESET" else "LAP",
-                                    style = TextStyle(
-                                        color = currentTextColor,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Light,
-                                        letterSpacing = 1.sp
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    // Big Start/Stop golden button
-                    val buttonColor = if (state == StopwatchState.Running) Color(0xFF9E2A2B) else accentColor
-                    Box(
-                        modifier = Modifier
-                            .size(92.dp)
-                            .clip(CircleShape)
-                            .background(buttonColor)
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onPress = {
-                                        resetAutoHideTimer()
-                                        triggerPulse = true
-                                        tryAwaitRelease()
-                                        triggerPulse = false
-                                    },
-                                    onTap = {
-                                        resetAutoHideTimer()
-                                        if (state == StopwatchState.Running) {
-                                            hapticController.trigger(hapticIntensity, "Stop")
-                                            viewModel.pause()
-                                        } else {
-                                            hapticController.trigger(hapticIntensity, "Start")
-                                            viewModel.start()
-                                        }
-                                    }
-                                )
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (state == StopwatchState.Running) "STOP" else "START",
-                            style = TextStyle(
-                                color = LuxuryColors.WarmBlack,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
-                            )
-                        )
-                    }
-                }
-                AppMode.Countdown -> {
-                    // Countdown controls
-                    Box(
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(CircleShape)
-                            .background(Color.Transparent)
-                            .clickable {
-                                resetAutoHideTimer()
-                                hapticController.trigger(hapticIntensity, "Reset")
-                                viewModel.resetCountdown()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            shape = CircleShape,
-                            color = Color.Transparent,
-                            border = BorderStroke(1.dp, currentGrayColor)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "RESET",
-                                    style = TextStyle(color = currentTextColor, fontSize = 11.sp, letterSpacing = 1.sp)
-                                )
-                            }
-                        }
-                    }
-
-                    val countdownBtnColor = if (isCountdownRunning) Color(0xFF9E2A2B) else accentColor
-                    Box(
-                        modifier = Modifier
-                            .size(92.dp)
-                            .clip(CircleShape)
-                            .background(countdownBtnColor)
-                            .clickable {
-                                resetAutoHideTimer()
-                                if (isCountdownRunning) {
-                                    hapticController.trigger(hapticIntensity, "Stop")
-                                    viewModel.pauseCountdown()
-                                } else {
-                                    hapticController.trigger(hapticIntensity, "Start")
-                                    viewModel.startCountdown()
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (isCountdownRunning) "PAUSE" else "START",
-                            style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                        )
-                    }
-                }
-                AppMode.Counter -> {
-                    // Reset Button (0.5-Second Continuous Press)
-                    var isPressingReset by remember { mutableStateOf(false) }
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(Color.Transparent)
-                            .pointerInput(Unit) {
-                                detectTapGestures(
-                                    onPress = {
-                                        resetAutoHideTimer()
-                                        isPressingReset = true
-                                        var resetTriggered = false
-                                        val job = scope.launch {
-                                            kotlinx.coroutines.delay(500L)
-                                            resetTriggered = true
-                                            hapticController.trigger(hapticIntensity, "Reset")
-                                            viewModel.resetCounter()
-                                        }
-                                        val released = tryAwaitRelease()
-                                        isPressingReset = false
-                                        if (!resetTriggered) {
-                                            job.cancel()
-                                        }
-                                    }
-                                )
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            shape = CircleShape,
-                            color = Color.Transparent,
-                            border = BorderStroke(
-                                1.dp,
-                                if (isPressingReset) accentColor else currentGrayColor
-                            )
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "RESET",
-                                    style = TextStyle(
-                                        color = if (isPressingReset) accentColor else currentTextColor,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Light,
-                                        letterSpacing = 1.sp
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    // Decrement (-1) Button
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(Color.Transparent)
-                            .clickable {
-                                resetAutoHideTimer()
-                                hapticController.trigger(hapticIntensity, "Lap")
-                                viewModel.decrementCounter()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Surface(
-                            modifier = Modifier.fillMaxSize(),
-                            shape = CircleShape,
-                            color = Color.Transparent,
-                            border = BorderStroke(1.dp, currentGrayColor)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = "− 1",
-                                    style = TextStyle(color = currentTextColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                                )
-                            }
-                        }
-                    }
-
-                    // Increment (+1) Button
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(accentColor)
-                            .clickable {
-                                resetAutoHideTimer()
-                                hapticController.trigger(hapticIntensity, "Lap")
-                                viewModel.incrementCounter()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "+ 1",
-                            style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        )
-                    }
-                }
+                showBuilderDialog = false
             }
-        }
+        )
+    }
+}
 
-        // Small indicator link to check laps bottom sheet
-        if (laps.isNotEmpty()) {
+@Composable
+private fun ModeActionButtons(
+    currentMode: AppMode,
+    viewModel: MainViewModel,
+    intervalEngine: IntervalEngine,
+    legacyEngine: LegacyEngine,
+    state: StopwatchState,
+    isCountdownRunning: Boolean,
+    intervalState: IntervalState,
+    legacyState: LegacyState,
+    accentColor: Color,
+    textColor: Color,
+    grayColor: Color,
+    hapticController: HapticController,
+    hapticIntensity: String,
+    onInteraction: () -> Unit,
+    onPressPulse: (Boolean) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+
+    val currentStopwatchState by rememberUpdatedState(state)
+    val currentCountdownRunning by rememberUpdatedState(isCountdownRunning)
+    val currentIntervalState by rememberUpdatedState(intervalState)
+    val currentLegacyState by rememberUpdatedState(legacyState)
+    val currentHapticIntensity by rememberUpdatedState(hapticIntensity)
+
+    when (currentMode) {
+        AppMode.Stopwatch -> {
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 12.dp)
-                    .graphicsLayer { alpha = controlsAlpha }
+                    .size(68.dp)
+                    .clip(CircleShape)
+                    .background(Color.Transparent)
                     .clickable {
-                        resetAutoHideTimer()
-                        showBottomSheet = true
+                        onInteraction()
+                        if (currentStopwatchState == StopwatchState.Running) {
+                            hapticController.trigger(currentHapticIntensity, "Lap")
+                            viewModel.lap()
+                        } else if (currentStopwatchState == StopwatchState.Paused) {
+                            hapticController.trigger(currentHapticIntensity, "Reset")
+                            viewModel.reset()
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, grayColor)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = if (currentStopwatchState == StopwatchState.Paused) "RESET" else "LAP",
+                            style = TextStyle(color = textColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
+                        )
                     }
-                    .padding(8.dp)
+                }
+            }
+
+            val buttonColor = if (currentStopwatchState == StopwatchState.Running) Color(0xFF9E2A2B) else accentColor
+            Box(
+                modifier = Modifier
+                    .size(92.dp)
+                    .clip(CircleShape)
+                    .background(buttonColor)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                onInteraction()
+                                onPressPulse(true)
+                                tryAwaitRelease()
+                                onPressPulse(false)
+                            },
+                            onTap = {
+                                onInteraction()
+                                if (currentStopwatchState == StopwatchState.Running) {
+                                    hapticController.trigger(currentHapticIntensity, "Stop")
+                                    viewModel.pause()
+                                } else {
+                                    hapticController.trigger(currentHapticIntensity, "Start")
+                                    viewModel.start()
+                                }
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "VIEW LAPS (${laps.size})",
-                    style = TextStyle(
-                        color = accentColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 2.sp
-                    )
+                    text = if (currentStopwatchState == StopwatchState.Running) "STOP" else "START",
+                    style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 )
             }
         }
-    }
-    }
-
-    // Slide-up bottom sheet for luxury clean laps listing
-    if (showBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
-            sheetState = sheetState,
-            containerColor = currentBgColor,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = currentGrayColor) }
-        ) {
-            Column(
+        AppMode.Countdown -> {
+            var isPressingCountdownReset by remember { mutableStateOf(false) }
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
+                    .size(68.dp)
+                    .clip(CircleShape)
+                    .background(Color.Transparent)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                onInteraction()
+                                isPressingCountdownReset = true
+                                var zeroTriggered = false
+                                val job = scope.launch {
+                                    kotlinx.coroutines.delay(500L)
+                                    zeroTriggered = true
+                                    hapticController.trigger(hapticIntensity, "Reset")
+                                    viewModel.resetCountdownToZero()
+                                }
+                                val released = tryAwaitRelease()
+                                isPressingCountdownReset = false
+                                if (released && !zeroTriggered) {
+                                    job.cancel()
+                                    hapticController.trigger(hapticIntensity, "Reset")
+                                    viewModel.resetCountdown()
+                                } else if (!released) {
+                                    job.cancel()
+                                }
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, if (isPressingCountdownReset) accentColor else grayColor)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("RESET", style = TextStyle(color = if (isPressingCountdownReset) accentColor else textColor, fontSize = 11.sp, letterSpacing = 1.sp))
+                    }
+                }
+            }
+
+            val countdownBtnColor = if (isCountdownRunning) Color(0xFF9E2A2B) else accentColor
+            Box(
+                modifier = Modifier
+                    .size(92.dp)
+                    .clip(CircleShape)
+                    .background(countdownBtnColor)
+                    .clickable {
+                        onInteraction()
+                        if (isCountdownRunning) {
+                            hapticController.trigger(hapticIntensity, "Stop")
+                            viewModel.pauseCountdown()
+                        } else {
+                            hapticController.trigger(hapticIntensity, "Start")
+                            viewModel.startCountdown()
+                        }
+                    },
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "LAP TIMES & INSIGHTS",
-                    style = TextStyle(
-                        color = currentTextColor,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraLight,
-                        letterSpacing = 4.sp
-                    ),
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    text = if (isCountdownRunning) "PAUSE" else "START",
+                    style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 )
-
-                val fastestLap = if (laps.size >= 2) laps.minByOrNull { it.lapTimeMs } else null
-                val slowestLap = if (laps.size >= 2) laps.maxByOrNull { it.lapTimeMs } else null
-
-                // Performance Session Insights (P1 - Item 6)
-                if (laps.isNotEmpty()) {
-                    val avgLapTime = laps.map { it.lapTimeMs }.average().toLong()
-                    val avgMins = (avgLapTime / 1000) / 60
-                    val avgSecs = (avgLapTime / 1000) % 60
-                    val avgCents = (avgLapTime % 1000) / 10
-                    val formattedAvg = String.format("%02d:%02d.%02d", avgMins, avgSecs, avgCents)
-
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = currentGrayColor.copy(alpha = 0.1f)),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "SESSION INSIGHTS",
-                                    color = currentGrayColor,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 2.sp
-                                )
-                                // Share Card CTA Button (P1 - Item 9)
-                                val context = androidx.compose.ui.platform.LocalContext.current
-                                Text(
-                                    text = "SHARE CARD",
-                                    color = accentColor,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp,
-                                    modifier = Modifier
-                                        .clickable {
-                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                type = "text/plain"
-                                                putExtra(Intent.EXTRA_SUBJECT, "Stopwatch Premium Session")
-                                                putExtra(
-                                                    Intent.EXTRA_TEXT,
-                                                    "🏆 STOPWATCH PREMIUM SESSION CARD 🏆\n" +
-                                                    "------------------------------\n" +
-                                                    "• Average Lap Time: $formattedAvg\n" +
-                                                    (if (fastestLap != null) "• Fastest Cycle: Lap ${fastestLap.lapIndex} (${fastestLap.lapTimeMs / 1000f}s)\n" else "") +
-                                                    "• Total Laps Count: ${laps.size}\n" +
-                                                    "------------------------------\n" +
-                                                    "Luxury Minimalist Stopwatch System"
-                                                )
-                                            }
-                                            context.startActivity(Intent.createChooser(shareIntent, "Share Premium Session Info"))
-                                        }
-                                        .padding(4.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text(text = "AVERAGE LAP", color = currentGrayColor, fontSize = 11.sp)
-                                    Text(text = formattedAvg, color = currentTextColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        AppMode.Counter -> {
+            var isPressingReset by remember { mutableStateOf(false) }
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Color.Transparent)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                onInteraction()
+                                isPressingReset = true
+                                var resetTriggered = false
+                                val job = scope.launch {
+                                    kotlinx.coroutines.delay(500L)
+                                    resetTriggered = true
+                                    hapticController.trigger(hapticIntensity, "Reset")
+                                    viewModel.resetCounter()
                                 }
-                                if (fastestLap != null) {
-                                    Column {
-                                        Text(text = "FASTEST LAP", color = Color(0xFF4AC98F), fontSize = 11.sp)
-                                        val fS = fastestLap.lapTimeMs / 1000
-                                        Text(text = "LAP ${fastestLap.lapIndex} (${fS}s)", color = currentTextColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                tryAwaitRelease()
+                                isPressingReset = false
+                                if (!resetTriggered) job.cancel()
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, if (isPressingReset) accentColor else grayColor)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "RESET",
+                            style = TextStyle(color = if (isPressingReset) accentColor else textColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
+                        )
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Color.Transparent)
+                    .clickable {
+                        onInteraction()
+                        hapticController.trigger(hapticIntensity, "Lap")
+                        viewModel.decrementCounter()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, grayColor)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("− 1", style = TextStyle(color = textColor, fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(accentColor)
+                    .clickable {
+                        onInteraction()
+                        hapticController.trigger(hapticIntensity, "Lap")
+                        viewModel.incrementCounter()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("+ 1", style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 20.sp, fontWeight = FontWeight.Bold))
+            }
+        }
+        AppMode.Intervals -> {
+            Box(
+                modifier = Modifier
+                    .size(68.dp)
+                    .clip(CircleShape)
+                    .background(Color.Transparent)
+                    .clickable {
+                        onInteraction()
+                        hapticController.trigger(hapticIntensity, "Reset")
+                        intervalEngine.reset()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, grayColor)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("RESET", style = TextStyle(color = textColor, fontSize = 11.sp, letterSpacing = 1.sp))
+                    }
+                }
+            }
+
+            val isRunning = intervalState == IntervalState.RUNNING
+            val intervalBtnColor = if (isRunning) Color(0xFF9E2A2B) else accentColor
+            Box(
+                modifier = Modifier
+                    .size(92.dp)
+                    .clip(CircleShape)
+                    .background(intervalBtnColor)
+                    .clickable {
+                        onInteraction()
+                        if (isRunning) {
+                            hapticController.trigger(hapticIntensity, "Stop")
+                            intervalEngine.pause()
+                        } else {
+                            hapticController.trigger(hapticIntensity, "Start")
+                            intervalEngine.start(scope)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (isRunning) "PAUSE" else "START",
+                    style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                )
+            }
+        }
+        AppMode.Legacy -> {
+            val activeLegacy by legacyEngine.activeLegacy.collectAsState()
+            if (activeLegacy != null) {
+                var isPressingDelete by remember { mutableStateOf(false) }
+                Box(
+                    modifier = Modifier
+                        .size(68.dp)
+                        .clip(CircleShape)
+                        .background(Color.Transparent)
+                        .pointerInput(activeLegacy?.id) {
+                            detectTapGestures(
+                                onPress = {
+                                    onInteraction()
+                                    isPressingDelete = true
+                                    var deleteTriggered = false
+                                    val targetId = activeLegacy?.id
+                                    val job = scope.launch {
+                                        kotlinx.coroutines.delay(500L)
+                                        if (targetId != null) {
+                                            deleteTriggered = true
+                                            hapticController.trigger(currentHapticIntensity, "Reset")
+                                            legacyEngine.deleteLegacy(targetId)
+                                        }
                                     }
+                                    val released = tryAwaitRelease()
+                                    isPressingDelete = false
+                                    if (!deleteTriggered) {
+                                        job.cancel()
+                                    }
+                                }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = CircleShape,
+                        color = Color.Transparent,
+                        border = BorderStroke(1.dp, if (isPressingDelete) Color(0xFFE53935) else Color(0xFFC94A4A))
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("DELETE", style = TextStyle(color = if (isPressingDelete) Color(0xFFE53935) else Color(0xFFC94A4A), fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold))
+                        }
+                    }
+                }
+
+                val isRunning = legacyState == LegacyState.RUNNING
+                val legacyBtnColor = if (isRunning) Color(0xFF9E2A2B) else accentColor
+                Box(
+                    modifier = Modifier
+                        .size(92.dp)
+                        .clip(CircleShape)
+                        .background(legacyBtnColor)
+                        .clickable {
+                            onInteraction()
+                            if (isRunning) {
+                                hapticController.trigger(hapticIntensity, "Stop")
+                                legacyEngine.pause()
+                            } else {
+                                hapticController.trigger(hapticIntensity, "Start")
+                                legacyEngine.start(scope)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isRunning) "PAUSE" else if (legacyState == LegacyState.PAUSED) "RESUME" else "START",
+                        style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LapsBottomSheet(
+    laps: List<Lap>,
+    sheetState: SheetState,
+    bgColor: Color,
+    textColor: Color,
+    grayColor: Color,
+    accentColor: Color,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = bgColor,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = grayColor) }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+        ) {
+            Text(
+                text = "LAP TIMES & INSIGHTS",
+                style = TextStyle(color = textColor, fontSize = 16.sp, fontWeight = FontWeight.ExtraLight, letterSpacing = 4.sp),
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            val fastestLap = if (laps.size >= 2) laps.minByOrNull { it.lapTimeMs } else null
+            val slowestLap = if (laps.size >= 2) laps.maxByOrNull { it.lapTimeMs } else null
+
+            if (laps.isNotEmpty()) {
+                val avgLapTime = laps.map { it.lapTimeMs }.average().toLong()
+                val avgMins = (avgLapTime / 1000) / 60
+                val avgSecs = (avgLapTime / 1000) % 60
+                val avgCents = (avgLapTime % 1000) / 10
+                val formattedAvg = String.format(Locale.US, "%02d:%02d.%02d", avgMins, avgSecs, avgCents)
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = grayColor.copy(alpha = 0.1f)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "SESSION INSIGHTS", color = grayColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                            val context = LocalContext.current
+                            Text(
+                                text = "SHARE CARD",
+                                color = accentColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp,
+                                modifier = Modifier
+                                    .clickable {
+                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_SUBJECT, "Stopwatch Premium Session")
+                                            putExtra(
+                                                Intent.EXTRA_TEXT,
+                                                "🏆 STOPWATCH PREMIUM SESSION CARD 🏆\n" +
+                                                "------------------------------\n" +
+                                                "• Average Lap Time: $formattedAvg\n" +
+                                                (if (fastestLap != null) "• Fastest Cycle: Lap ${fastestLap.lapIndex} (${fastestLap.lapTimeMs / 1000f}s)\n" else "") +
+                                                "• Total Laps Count: ${laps.size}\n" +
+                                                "------------------------------\n" +
+                                                "Luxury Minimalist Stopwatch System"
+                                            )
+                                        }
+                                        context.startActivity(Intent.createChooser(shareIntent, "Share Premium Session Info"))
+                                    }
+                                    .padding(4.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(text = "AVERAGE LAP", color = grayColor, fontSize = 11.sp)
+                                Text(text = formattedAvg, color = textColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            if (fastestLap != null) {
+                                Column {
+                                    Text(text = "FASTEST LAP", color = Color(0xFF4AC98F), fontSize = 11.sp)
+                                    val fS = fastestLap.lapTimeMs / 1000
+                                    Text(text = "LAP ${fastestLap.lapIndex} (${fS}s)", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(laps.reversed()) { lap ->
-                        val lapColor = when {
-                            fastestLap != null && lap.lapIndex == fastestLap.lapIndex -> Color(0xFF4AC98F) // elegant green
-                            slowestLap != null && lap.lapIndex == slowestLap.lapIndex -> Color(0xFFC94A4A) // subtle red
-                            else -> currentTextColor
-                        }
-                        LapRowItem(
-                            lap = lap,
-                            textColor = lapColor,
-                            grayColor = currentGrayColor
-                        )
-                        Divider(color = currentGrayColor.copy(alpha = 0.2f))
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                items(laps.reversed()) { lap ->
+                    val lapColor = when {
+                        fastestLap != null && lap.lapIndex == fastestLap.lapIndex -> Color(0xFF4AC98F)
+                        slowestLap != null && lap.lapIndex == slowestLap.lapIndex -> Color(0xFFC94A4A)
+                        else -> textColor
                     }
+                    LapRowItem(
+                        lap = lap,
+                        textColor = lapColor,
+                        grayColor = grayColor
+                    )
+                    HorizontalDivider(color = grayColor.copy(alpha = 0.2f))
                 }
             }
         }
@@ -1174,16 +1393,16 @@ fun formatIntervalDuration(totalSecs: Int): String {
     val mins = (totalSecs % 3600) / 60
     val secs = totalSecs % 60
     return if (hrs > 0) {
-        String.format("%dh %02dm %02ds", hrs, mins, secs)
+        String.format(Locale.US, "%dh %02dm %02ds", hrs, mins, secs)
     } else if (mins > 0) {
-        String.format("%dm %02ds", mins, secs)
+        String.format(Locale.US, "%dm %02ds", mins, secs)
     } else {
         "${secs}s"
     }
 }
 
 fun formatDurationHoursMinutes(totalSecs: Int): String {
-    return String.format("%02d:%02d", totalSecs / 3600, (totalSecs % 3600) / 60)
+    return String.format(Locale.US, "%02d:%02d", totalSecs / 3600, (totalSecs % 3600) / 60)
 }
 
 @Composable
@@ -1320,13 +1539,13 @@ fun LapRowItem(lap: Lap, textColor: Color, grayColor: Color) {
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
     val centiseconds = (lap.cumulativeTimeMs % 1000) / 10
-    val formattedCum = String.format("%02d:%02d.%02d", minutes, seconds, centiseconds)
+    val formattedCum = String.format(Locale.US, "%02d:%02d.%02d", minutes, seconds, centiseconds)
 
     val lapSecs = lap.lapTimeMs / 1000
     val lapMins = (lapSecs % 3600) / 60
     val lapS = lapSecs % 60
     val lapCent = (lap.lapTimeMs % 1000) / 10
-    val formattedLap = String.format("%02d:%02d.%02d", lapMins, lapS, lapCent)
+    val formattedLap = String.format(Locale.US, "%02d:%02d.%02d", lapMins, lapS, lapCent)
 
     val deltaSign = if (lap.diffFromPreviousMs >= 0) "+" else ""
     val deltaSecs = lap.diffFromPreviousMs / 1000
@@ -1343,42 +1562,25 @@ fun LapRowItem(lap: Lap, textColor: Color, grayColor: Color) {
         Column {
             Text(
                 text = "LAP ${lap.lapIndex}",
-                style = TextStyle(
-                    color = textColor,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                style = TextStyle(color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             )
             Text(
                 text = formattedCum,
-                style = TextStyle(
-                    color = grayColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Light
-                )
+                style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light)
             )
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = formattedLap,
-                style = TextStyle(
-                    color = textColor,
-                    fontSize = 14.sp,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                    fontWeight = FontWeight.SemiBold
-                )
+                style = TextStyle(color = textColor, fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold)
             )
             if (lap.lapIndex > 1) {
                 Spacer(modifier = Modifier.width(12.dp))
                 val colorDelta = if (lap.diffFromPreviousMs > 0) Color(0xFFC94A4A) else Color(0xFF4AC98F)
                 Text(
                     text = formattedDelta,
-                    style = TextStyle(
-                        color = colorDelta,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Light
-                    )
+                    style = TextStyle(color = colorDelta, fontSize = 11.sp, fontWeight = FontWeight.Light)
                 )
             }
         }

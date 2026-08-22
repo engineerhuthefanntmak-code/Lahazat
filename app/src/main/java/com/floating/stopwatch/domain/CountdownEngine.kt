@@ -29,7 +29,7 @@ class CountdownEngine {
 
     fun setDuration(durationMs: Long) = synchronized(lock) {
         if (_isRunning.value) return
-        val clamped = durationMs.coerceAtLeast(1000L)
+        val clamped = durationMs.coerceAtLeast(0L)
         _initialDurationMs.value = clamped
         _remainingTimeMs.value = clamped
     }
@@ -37,7 +37,7 @@ class CountdownEngine {
     fun adjustDuration(deltaMs: Long) = synchronized(lock) {
         if (_isRunning.value) return
         val current = _initialDurationMs.value
-        val newDuration = (current + deltaMs).coerceAtLeast(1000L)
+        val newDuration = (current + deltaMs).coerceAtLeast(0L)
         _initialDurationMs.value = newDuration
         _remainingTimeMs.value = newDuration
     }
@@ -58,6 +58,12 @@ class CountdownEngine {
     fun reset() = synchronized(lock) {
         pause()
         _remainingTimeMs.value = _initialDurationMs.value
+    }
+
+    fun resetToZero() = synchronized(lock) {
+        pause()
+        _initialDurationMs.value = 0L
+        _remainingTimeMs.value = 0L
     }
 
     private fun startTicker() {

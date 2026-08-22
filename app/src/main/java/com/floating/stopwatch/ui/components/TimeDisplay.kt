@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.getValue
@@ -65,10 +66,10 @@ fun TimeDisplay(
     val seconds = totalSeconds % 60
     val centiseconds = (elapsedTimeMs % 1000) / 10
 
-    val hourStr = String.format("%02d", hours)
-    val minuteStr = String.format("%02d", minutes)
-    val secondStr = String.format("%02d", seconds)
-    val centiStr = String.format("%02d", centiseconds)
+    val hourStr = String.format(Locale.US, "%02d", hours)
+    val minuteStr = String.format(Locale.US, "%02d", minutes)
+    val secondStr = String.format(Locale.US, "%02d", seconds)
+    val centiStr = String.format(Locale.US, "%02d", centiseconds)
 
     val showHours = hours > 0
 

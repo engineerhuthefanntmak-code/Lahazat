@@ -32,6 +32,13 @@ class SettingsRepository(private val context: Context) {
         val CUSTOM_INTERVAL_TEMPLATES = stringPreferencesKey("custom_interval_templates")
         val LEGACIES_JSON = stringPreferencesKey("legacies_json")
         val SELECTED_LEGACY_ID = stringPreferencesKey("selected_legacy_id")
+        val BACKGROUND_ATMOSPHERE = stringPreferencesKey("background_atmosphere")
+    }
+
+    val backgroundAtmosphere: Flow<String> = context.dataStore.data.map { it[BACKGROUND_ATMOSPHERE] ?: "Pure Black" }
+
+    suspend fun setBackgroundAtmosphere(atmosphere: String) {
+        context.dataStore.edit { it[BACKGROUND_ATMOSPHERE] = atmosphere }
     }
 
     val legaciesJson: Flow<String> = context.dataStore.data.map { it[LEGACIES_JSON] ?: "" }

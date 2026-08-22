@@ -103,9 +103,12 @@ fun SettingsOverlay(
     val volumeCounterScreenOffEnabled by settingsRepository.volumeCounterScreenOffEnabled.collectAsState(initial = false)
     val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
 
+    val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
+    val atmospheres = remember { listOf("Pure Black", "Stellar", "Dust", "Ember", "Aurora", "Void") }
+
     val categories = remember {
         listOf(
-            "APPEARANCE", "STOPWATCH", "COUNTDOWN", "COUNTER",
+            "APPEARANCE", "BACKGROUND ATMOSPHERE", "STOPWATCH", "COUNTDOWN", "COUNTER",
             "INTERVAL", "SOUNDS & HAPTICS", "FLOATING WIDGETS", "ADVANCED"
         )
     }
@@ -329,6 +332,16 @@ fun SettingsOverlay(
                                         accentColor = accentColor,
                                         valueFormatter = { String.format("%.2fx", it) },
                                         onValueChange = { scope.launch { settingsRepository.setMainDisplayScale(it) } }
+                                    )
+                                }
+                                "BACKGROUND ATMOSPHERE" -> {
+                                    Text(text = "BACKGROUND ATMOSPHERE", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    OptionGridCompact(
+                                        options = atmospheres,
+                                        selectedOption = backgroundAtmosphere,
+                                        accentColor = accentColor,
+                                        onOptionSelected = { atmosphere -> scope.launch { settingsRepository.setBackgroundAtmosphere(atmosphere) } }
                                     )
                                 }
                                 "STOPWATCH" -> WidgetCategorySettingsCompact(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, accentColor = accentColor, currentTextColor = currentTextColor, scope = scope)

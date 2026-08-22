@@ -36,7 +36,7 @@ import com.floating.stopwatch.domain.*
 import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.components.DragAdjustField
-import com.floating.stopwatch.ui.components.StellarBackground
+import com.floating.stopwatch.ui.components.BackgroundAtmosphere
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.launch
@@ -72,6 +72,7 @@ fun MainScreen(
     val legacyEngine = viewModel.legacyEngine
     val legacyState by legacyEngine.state.collectAsState()
 
+    val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
     var settingsPresentationState by remember { mutableStateOf<SettingsPresentationState>(SettingsPresentationState.Closed) }
 
     val isCurrentlyRunning = when (currentMode) {
@@ -192,7 +193,10 @@ fun MainScreen(
     var totalDragX by remember { mutableFloatStateOf(0f) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        StellarBackground(modifier = Modifier.fillMaxSize())
+        BackgroundAtmosphere(
+            atmosphere = backgroundAtmosphere,
+            modifier = Modifier.fillMaxSize()
+        )
 
         Box(
             modifier = Modifier

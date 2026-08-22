@@ -33,7 +33,6 @@ import com.floating.stopwatch.service.StopwatchService
 import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.screens.MainScreen
-import com.floating.stopwatch.ui.screens.SettingsScreen
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -122,24 +121,6 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         }
 
         setContent {
-            var currentScreen by remember {
-                mutableStateOf(
-                    if (intent?.getBooleanExtra("OPEN_SETTINGS", false) == true || pendingSettingsOpen) {
-                        "Settings"
-                    } else {
-                        "Main"
-                    }
-                )
-            }
-            var isUnlockedByBiometrics by remember { mutableStateOf(false) }
-
-            LaunchedEffect(pendingSettingsOpen) {
-                if (pendingSettingsOpen) {
-                    currentScreen = "Settings"
-                    pendingSettingsOpen = false
-                }
-            }
-
             val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
             val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
             val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
@@ -204,15 +185,8 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                     mainSize = mainDisplayScale,
                     accentColor = accentColor,
                     themeMode = themeMode,
-                    onNavigateToSettings = { currentScreen = "Settings" }
+                    onNavigateToSettings = {}
                 )
-
-                if (currentScreen == "Settings") {
-                    SettingsScreen(
-                        settingsRepository = settingsRepository,
-                        onBack = { currentScreen = "Main" }
-                    )
-                }
             }
         }
     }

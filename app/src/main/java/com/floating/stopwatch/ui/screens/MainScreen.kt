@@ -88,6 +88,8 @@ fun MainScreen(
     val legacyEngine = viewModel.legacyEngine
     val legacyState by legacyEngine.state.collectAsState()
 
+    var settingsPresentationState by remember { mutableStateOf<SettingsPresentationState>(SettingsPresentationState.Closed) }
+
     val isCurrentlyRunning = when (currentMode) {
         AppMode.Stopwatch -> state == StopwatchState.Running
         AppMode.Countdown -> isCountdownRunning
@@ -284,74 +286,57 @@ fun MainScreen(
     ) {
         val context = androidx.compose.ui.platform.LocalContext.current
 
-        // Top Right: Floating Quick Access & Settings
-        Column(
+        // Top Right: Floating Quick Access & Unified Settings Presentation System
+        Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .graphicsLayer { alpha = controlsAlpha },
-            horizontalAlignment = Alignment.End
+                .graphicsLayer { alpha = controlsAlpha }
         ) {
-            Text(
-                text = "SETTINGS",
-                style = TextStyle(
-                    color = currentGrayColor,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Light,
-                    letterSpacing = 2.sp
-                ),
-                modifier = Modifier
-                    .clickable {
-                        resetAutoHideTimer()
-                        onNavigateToSettings()
-                    }
-                    .padding(8.dp)
-            )
-
-            Text(
-                text = "FLOAT ↗",
-                style = TextStyle(
-                    color = accentColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 2.sp
-                ),
-                modifier = Modifier
-                    .clickable {
-                        resetAutoHideTimer()
-                        if (android.provider.Settings.canDrawOverlays(context)) {
-                            val intent = Intent(context, com.floating.stopwatch.service.StopwatchService::class.java)
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                context.startForegroundService(intent)
-                            } else {
-                                context.startService(intent)
-                            }
-                            val targetIndex = when (currentMode) {
-                                AppMode.Stopwatch -> 0
-                                AppMode.Countdown -> 1
-                                AppMode.Counter -> 2
-                                AppMode.Intervals -> 3
-                                AppMode.Legacy -> 4
-                            }
-                            val targetType = when (currentMode) {
-                                AppMode.Stopwatch -> "stopwatch"
-                                AppMode.Countdown -> "countdown"
-                                AppMode.Counter -> "counter"
-                                AppMode.Intervals -> "intervals"
-                                AppMode.Legacy -> "legacy"
-                            }
-                            scope.launch {
-                                settingsRepository.setWidgetType(targetIndex, targetType)
-                                settingsRepository.setWidgetActive(targetIndex, true)
-                            }
+            SettingsOverlay(
+                settingsRepository = settingsRepository,
+                accentColor = accentColor,
+                currentGrayColor = currentGrayColor,
+                currentTextColor = currentTextColor,
+                presentationState = settingsPresentationState,
+                onStateChange = { newState ->
+                    resetAutoHideTimer()
+                    settingsPresentationState = newState
+                },
+                onFloatClick = {
+                    resetAutoHideTimer()
+                    if (android.provider.Settings.canDrawOverlays(context)) {
+                        val intent = Intent(context, com.floating.stopwatch.service.StopwatchService::class.java)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            context.startForegroundService(intent)
                         } else {
-                            val intent = Intent(
-                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                android.net.Uri.parse("package:${context.packageName}")
-                            )
-                            context.startActivity(intent)
+                            context.startService(intent)
                         }
+                        val targetIndex = when (currentMode) {
+                            AppMode.Stopwatch -> 0
+                            AppMode.Countdown -> 1
+                            AppMode.Counter -> 2
+                            AppMode.Intervals -> 3
+                            AppMode.Legacy -> 4
+                        }
+                        val targetType = when (currentMode) {
+                            AppMode.Stopwatch -> "stopwatch"
+                            AppMode.Countdown -> "countdown"
+                            AppMode.Counter -> "counter"
+                            AppMode.Intervals -> "intervals"
+                            AppMode.Legacy -> "legacy"
+                        }
+                        scope.launch {
+                            settingsRepository.setWidgetType(targetIndex, targetType)
+                            settingsRepository.setWidgetActive(targetIndex, true)
+                        }
+                    } else {
+                        val intent = Intent(
+                            android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:${context.packageName}")
+                        )
+                        context.startActivity(intent)
                     }
-                    .padding(8.dp)
+                }
             )
         }
 

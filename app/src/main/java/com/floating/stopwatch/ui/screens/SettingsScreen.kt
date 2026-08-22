@@ -103,11 +103,10 @@ fun SettingsOverlay(
     val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
     val atmospheres = remember {
         listOf(
-            "Pure Black", "Stellar", "Ambient", "Dust", "Ember", "Aurora", "Void",
-            "Soft Grid", "Precision Grid", "Fine Lines", "Concentric Rings", "Minimal Waves",
-            "Geometric Arc", "Orbit", "Radial Geometry", "Architectural Lines", "Soft Mesh",
-            "Layered Planes", "Minimal Dots", "Micro Grid", "Diamond Geometry", "Hex Geometry",
-            "Circular Geometry", "Perspective Lines", "Subtle Aurora Geometry", "Premium Particles", "Abstract Monolith"
+            "Pure Black", "MIDNIGHT SILK", "CELESTIAL VEIL", "LIQUID SHADOW", "GOLDEN DUST",
+            "MOONLIT MIST", "OBSIDIAN FLOW", "DEEP OCEAN", "VELVET NIGHT", "AURORA VEIL",
+            "COSMIC DUST", "ABSTRACT GALLERY", "SILENT ARCHITECTURE", "AFTER RAIN", "ECLIPSE",
+            "NOCTURNAL GARDEN", "INK & LIGHT", "CHAMPAGNE DUSK", "PRIVATE SKY", "SILENT GALAXY", "MONOLITHIC LIGHT"
         )
     }
 

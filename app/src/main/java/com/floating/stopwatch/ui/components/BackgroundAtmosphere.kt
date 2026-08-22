@@ -188,33 +188,51 @@ fun BackgroundAtmosphere(
 
         when (atmosphere) {
             "Stellar" -> {
-                // Meteor Spawning Engine (avg ~500ms spawn interval)
+                // Intelligent Meteor Event Engine: 10–25s quiet interval + Single / Double / Small Burst
                 if (timeSec >= nextSpawnTimeSec) {
                     val random = Random((timeSec * 1000).toLong())
-                    val inactiveMeteor = meteorPool.firstOrNull { !it.active }
-
-                    if (inactiveMeteor != null) {
-                        inactiveMeteor.active = true
-                        inactiveMeteor.startTimeSec = timeSec
-                        inactiveMeteor.durationSec = 0.6f + random.nextFloat() * 0.5f
-                        inactiveMeteor.coreRadiusPx = (1.0f + random.nextFloat() * 0.6f) * density
-                        inactiveMeteor.haloRadiusPx = (4.0f + random.nextFloat() * 3.0f) * density
-                        inactiveMeteor.tailLengthPx = (80f + random.nextFloat() * 100f) * density
-                        inactiveMeteor.maxAlpha = 0.25f + random.nextFloat() * 0.30f
-
-                        val diagonal = hypot(width, height)
-                        val trajectoryLength = diagonal * (0.25f + random.nextFloat() * 0.25f)
-                        val isLeftToRight = random.nextBoolean()
-                        val angleDeg = if (isLeftToRight) 25f + random.nextFloat() * 35f else 120f + random.nextFloat() * 35f
-                        val angleRad = Math.toRadians(angleDeg.toDouble()).toFloat()
-
-                        inactiveMeteor.startX = random.nextFloat() * width
-                        inactiveMeteor.startY = random.nextFloat() * 0.6f * height
-                        inactiveMeteor.endX = inactiveMeteor.startX + cos(angleRad) * trajectoryLength
-                        inactiveMeteor.endY = inactiveMeteor.startY + sin(angleRad) * trajectoryLength
+                    val eventRoll = random.nextFloat()
+                    val countToSpawn = when {
+                        eventRoll < 0.70f -> 1 // Single (70%)
+                        eventRoll < 0.90f -> 2 // Double (20%)
+                        else -> random.nextInt(3, 6) // Small Burst (10%): 3-5 meteors
                     }
 
-                    nextSpawnTimeSec = timeSec + (0.3f + random.nextFloat() * 0.4f)
+                    var delayOffset = 0f
+                    for (m in 0 until countToSpawn) {
+                        val inactiveMeteor = meteorPool.firstOrNull { !it.active }
+                        if (inactiveMeteor != null) {
+                            inactiveMeteor.active = true
+                            inactiveMeteor.startTimeSec = timeSec + delayOffset
+                            inactiveMeteor.durationSec = 0.5f + random.nextFloat() * 0.4f
+                            inactiveMeteor.coreRadiusPx = (0.8f + random.nextFloat() * 0.5f) * density
+                            inactiveMeteor.haloRadiusPx = (3.0f + random.nextFloat() * 2.5f) * density
+                            inactiveMeteor.tailLengthPx = (60f + random.nextFloat() * 80f) * density
+                            inactiveMeteor.maxAlpha = 0.20f + random.nextFloat() * 0.25f
+
+                            val diagonal = hypot(width, height)
+                            val trajectoryLength = diagonal * (0.20f + random.nextFloat() * 0.20f)
+                            val isLeftToRight = random.nextBoolean()
+                            val angleDeg = if (isLeftToRight) 25f + random.nextFloat() * 35f else 120f + random.nextFloat() * 35f
+                            val angleRad = Math.toRadians(angleDeg.toDouble()).toFloat()
+
+                            inactiveMeteor.startX = random.nextFloat() * width
+                            inactiveMeteor.startY = random.nextFloat() * 0.5f * height
+                            inactiveMeteor.endX = inactiveMeteor.startX + cos(angleRad) * trajectoryLength
+                            inactiveMeteor.endY = inactiveMeteor.startY + sin(angleRad) * trajectoryLength
+                        }
+
+                        // Gap between sequential meteors in event
+                        delayOffset += if (countToSpawn == 2) {
+                            0.25f + random.nextFloat() * 0.65f // 250-900ms gap
+                        } else {
+                            0.18f + random.nextFloat() * 0.52f // 180-700ms gap for burst
+                        }
+                    }
+
+                    // Quiet random interval before next meteor event: 10 - 25 seconds!
+                    val quietIntervalSec = 10.0f + random.nextFloat() * 15.0f
+                    nextSpawnTimeSec = timeSec + delayOffset + quietIntervalSec
                 }
 
                 // Render Stars
@@ -424,164 +442,135 @@ fun BackgroundAtmosphere(
                     )
                 )
             }
-            "Soft Grid", "Micro Grid" -> {
-                val spacing = if (atmosphere == "Micro Grid") 24f * density else 48f * density
-                val gridAlpha = if (atmosphere == "Micro Grid") 0.03f else 0.05f
-                val color = Color.White.copy(alpha = gridAlpha)
-                var x = 0f
-                while (x < width) {
-                    drawLine(color = color, start = Offset(x, 0f), end = Offset(x, height), strokeWidth = 0.8f * density)
-                    x += spacing
-                }
-                var y = 0f
-                while (y < height) {
-                    drawLine(color = color, start = Offset(0f, y), end = Offset(width, y), strokeWidth = 0.8f * density)
-                    y += spacing
-                }
+            "MIDNIGHT SILK" -> {
+                val shift = sin(timeSec * 0.08f) * 0.10f
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0F0E11),
+                            Color(0xFF050507),
+                            Color(0xFF000000)
+                        )
+                    )
+                )
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0x0CFFFFFF),
+                            Color.Transparent
+                        ),
+                        center = Offset(width * (0.5f + shift), height * 0.35f),
+                        radius = height * 0.70f
+                    )
+                )
             }
-            "Precision Grid" -> {
-                val spacing = 36f * density
-                val color = Color.White.copy(alpha = 0.04f)
-                var x = 0f
-                while (x < width) {
-                    drawLine(color = color, start = Offset(x, 0f), end = Offset(x, height), strokeWidth = 0.8f * density)
-                    x += spacing
-                }
-                var y = 0f
-                while (y < height) {
-                    drawLine(color = color, start = Offset(0f, y), end = Offset(width, y), strokeWidth = 0.8f * density)
-                    y += spacing
-                }
-                // Draw subtle intersection dots
-                var cx = 0f
-                while (cx < width) {
-                    var cy = 0f
-                    while (cy < height) {
-                        drawCircle(color = Color.White.copy(alpha = 0.12f), radius = 1.0f * density, center = Offset(cx, cy))
-                        cy += spacing
+            "CELESTIAL VEIL", "PRIVATE SKY", "SILENT GALAXY" -> {
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0x0AFFFFFF),
+                            Color.Transparent
+                        ),
+                        center = Offset(width * 0.5f, height * 0.3f),
+                        radius = height * 0.8f
+                    )
+                )
+                for (i in stars.indices) {
+                    val star = stars[i]
+                    val x = star.xRatio * width
+                    val y = star.yRatio * height
+                    val radiusPx = star.radiusDp * density
+                    var currentAlpha = star.baseAlpha * 0.7f
+                    if (star.isTwinkling) {
+                        currentAlpha = (currentAlpha + sin(timeSec * star.twinkleSpeed * 1.5f + star.twinklePhase) * 0.08f).coerceIn(0.02f, 0.60f)
                     }
-                    cx += spacing
+                    drawCircle(color = star.color.copy(alpha = currentAlpha), radius = radiusPx, center = Offset(x, y))
                 }
             }
-            "Fine Lines", "Architectural Lines" -> {
-                val spacing = 32f * density
-                val color = Color.White.copy(alpha = 0.04f)
-                var i = -height
-                while (i < width + height) {
-                    drawLine(color = color, start = Offset(i, 0f), end = Offset(i + height, height), strokeWidth = 0.8f * density)
-                    i += spacing
+            "LIQUID SHADOW", "INK & LIGHT" -> {
+                val c1 = Offset(width * (0.35f + sin(timeSec * 0.05f) * 0.10f), height * (0.40f + cos(timeSec * 0.04f) * 0.08f))
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0x12FFFFFF), Color.Transparent),
+                        center = c1,
+                        radius = height * 0.5f
+                    )
+                )
+            }
+            "GOLDEN DUST", "COSMIC DUST" -> {
+                val goldColor = Color(0xFFC9A66B)
+                for (i in emberParticles.indices) {
+                    val p = emberParticles[i]
+                    val currY = ((p.yRatio + p.speedY * timeSec * 0.5f) % 1.0f + 1.0f) % 1.0f
+                    val currX = ((p.xRatio + p.speedX * timeSec * 0.5f) % 1.0f + 1.0f) % 1.0f
+                    val px = currX * width
+                    val py = currY * height
+                    val alpha = (p.baseAlpha * 0.8f + sin(timeSec * 0.5f + p.phase) * 0.03f).coerceIn(0.02f, 0.25f)
+                    drawCircle(color = goldColor.copy(alpha = alpha), radius = p.radiusDp * density, center = Offset(px, py))
                 }
             }
-            "Concentric Rings", "Circular Geometry" -> {
-                val maxR = hypot(width, height) * 0.5f
-                val ringCount = 8
-                val center = Offset(width * 0.5f, height * 0.45f)
-                val pulse = sin(timeSec * 0.2f) * 0.02f
-                for (r in 1..ringCount) {
-                    val radius = (maxR / ringCount) * r * (1f + pulse)
-                    drawCircle(color = Color.White.copy(alpha = 0.04f), radius = radius, center = center, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.8f * density))
-                }
+            "MOONLIT MIST", "AFTER RAIN" -> {
+                val mistCenter = Offset(width * 0.5f, height * 0.25f)
+                val pulse = 0.04f + sin(timeSec * 0.06f) * 0.015f
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.White.copy(alpha = pulse), Color.Transparent),
+                        center = mistCenter,
+                        radius = height * 0.65f
+                    )
+                )
             }
-            "Minimal Waves", "Subtle Aurora Geometry" -> {
-                val waveColor = Color.White.copy(alpha = 0.035f)
-                val waveCount = 5
-                for (w in 0 until waveCount) {
-                    val yBase = height * (0.3f + w * 0.12f)
-                    var prevX = 0f
-                    var prevY = yBase + sin(timeSec * 0.3f + w) * 15f
-                    var x = 10f
-                    while (x <= width) {
-                        val y = yBase + sin((x / width) * 6.28f + timeSec * 0.4f + w) * 20f
-                        drawLine(color = waveColor, start = Offset(prevX, prevY), end = Offset(x, y), strokeWidth = 1.0f * density)
-                        prevX = x
-                        prevY = y
-                        x += 10f
-                    }
-                }
+            "OBSIDIAN FLOW", "VELVET NIGHT" -> {
+                val c = Offset(width * 0.5f, height * 0.5f)
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF141416), Color(0xFF000000)),
+                        center = c,
+                        radius = height * 0.75f
+                    )
+                )
             }
-            "Geometric Arc", "Orbit" -> {
-                val center = Offset(width * 0.5f, height * 0.4f)
-                val rx = width * 0.42f
-                val ry = height * 0.25f
-                val orbitColor = Color.White.copy(alpha = 0.05f)
-                drawCircle(color = orbitColor, radius = rx, center = center, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.0f * density))
-                drawCircle(color = orbitColor, radius = ry, center = center, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.8f * density))
+            "DEEP OCEAN" -> {
+                val oceanCenter = Offset(width * 0.5f, height * 0.60f)
+                val pulse = 0.03f + sin(timeSec * 0.05f) * 0.01f
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0xFF1F4E79).copy(alpha = pulse), Color.Transparent),
+                        center = oceanCenter,
+                        radius = height * 0.70f
+                    )
+                )
             }
-            "Radial Geometry" -> {
-                val center = Offset(width * 0.5f, height * 0.45f)
-                val lines = 24
-                val angleStep = 360f / lines
-                val maxDist = hypot(width, height)
-                val color = Color.White.copy(alpha = 0.035f)
-                for (i in 0 until lines) {
-                    val rad = Math.toRadians((i * angleStep).toDouble()).toFloat()
-                    val endX = center.x + cos(rad) * maxDist
-                    val endY = center.y + sin(rad) * maxDist
-                    drawLine(color = color, start = center, end = Offset(endX, endY), strokeWidth = 0.8f * density)
-                }
+            "AURORA VEIL", "CHAMPAGNE DUSK" -> {
+                val shift = sin(timeSec * 0.10f) * 0.12f
+                val color = if (atmosphere == "CHAMPAGNE DUSK") Color(0xFFE6C687) else Color(0xFF4AC98F)
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(color.copy(alpha = 0.03f), Color.Transparent),
+                        center = Offset(width * (0.5f + shift), height * 0.3f),
+                        radius = height * 0.65f
+                    )
+                )
             }
-            "Soft Mesh", "Diamond Geometry", "Hex Geometry" -> {
-                val sizePx = 40f * density
-                val color = Color.White.copy(alpha = 0.03f)
-                var x = 0f
-                while (x < width + sizePx) {
-                    var y = 0f
-                    while (y < height + sizePx) {
-                        drawLine(color = color, start = Offset(x, y), end = Offset(x + sizePx, y + sizePx), strokeWidth = 0.8f * density)
-                        drawLine(color = color, start = Offset(x + sizePx, y), end = Offset(x, y + sizePx), strokeWidth = 0.8f * density)
-                        y += sizePx
-                    }
-                    x += sizePx
-                }
-            }
-            "Layered Planes", "Perspective Lines" -> {
-                val center = Offset(width * 0.5f, height * 0.35f)
-                val color = Color.White.copy(alpha = 0.04f)
-                var x = 0f
-                while (x <= width) {
-                    drawLine(color = color, start = center, end = Offset(x, height), strokeWidth = 0.8f * density)
-                    x += width / 12f
-                }
-            }
-            "Minimal Dots" -> {
-                val spacing = 28f * density
-                val color = Color.White.copy(alpha = 0.08f)
-                var x = spacing / 2f
-                while (x < width) {
-                    var y = spacing / 2f
-                    while (y < height) {
-                        drawCircle(color = color, radius = 0.8f * density, center = Offset(x, y))
-                        y += spacing
-                    }
-                    x += spacing
-                }
-            }
-            "Premium Particles" -> {
-                val color = Color.White.copy(alpha = 0.12f)
-                val rand = Random(42L)
-                for (i in 0..40) {
-                    val px = rand.nextFloat() * width
-                    val py = rand.nextFloat() * height
-                    val r = (0.5f + rand.nextFloat() * 0.8f) * density
-                    drawCircle(color = color, radius = r, center = Offset(px, py))
-                }
-            }
-            "Abstract Monolith" -> {
-                val monoW = width * 0.28f
-                val monoH = height * 0.45f
+            "ABSTRACT GALLERY", "SILENT ARCHITECTURE", "MONOLITHIC LIGHT" -> {
+                val monoW = width * 0.32f
+                val monoH = height * 0.50f
                 val left = (width - monoW) / 2f
                 val top = (height - monoH) / 2.2f
-                drawRect(
-                    color = Color.White.copy(alpha = 0.03f),
-                    topLeft = Offset(left, top),
-                    size = androidx.compose.ui.geometry.Size(monoW, monoH)
-                )
-                drawRect(
-                    color = Color.White.copy(alpha = 0.08f),
-                    topLeft = Offset(left, top),
-                    size = androidx.compose.ui.geometry.Size(monoW, monoH),
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.0f * density)
-                )
+                drawRect(color = Color.White.copy(alpha = 0.02f), topLeft = Offset(left, top), size = androidx.compose.ui.geometry.Size(monoW, monoH))
+                drawRect(color = Color.White.copy(alpha = 0.06f), topLeft = Offset(left, top), size = androidx.compose.ui.geometry.Size(monoW, monoH), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.0f * density))
+            }
+            "ECLIPSE" -> {
+                val center = Offset(width * 0.5f, height * 0.38f)
+                val r = width * 0.35f
+                drawCircle(color = Color.White.copy(alpha = 0.025f), radius = r, center = center)
+                drawCircle(color = Color.White.copy(alpha = 0.060f), radius = r, center = center, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f * density))
+            }
+            "NOCTURNAL GARDEN" -> {
+                val c1 = Offset(width * 0.35f, height * 0.4f)
+                val c2 = Offset(width * 0.65f, height * 0.5f)
+                drawCircle(color = Color.White.copy(alpha = 0.02f), radius = width * 0.3f, center = c1)
+                drawCircle(color = Color.White.copy(alpha = 0.02f), radius = width * 0.25f, center = c2)
             }
             else -> {
                 // Default fallback

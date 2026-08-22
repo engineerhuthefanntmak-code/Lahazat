@@ -363,6 +363,55 @@ fun BackgroundAtmosphere(
                     )
                 )
             }
+            "Ambient" -> {
+                // Layer 1: Deep primary warm-white ambient diffuse volume
+                val cx1 = width * (0.42f + sin(timeSec * 0.08f) * 0.12f)
+                val cy1 = height * (0.38f + cos(timeSec * 0.06f) * 0.10f)
+                val pulse1 = 0.035f + sin(timeSec * 0.15f) * 0.015f
+                val radius1 = hypot(width, height) * 0.55f
+
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFFFFBF0).copy(alpha = pulse1),
+                            Color(0xFFF5F3EF).copy(alpha = pulse1 * 0.35f),
+                            Color.Transparent
+                        ),
+                        center = Offset(cx1, cy1),
+                        radius = radius1
+                    )
+                )
+
+                // Layer 2: Secondary subtle offset depth layer
+                val cx2 = width * (0.62f + cos(timeSec * 0.07f) * 0.10f)
+                val cy2 = height * (0.65f + sin(timeSec * 0.09f) * 0.12f)
+                val pulse2 = 0.025f + cos(timeSec * 0.12f) * 0.010f
+                val radius2 = hypot(width, height) * 0.48f
+
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFFFFFFF).copy(alpha = pulse2),
+                            Color(0x00FFFFFF)
+                        ),
+                        center = Offset(cx2, cy2),
+                        radius = radius2
+                    )
+                )
+
+                // Layer 3: Distant ambient base breathing wash
+                val pulse3 = 0.015f + sin(timeSec * 0.05f) * 0.008f
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFFFFBF0).copy(alpha = pulse3),
+                            Color.Transparent
+                        ),
+                        center = Offset(width * 0.5f, height * 0.5f),
+                        radius = hypot(width, height) * 0.75f
+                    )
+                )
+            }
             "Void" -> {
                 drawRect(
                     brush = Brush.radialGradient(

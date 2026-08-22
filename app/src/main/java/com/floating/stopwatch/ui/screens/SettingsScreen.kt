@@ -104,7 +104,7 @@ fun SettingsOverlay(
     val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
 
     val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
-    val atmospheres = remember { listOf("Pure Black", "Stellar", "Dust", "Ember", "Aurora", "Void") }
+    val atmospheres = remember { listOf("Pure Black", "Stellar", "Ambient", "Dust", "Ember", "Aurora", "Void") }
 
     val categories = remember {
         listOf(

@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.liveRegion
@@ -250,64 +251,6 @@ fun MainScreen(
         ) {
             val context = LocalContext.current
 
-            // Top Right: Floating Quick Access & Settings Overlay
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .graphicsLayer { alpha = controlsAlpha }
-            ) {
-                SettingsOverlay(
-                    settingsRepository = settingsRepository,
-                    accentColor = accentColor,
-                    currentGrayColor = currentGrayColor,
-                    currentTextColor = currentTextColor,
-                    presentationState = settingsPresentationState,
-                    onStateChange = { newState ->
-                        resetAutoHideTimer()
-                        settingsPresentationState = newState
-                    },
-                    onFloatClick = {
-                        resetAutoHideTimer()
-                        if (android.provider.Settings.canDrawOverlays(context)) {
-                            val intent = Intent(context, com.floating.stopwatch.service.StopwatchService::class.java)
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                context.startForegroundService(intent)
-                            } else {
-                                context.startService(intent)
-                            }
-                            val targetIndex = when (currentMode) {
-                                AppMode.Stopwatch -> 0
-                                AppMode.Countdown -> 1
-                                AppMode.Counter -> 2
-                                AppMode.Intervals -> 3
-                                AppMode.Legacy -> 4
-                            }
-                            val targetType = when (currentMode) {
-                                AppMode.Stopwatch -> "stopwatch"
-                                AppMode.Countdown -> "countdown"
-                                AppMode.Counter -> "counter"
-                                AppMode.Intervals -> "intervals"
-                                AppMode.Legacy -> "legacy"
-                            }
-                            scope.launch {
-                                settingsRepository.setWidgetType(targetIndex, targetType)
-                                settingsRepository.setWidgetActive(targetIndex, true)
-                            }
-                        } else {
-                            val intent = Intent(
-                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                android.net.Uri.parse("package:${context.packageName}")
-                            )
-                            context.startActivity(intent)
-                        }
-                    },
-                    onFloatLongClick = {
-                        resetAutoHideTimer()
-                        showFloatingConfigDialog = true
-                    }
-                )
-            }
-
             // Top Left Mode Header & Floating Companion (SEAM / GRAVITY)
             Column(
                 modifier = Modifier
@@ -491,6 +434,67 @@ fun MainScreen(
                     )
                 }
             }
+
+            // Top Right: Floating Quick Access & Settings Overlay (Rendered with zIndex=100f above Center Content)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .zIndex(100f)
+                    .graphicsLayer {
+                        alpha = if (settingsPresentationState != SettingsPresentationState.Closed || showFloatingConfigDialog) 1.0f else controlsAlpha
+                    }
+            ) {
+                SettingsOverlay(
+                    settingsRepository = settingsRepository,
+                    accentColor = accentColor,
+                    currentGrayColor = currentGrayColor,
+                    currentTextColor = currentTextColor,
+                    presentationState = settingsPresentationState,
+                    onStateChange = { newState ->
+                        resetAutoHideTimer()
+                        settingsPresentationState = newState
+                    },
+                    onFloatClick = {
+                        resetAutoHideTimer()
+                        if (android.provider.Settings.canDrawOverlays(context)) {
+                            val intent = Intent(context, com.floating.stopwatch.service.StopwatchService::class.java)
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                context.startForegroundService(intent)
+                            } else {
+                                context.startService(intent)
+                            }
+                            val targetIndex = when (currentMode) {
+                                AppMode.Stopwatch -> 0
+                                AppMode.Countdown -> 1
+                                AppMode.Counter -> 2
+                                AppMode.Intervals -> 3
+                                AppMode.Legacy -> 4
+                            }
+                            val targetType = when (currentMode) {
+                                AppMode.Stopwatch -> "stopwatch"
+                                AppMode.Countdown -> "countdown"
+                                AppMode.Counter -> "counter"
+                                AppMode.Intervals -> "intervals"
+                                AppMode.Legacy -> "legacy"
+                            }
+                            scope.launch {
+                                settingsRepository.setWidgetType(targetIndex, targetType)
+                                settingsRepository.setWidgetActive(targetIndex, true)
+                            }
+                        } else {
+                            val intent = Intent(
+                                android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                android.net.Uri.parse("package:${context.packageName}")
+                            )
+                            context.startActivity(intent)
+                        }
+                    },
+                    onFloatLongClick = {
+                        resetAutoHideTimer()
+                        showFloatingConfigDialog = true
+                    }
+                )
+            }
         }
     }
 
@@ -601,6 +605,8 @@ private fun CountdownDisplay(
     onInteraction: () -> Unit
 ) {
     val countdownDigitSize = (54f * mainSize).sp
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    val dragThreshold = 18f * density
     var hDragAcc by remember { mutableFloatStateOf(0f) }
     var mDragAcc by remember { mutableFloatStateOf(0f) }
     var sDragAcc by remember { mutableFloatStateOf(0f) }
@@ -627,10 +633,10 @@ private fun CountdownDisplay(
                             onDrag = { change, dragAmount ->
                                 change.consume()
                                 hDragAcc += dragAmount.y
-                                if (hDragAcc <= -25f) {
+                                if (hDragAcc <= -dragThreshold) {
                                     viewModel.adjustCountdownHours(1)
                                     hDragAcc = 0f
-                                } else if (hDragAcc >= 25f) {
+                                } else if (hDragAcc >= dragThreshold) {
                                     viewModel.adjustCountdownHours(-1)
                                     hDragAcc = 0f
                                 }
@@ -655,10 +661,10 @@ private fun CountdownDisplay(
                             onDrag = { change, dragAmount ->
                                 change.consume()
                                 mDragAcc += dragAmount.y
-                                if (mDragAcc <= -25f) {
+                                if (mDragAcc <= -dragThreshold) {
                                     viewModel.adjustCountdownMinutes(1)
                                     mDragAcc = 0f
-                                } else if (mDragAcc >= 25f) {
+                                } else if (mDragAcc >= dragThreshold) {
                                     viewModel.adjustCountdownMinutes(-1)
                                     mDragAcc = 0f
                                 }
@@ -683,10 +689,10 @@ private fun CountdownDisplay(
                             onDrag = { change, dragAmount ->
                                 change.consume()
                                 sDragAcc += dragAmount.y
-                                if (sDragAcc <= -25f) {
+                                if (sDragAcc <= -dragThreshold) {
                                     viewModel.adjustCountdownSeconds(1)
                                     sDragAcc = 0f
-                                } else if (sDragAcc >= 25f) {
+                                } else if (sDragAcc >= dragThreshold) {
                                     viewModel.adjustCountdownSeconds(-1)
                                     sDragAcc = 0f
                                 }
@@ -913,6 +919,12 @@ private fun ModeActionButtons(
 ) {
     val scope = rememberCoroutineScope()
 
+    val currentStopwatchState by rememberUpdatedState(state)
+    val currentCountdownRunning by rememberUpdatedState(isCountdownRunning)
+    val currentIntervalState by rememberUpdatedState(intervalState)
+    val currentLegacyState by rememberUpdatedState(legacyState)
+    val currentHapticIntensity by rememberUpdatedState(hapticIntensity)
+
     when (currentMode) {
         AppMode.Stopwatch -> {
             Box(
@@ -922,11 +934,11 @@ private fun ModeActionButtons(
                     .background(Color.Transparent)
                     .clickable {
                         onInteraction()
-                        if (state == StopwatchState.Running) {
-                            hapticController.trigger(hapticIntensity, "Lap")
+                        if (currentStopwatchState == StopwatchState.Running) {
+                            hapticController.trigger(currentHapticIntensity, "Lap")
                             viewModel.lap()
-                        } else if (state == StopwatchState.Paused) {
-                            hapticController.trigger(hapticIntensity, "Reset")
+                        } else if (currentStopwatchState == StopwatchState.Paused) {
+                            hapticController.trigger(currentHapticIntensity, "Reset")
                             viewModel.reset()
                         }
                     },
@@ -940,14 +952,14 @@ private fun ModeActionButtons(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = if (state == StopwatchState.Paused) "RESET" else "LAP",
+                            text = if (currentStopwatchState == StopwatchState.Paused) "RESET" else "LAP",
                             style = TextStyle(color = textColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
                         )
                     }
                 }
             }
 
-            val buttonColor = if (state == StopwatchState.Running) Color(0xFF9E2A2B) else accentColor
+            val buttonColor = if (currentStopwatchState == StopwatchState.Running) Color(0xFF9E2A2B) else accentColor
             Box(
                 modifier = Modifier
                     .size(92.dp)
@@ -963,11 +975,11 @@ private fun ModeActionButtons(
                             },
                             onTap = {
                                 onInteraction()
-                                if (state == StopwatchState.Running) {
-                                    hapticController.trigger(hapticIntensity, "Stop")
+                                if (currentStopwatchState == StopwatchState.Running) {
+                                    hapticController.trigger(currentHapticIntensity, "Stop")
                                     viewModel.pause()
                                 } else {
-                                    hapticController.trigger(hapticIntensity, "Start")
+                                    hapticController.trigger(currentHapticIntensity, "Start")
                                     viewModel.start()
                                 }
                             }
@@ -976,7 +988,7 @@ private fun ModeActionButtons(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (state == StopwatchState.Running) "STOP" else "START",
+                    text = if (currentStopwatchState == StopwatchState.Running) "STOP" else "START",
                     style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 )
             }
@@ -1184,15 +1196,34 @@ private fun ModeActionButtons(
         AppMode.Legacy -> {
             val activeLegacy by legacyEngine.activeLegacy.collectAsState()
             if (activeLegacy != null) {
+                var isPressingDelete by remember { mutableStateOf(false) }
                 Box(
                     modifier = Modifier
                         .size(68.dp)
                         .clip(CircleShape)
                         .background(Color.Transparent)
-                        .clickable {
-                            onInteraction()
-                            hapticController.trigger(hapticIntensity, "Reset")
-                            activeLegacy?.id?.let { legacyEngine.deleteLegacy(it) }
+                        .pointerInput(activeLegacy?.id) {
+                            detectTapGestures(
+                                onPress = {
+                                    onInteraction()
+                                    isPressingDelete = true
+                                    var deleteTriggered = false
+                                    val targetId = activeLegacy?.id
+                                    val job = scope.launch {
+                                        kotlinx.coroutines.delay(500L)
+                                        if (targetId != null) {
+                                            deleteTriggered = true
+                                            hapticController.trigger(currentHapticIntensity, "Reset")
+                                            legacyEngine.deleteLegacy(targetId)
+                                        }
+                                    }
+                                    val released = tryAwaitRelease()
+                                    isPressingDelete = false
+                                    if (!deleteTriggered) {
+                                        job.cancel()
+                                    }
+                                }
+                            )
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -1200,10 +1231,10 @@ private fun ModeActionButtons(
                         modifier = Modifier.fillMaxSize(),
                         shape = CircleShape,
                         color = Color.Transparent,
-                        border = BorderStroke(1.dp, Color(0xFFC94A4A))
+                        border = BorderStroke(1.dp, if (isPressingDelete) Color(0xFFE53935) else Color(0xFFC94A4A))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text("DELETE", style = TextStyle(color = Color(0xFFC94A4A), fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold))
+                            Text("DELETE", style = TextStyle(color = if (isPressingDelete) Color(0xFFE53935) else Color(0xFFC94A4A), fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold))
                         }
                     }
                 }

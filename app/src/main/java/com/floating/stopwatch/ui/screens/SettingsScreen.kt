@@ -101,7 +101,15 @@ fun SettingsOverlay(
     val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
 
     val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
-    val atmospheres = remember { listOf("Pure Black", "Stellar", "Ambient", "Dust", "Ember", "Aurora", "Void") }
+    val atmospheres = remember {
+        listOf(
+            "Pure Black", "Stellar", "Ambient", "Dust", "Ember", "Aurora", "Void",
+            "Soft Grid", "Precision Grid", "Fine Lines", "Concentric Rings", "Minimal Waves",
+            "Geometric Arc", "Orbit", "Radial Geometry", "Architectural Lines", "Soft Mesh",
+            "Layered Planes", "Minimal Dots", "Micro Grid", "Diamond Geometry", "Hex Geometry",
+            "Circular Geometry", "Perspective Lines", "Subtle Aurora Geometry", "Premium Particles", "Abstract Monolith"
+        )
+    }
 
     val masterSoundEnabled by settingsRepository.masterSoundEnabled.collectAsState(initial = true)
     val selectedSoundType by settingsRepository.selectedSoundType.collectAsState(initial = "Soft Click")
@@ -113,16 +121,21 @@ fun SettingsOverlay(
     val intensities = remember { listOf("Off", "Light", "Medium", "Strong") }
     val soundTypes = remember {
         listOf(
-            "Soft Click", "Gentle Tap", "Light Tick", "Soft Knock",
-            "Button Click", "Subtle Pop", "Finger Snap", "Bell",
-            "Soft Chime", "Wooden Tap", "Paper Tap"
+            "Premium Click", "Mechanical Click", "Soft Button Tap", "Fingertip Tap",
+            "Wood Knock", "Glass Tap", "Metal Tap", "Paper Tap",
+            "Light Rattle", "Soft Rattle", "Small Object Shake", "Tiny Bell",
+            "Water Drop", "Soft Chime", "Finger Snap", "Gentle Clap",
+            "Cat Meow", "Pigeon Coo", "Small Bird Chirp", "Nature Chirp"
         )
     }
     val colorPresets = remember {
         listOf(
-            "Champagne Gold", "Soft Gold", "Platinum", "Silver", "Pearl",
-            "Ivory", "Sand", "Bronze", "Copper", "Deep Olive",
-            "Slate", "Royal Navy", "Burgundy", "Espresso", "Graphite"
+            "Champagne", "Antique Gold", "Brushed Gold", "Rose Gold", "Pale Gold",
+            "Platinum", "Titanium", "Pearl", "Ivory", "Porcelain",
+            "Sand", "Taupe", "Bronze", "Copper", "Dark Copper",
+            "Mocha", "Espresso", "Deep Olive", "Sage", "Emerald",
+            "Forest", "Slate", "Steel Blue", "Midnight Blue", "Royal Navy",
+            "Deep Burgundy", "Wine", "Plum", "Graphite", "Charcoal"
         )
     }
 
@@ -515,19 +528,28 @@ fun FloatingModeConfigDialog(
 
     val shapes = remember { listOf("rounded", "capsule", "circle", "sharp", "glass") }
 
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) { detectTapGestures(onTap = { onDismiss() }) }
+    ) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(12.dp),
             color = Color(0xFF0A0A0A),
             border = BorderStroke(1.dp, accentColor),
+            shadowElevation = 16.dp,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 48.dp, end = 24.dp)
+                .widthIn(max = 320.dp)
+                .wrapContentHeight()
+                .pointerInput(Unit) { detectTapGestures { /* consume click inside */ } }
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(14.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(

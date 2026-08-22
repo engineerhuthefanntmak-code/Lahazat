@@ -3,6 +3,7 @@ package com.floating.stopwatch.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -22,6 +24,8 @@ import androidx.compose.ui.window.Dialog
 import com.floating.stopwatch.domain.*
 import com.floating.stopwatch.ui.components.DragAdjustField
 import java.util.Locale
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.theme.LuxuryColors
 
@@ -711,11 +715,32 @@ fun LegacySelectorDialog(
                             )
                         }
                         if (legacies.size > 1) {
+                            var isPressingItemDelete by remember { mutableStateOf(false) }
+                            val scope = rememberCoroutineScope()
                             Text(
-                                text = "DELETE",
-                                style = TextStyle(color = Color(0xFFC94A4A), fontSize = 10.sp, fontWeight = FontWeight.Bold),
+                                text = "HOLD TO DELETE",
+                                style = TextStyle(
+                                    color = if (isPressingItemDelete) Color(0xFFE53935) else Color(0xFFC94A4A),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
                                 modifier = Modifier
-                                    .clickable { onDelete(item.id) }
+                                    .pointerInput(item.id) {
+                                        detectTapGestures(
+                                            onPress = {
+                                                isPressingItemDelete = true
+                                                var triggered = false
+                                                val job = scope.launch {
+                                                    kotlinx.coroutines.delay(500L)
+                                                    triggered = true
+                                                    onDelete(item.id)
+                                                }
+                                                tryAwaitRelease()
+                                                isPressingItemDelete = false
+                                                if (!triggered) job.cancel()
+                                            }
+                                        )
+                                    }
                                     .padding(4.dp)
                             )
                         }

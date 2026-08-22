@@ -10,41 +10,71 @@ object LuxuryColors {
     val WarmGray = Color(0xFF8A8680)
     val AccentGold = Color(0xFFC9A66B)
 
-    // Premium Accent Tokens
-    val ChampagneGold = Color(0xFFE6C687)
-    val SoftGold = Color(0xFFD4AF37)
+    // 30 Design Tokens for Premium Color Accents
+    val Champagne = Color(0xFFE6C687)
+    val AntiqueGold = Color(0xFFC5A059)
+    val BrushedGold = Color(0xFFD4AF37)
+    val RoseGold = Color(0xFFB76E79)
+    val PaleGold = Color(0xFFE6CA65)
     val Platinum = Color(0xFFE5E4E2)
-    val Silver = Color(0xFFC0C0C0)
+    val Titanium = Color(0xFF878A8F)
     val Pearl = Color(0xFFEAE6DF)
     val Ivory = Color(0xFFFFFFF0)
+    val Porcelain = Color(0xFFF2EEEC)
     val Sand = Color(0xFFC2B280)
+    val Taupe = Color(0xFFB38B6D)
     val Bronze = Color(0xFFCD7F32)
     val Copper = Color(0xFFB87333)
-    val DeepOlive = Color(0xFF6B8E23)
-    val Slate = Color(0xFF708090)
-    val RoyalNavy = Color(0xFF2B3E50)
-    val Burgundy = Color(0xFF800020)
+    val DarkCopper = Color(0xFF8B4513)
+    val Mocha = Color(0xFF967969)
     val Espresso = Color(0xFF5C4033)
+    val DeepOlive = Color(0xFF6B8E23)
+    val Sage = Color(0xFF9CAF88)
+    val Emerald = Color(0xFF2E8B57)
+    val Forest = Color(0xFF228B22)
+    val Slate = Color(0xFF708090)
+    val SteelBlue = Color(0xFF4682B4)
+    val MidnightBlue = Color(0xFF191970)
+    val RoyalNavy = Color(0xFF2B3E50)
+    val DeepBurgundy = Color(0xFF6B1724)
+    val Wine = Color(0xFF722F37)
+    val Plum = Color(0xFF8E4585)
     val Graphite = Color(0xFF484848)
+    val Charcoal = Color(0xFF36454F)
 
     fun fromName(name: String): Color {
         return when (name) {
-            "Champagne Gold", "Gold" -> ChampagneGold
-            "Soft Gold" -> SoftGold
+            "Champagne", "Champagne Gold", "Gold" -> Champagne
+            "Antique Gold" -> AntiqueGold
+            "Brushed Gold", "Soft Gold" -> BrushedGold
+            "Rose Gold" -> RoseGold
+            "Pale Gold" -> PaleGold
             "Platinum" -> Platinum
-            "Silver" -> Silver
+            "Titanium" -> Titanium
             "Pearl" -> Pearl
             "Ivory" -> Ivory
+            "Porcelain" -> Porcelain
             "Sand" -> Sand
+            "Taupe" -> Taupe
             "Bronze" -> Bronze
             "Copper" -> Copper
-            "Deep Olive" -> DeepOlive
-            "Slate" -> Slate
-            "Royal Navy" -> RoyalNavy
-            "Burgundy" -> Burgundy
+            "Dark Copper" -> DarkCopper
+            "Mocha" -> Mocha
             "Espresso" -> Espresso
+            "Deep Olive" -> DeepOlive
+            "Sage" -> Sage
+            "Emerald" -> Emerald
+            "Forest" -> Forest
+            "Slate" -> Slate
+            "Steel Blue" -> SteelBlue
+            "Midnight Blue" -> MidnightBlue
+            "Royal Navy" -> RoyalNavy
+            "Deep Burgundy", "Burgundy" -> DeepBurgundy
+            "Wine" -> Wine
+            "Plum" -> Plum
             "Graphite" -> Graphite
-            else -> ChampagneGold
+            "Charcoal" -> Charcoal
+            else -> Champagne
         }
     }
 }

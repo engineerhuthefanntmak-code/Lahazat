@@ -424,6 +424,168 @@ fun BackgroundAtmosphere(
                     )
                 )
             }
+            "Soft Grid", "Micro Grid" -> {
+                val spacing = if (atmosphere == "Micro Grid") 24f * density else 48f * density
+                val gridAlpha = if (atmosphere == "Micro Grid") 0.03f else 0.05f
+                val color = Color.White.copy(alpha = gridAlpha)
+                var x = 0f
+                while (x < width) {
+                    drawLine(color = color, start = Offset(x, 0f), end = Offset(x, height), strokeWidth = 0.8f * density)
+                    x += spacing
+                }
+                var y = 0f
+                while (y < height) {
+                    drawLine(color = color, start = Offset(0f, y), end = Offset(width, y), strokeWidth = 0.8f * density)
+                    y += spacing
+                }
+            }
+            "Precision Grid" -> {
+                val spacing = 36f * density
+                val color = Color.White.copy(alpha = 0.04f)
+                var x = 0f
+                while (x < width) {
+                    drawLine(color = color, start = Offset(x, 0f), end = Offset(x, height), strokeWidth = 0.8f * density)
+                    x += spacing
+                }
+                var y = 0f
+                while (y < height) {
+                    drawLine(color = color, start = Offset(0f, y), end = Offset(width, y), strokeWidth = 0.8f * density)
+                    y += spacing
+                }
+                // Draw subtle intersection dots
+                var cx = 0f
+                while (cx < width) {
+                    var cy = 0f
+                    while (cy < height) {
+                        drawCircle(color = Color.White.copy(alpha = 0.12f), radius = 1.0f * density, center = Offset(cx, cy))
+                        cy += spacing
+                    }
+                    cx += spacing
+                }
+            }
+            "Fine Lines", "Architectural Lines" -> {
+                val spacing = 32f * density
+                val color = Color.White.copy(alpha = 0.04f)
+                var i = -height
+                while (i < width + height) {
+                    drawLine(color = color, start = Offset(i, 0f), end = Offset(i + height, height), strokeWidth = 0.8f * density)
+                    i += spacing
+                }
+            }
+            "Concentric Rings", "Circular Geometry" -> {
+                val maxR = hypot(width, height) * 0.5f
+                val ringCount = 8
+                val center = Offset(width * 0.5f, height * 0.45f)
+                val pulse = sin(timeSec * 0.2f) * 0.02f
+                for (r in 1..ringCount) {
+                    val radius = (maxR / ringCount) * r * (1f + pulse)
+                    drawCircle(color = Color.White.copy(alpha = 0.04f), radius = radius, center = center, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.8f * density))
+                }
+            }
+            "Minimal Waves", "Subtle Aurora Geometry" -> {
+                val waveColor = Color.White.copy(alpha = 0.035f)
+                val waveCount = 5
+                for (w in 0 until waveCount) {
+                    val yBase = height * (0.3f + w * 0.12f)
+                    var prevX = 0f
+                    var prevY = yBase + sin(timeSec * 0.3f + w) * 15f
+                    var x = 10f
+                    while (x <= width) {
+                        val y = yBase + sin((x / width) * 6.28f + timeSec * 0.4f + w) * 20f
+                        drawLine(color = waveColor, start = Offset(prevX, prevY), end = Offset(x, y), strokeWidth = 1.0f * density)
+                        prevX = x
+                        prevY = y
+                        x += 10f
+                    }
+                }
+            }
+            "Geometric Arc", "Orbit" -> {
+                val center = Offset(width * 0.5f, height * 0.4f)
+                val rx = width * 0.42f
+                val ry = height * 0.25f
+                val orbitColor = Color.White.copy(alpha = 0.05f)
+                drawCircle(color = orbitColor, radius = rx, center = center, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.0f * density))
+                drawCircle(color = orbitColor, radius = ry, center = center, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 0.8f * density))
+            }
+            "Radial Geometry" -> {
+                val center = Offset(width * 0.5f, height * 0.45f)
+                val lines = 24
+                val angleStep = 360f / lines
+                val maxDist = hypot(width, height)
+                val color = Color.White.copy(alpha = 0.035f)
+                for (i in 0 until lines) {
+                    val rad = Math.toRadians((i * angleStep).toDouble()).toFloat()
+                    val endX = center.x + cos(rad) * maxDist
+                    val endY = center.y + sin(rad) * maxDist
+                    drawLine(color = color, start = center, end = Offset(endX, endY), strokeWidth = 0.8f * density)
+                }
+            }
+            "Soft Mesh", "Diamond Geometry", "Hex Geometry" -> {
+                val sizePx = 40f * density
+                val color = Color.White.copy(alpha = 0.03f)
+                var x = 0f
+                while (x < width + sizePx) {
+                    var y = 0f
+                    while (y < height + sizePx) {
+                        drawLine(color = color, start = Offset(x, y), end = Offset(x + sizePx, y + sizePx), strokeWidth = 0.8f * density)
+                        drawLine(color = color, start = Offset(x + sizePx, y), end = Offset(x, y + sizePx), strokeWidth = 0.8f * density)
+                        y += sizePx
+                    }
+                    x += sizePx
+                }
+            }
+            "Layered Planes", "Perspective Lines" -> {
+                val center = Offset(width * 0.5f, height * 0.35f)
+                val color = Color.White.copy(alpha = 0.04f)
+                var x = 0f
+                while (x <= width) {
+                    drawLine(color = color, start = center, end = Offset(x, height), strokeWidth = 0.8f * density)
+                    x += width / 12f
+                }
+            }
+            "Minimal Dots" -> {
+                val spacing = 28f * density
+                val color = Color.White.copy(alpha = 0.08f)
+                var x = spacing / 2f
+                while (x < width) {
+                    var y = spacing / 2f
+                    while (y < height) {
+                        drawCircle(color = color, radius = 0.8f * density, center = Offset(x, y))
+                        y += spacing
+                    }
+                    x += spacing
+                }
+            }
+            "Premium Particles" -> {
+                val color = Color.White.copy(alpha = 0.12f)
+                val rand = Random(42L)
+                for (i in 0..40) {
+                    val px = rand.nextFloat() * width
+                    val py = rand.nextFloat() * height
+                    val r = (0.5f + rand.nextFloat() * 0.8f) * density
+                    drawCircle(color = color, radius = r, center = Offset(px, py))
+                }
+            }
+            "Abstract Monolith" -> {
+                val monoW = width * 0.28f
+                val monoH = height * 0.45f
+                val left = (width - monoW) / 2f
+                val top = (height - monoH) / 2.2f
+                drawRect(
+                    color = Color.White.copy(alpha = 0.03f),
+                    topLeft = Offset(left, top),
+                    size = androidx.compose.ui.geometry.Size(monoW, monoH)
+                )
+                drawRect(
+                    color = Color.White.copy(alpha = 0.08f),
+                    topLeft = Offset(left, top),
+                    size = androidx.compose.ui.geometry.Size(monoW, monoH),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.0f * density)
+                )
+            }
+            else -> {
+                // Default fallback
+            }
         }
     }
 }

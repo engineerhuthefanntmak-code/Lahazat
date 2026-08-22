@@ -16,7 +16,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
-import kotlin.math.sin as mathSin
 import kotlin.random.Random
 
 private data class Star(
@@ -28,30 +27,29 @@ private data class Star(
     val color: Color,
     val isTwinkling: Boolean,
     val twinklePhase: Float,
-    val twinkleSpeed: Float,
-    val hasHalo: Boolean,
-    val haloRadiusFactor: Float
+    val twinkleSpeed: Float
 )
 
-private class MeteorState {
+private class Meteor {
     var active: Boolean = false
     var startX: Float = 0f
     var startY: Float = 0f
     var endX: Float = 0f
     var endY: Float = 0f
     var startTimeSec: Float = 0f
-    var durationSec: Float = 1.4f
-    var coreRadiusPx: Float = 4f
-    var haloRadiusPx: Float = 14f
-    var tailLengthPx: Float = 250f
+    var durationSec: Float = 0.8f
+    var coreRadiusPx: Float = 2f
+    var haloRadiusPx: Float = 6f
+    var tailLengthPx: Float = 120f
+    var maxAlpha: Float = 0.4f
     var currentX: Float = 0f
     var currentY: Float = 0f
     var progress: Float = 0f
 
-    // Microscopic trailing particles relative offsets & sizes
-    val particleOffsets = FloatArray(4) { 0f }
-    val particleDrifts = FloatArray(4) { 0f }
-    val particleSizes = FloatArray(4) { 1f }
+    fun reset() {
+        active = false
+        progress = 0f
+    }
 }
 
 @Composable
@@ -90,47 +88,37 @@ fun StellarBackground(
         }
     }
 
-    // Deterministically generate star field once
+    // Deterministically generate sparse star field (65 stars total, 2 subtle depth layers)
     val stars = remember {
-        val random = Random(20260822L) // Fixed seed for stable positions
-        val count = 200
+        val random = Random(20260822L)
+        val count = 65
         val list = ArrayList<Star>(count)
 
-        val softWhite = Color(0xFFF5F5F7)
-        val warmWhite = Color(0xFFFFF6E5)
+        val softWhite = Color(0xFFF0F0F2)
+        val warmWhite = Color(0xFFFFF8EB)
 
         for (i in 0 until count) {
             val xRatio = random.nextFloat()
             val yRatio = random.nextFloat()
 
-            val layerRoll = random.nextFloat()
-            val layer = when {
-                layerRoll < 0.50f -> 0
-                layerRoll < 0.85f -> 1
-                else -> 2
-            }
+            val layer = if (random.nextFloat() < 0.65f) 0 else 1
 
             val radiusDp = when (layer) {
-                0 -> 0.5f + random.nextFloat() * 0.4f
-                1 -> 0.9f + random.nextFloat() * 0.5f
-                else -> 1.4f + random.nextFloat() * 0.6f
+                0 -> 0.4f + random.nextFloat() * 0.3f
+                else -> 0.8f + random.nextFloat() * 0.4f
             }
 
             val baseAlpha = when (layer) {
-                0 -> 0.15f + random.nextFloat() * 0.30f
-                1 -> 0.35f + random.nextFloat() * 0.35f
-                else -> 0.60f + random.nextFloat() * 0.30f
+                0 -> 0.10f + random.nextFloat() * 0.25f
+                else -> 0.30f + random.nextFloat() * 0.30f
             }
 
-            val isWarm = random.nextFloat() < 0.08f // 8% subtle warm-white highlights
+            val isWarm = random.nextFloat() < 0.06f // 6% warm white
             val starColor = if (isWarm) warmWhite else softWhite
 
-            val isTwinkling = random.nextFloat() < 0.12f // 12% asynchronous twinkling stars
+            val isTwinkling = random.nextFloat() < 0.10f // 10% twinkling
             val twinklePhase = random.nextFloat() * 6.283185f
-            val twinkleSpeed = 0.8f + random.nextFloat() * 1.2f
-
-            val hasHalo = (layer == 2) && (random.nextFloat() < 0.20f) // Signature stars
-            val haloRadiusFactor = if (hasHalo) 2.8f + random.nextFloat() * 1.2f else 0f
+            val twinkleSpeed = 0.6f + random.nextFloat() * 0.8f
 
             list.add(
                 Star(
@@ -142,18 +130,16 @@ fun StellarBackground(
                     color = starColor,
                     isTwinkling = isTwinkling,
                     twinklePhase = twinklePhase,
-                    twinkleSpeed = twinkleSpeed,
-                    hasHalo = hasHalo,
-                    haloRadiusFactor = haloRadiusFactor
+                    twinkleSpeed = twinkleSpeed
                 )
             )
         }
         list
     }
 
-    val meteorState = remember { MeteorState() }
-    var lastMeteorTriggerTimeSec by remember { mutableFloatStateOf(-5f) }
-    var nextMeteorIntervalSec by remember { mutableFloatStateOf(9f) }
+    // Pre-allocated object pool of meteors (~8 max concurrent meteors)
+    val meteorPool = remember { Array(10) { Meteor() } }
+    var nextSpawnTimeSec by remember { mutableFloatStateOf(0f) }
 
     Canvas(modifier = modifier.fillMaxSize()) {
         val width = size.width
@@ -161,64 +147,42 @@ fun StellarBackground(
 
         if (width <= 0f || height <= 0f) return@Canvas
 
-        // 1. Pure Black Background
+        // 1. Pure #000000 Background
         drawRect(color = Color(0xFF000000))
 
         val timeSec = timeNanos / 1_000_000_000f
 
-        // 2. Meteor Engine State Calculation
-        val diagonal = hypot(width, height)
-        if (!meteorState.active) {
-            val elapsedSinceLast = timeSec - lastMeteorTriggerTimeSec
-            if (elapsedSinceLast >= nextMeteorIntervalSec) {
-                // Trigger a new meteor event
-                val random = Random((timeSec * 1000).toLong())
-                meteorState.active = true
-                meteorState.startTimeSec = timeSec
-                meteorState.durationSec = 1.3f + random.nextFloat() * 0.5f // 1.3s .. 1.8s
-                meteorState.coreRadiusPx = (1.5f + random.nextFloat() * 0.8f) * density
-                meteorState.haloRadiusPx = (5.0f + random.nextFloat() * 3.0f) * density
-                meteorState.tailLengthPx = diagonal * (0.22f + random.nextFloat() * 0.08f)
+        // 2. Meteor Spawning Engine (Average 500ms spawn interval: 300ms to 700ms)
+        if (timeSec >= nextSpawnTimeSec) {
+            val random = Random((timeSec * 1000).toLong())
+            val inactiveMeteor = meteorPool.firstOrNull { !it.active }
 
-                // Select diagonal trajectory (60-90% of screen diagonal length)
-                val trajectoryLength = diagonal * (0.65f + random.nextFloat() * 0.20f)
+            if (inactiveMeteor != null) {
+                inactiveMeteor.active = true
+                inactiveMeteor.startTimeSec = timeSec
+                inactiveMeteor.durationSec = 0.6f + random.nextFloat() * 0.5f // 0.6s to 1.1s
+                inactiveMeteor.coreRadiusPx = (1.0f + random.nextFloat() * 0.6f) * density
+                inactiveMeteor.haloRadiusPx = (4.0f + random.nextFloat() * 3.0f) * density
+                inactiveMeteor.tailLengthPx = (80f + random.nextFloat() * 100f) * density
+                inactiveMeteor.maxAlpha = 0.25f + random.nextFloat() * 0.30f // Restrained low opacity
+
+                val diagonal = hypot(width, height)
+                val trajectoryLength = diagonal * (0.25f + random.nextFloat() * 0.25f)
                 val isLeftToRight = random.nextBoolean()
-                val angleDeg = if (isLeftToRight) 30f + random.nextFloat() * 30f else 120f + random.nextFloat() * 30f
+                val angleDeg = if (isLeftToRight) 25f + random.nextFloat() * 35f else 120f + random.nextFloat() * 35f
                 val angleRad = Math.toRadians(angleDeg.toDouble()).toFloat()
 
-                val margin = 0.1f
-                val startXRatio = if (isLeftToRight) -margin + random.nextFloat() * 0.3f else 1f + margin - random.nextFloat() * 0.3f
-                val startYRatio = -margin + random.nextFloat() * 0.4f
+                val startXRatio = random.nextFloat()
+                val startYRatio = random.nextFloat() * 0.6f
 
-                meteorState.startX = startXRatio * width
-                meteorState.startY = startYRatio * height
-                meteorState.endX = meteorState.startX + cos(angleRad) * trajectoryLength
-                meteorState.endY = meteorState.startY + sin(angleRad) * trajectoryLength
-
-                for (p in 0 until 4) {
-                    meteorState.particleOffsets[p] = (30f + p * 25f + random.nextFloat() * 15f) * density
-                    meteorState.particleDrifts[p] = (-4f + random.nextFloat() * 8f) * density
-                    meteorState.particleSizes[p] = (0.5f + random.nextFloat() * 0.5f) * density
-                }
-
-                lastMeteorTriggerTimeSec = timeSec
-                nextMeteorIntervalSec = 8.5f + random.nextFloat() * 5.0f // ~8.5s - 13.5s (avg ~11s)
+                inactiveMeteor.startX = startXRatio * width
+                inactiveMeteor.startY = startYRatio * height
+                inactiveMeteor.endX = inactiveMeteor.startX + cos(angleRad) * trajectoryLength
+                inactiveMeteor.endY = inactiveMeteor.startY + sin(angleRad) * trajectoryLength
             }
-        } else {
-            val progressRaw = (timeSec - meteorState.startTimeSec) / meteorState.durationSec
-            if (progressRaw >= 1.0f) {
-                meteorState.active = false
-            } else {
-                meteorState.progress = FastOutSlowInEasing.transform(progressRaw.coerceIn(0f, 1f))
-                meteorState.currentX = meteorState.startX + (meteorState.endX - meteorState.startX) * meteorState.progress
-                meteorState.currentY = meteorState.startY + (meteorState.endY - meteorState.startY) * meteorState.progress
-            }
+
+            nextSpawnTimeSec = timeSec + (0.3f + random.nextFloat() * 0.4f) // avg ~0.5s
         }
-
-        val meteorActive = meteorState.active
-        val mX = meteorState.currentX
-        val mY = meteorState.currentY
-        val excitationRadius = 140f * density
 
         // 3. Render Stars
         for (i in stars.indices) {
@@ -227,33 +191,12 @@ fun StellarBackground(
             val y = star.yRatio * height
             val radiusPx = star.radiusDp * density
 
-            // Compute alpha (base + twinkling)
             var currentAlpha = star.baseAlpha
             if (star.isTwinkling) {
-                val twinkleMod = mathSin(timeSec * star.twinkleSpeed * 2.5f + star.twinklePhase) * 0.18f
-                currentAlpha = (currentAlpha + twinkleMod).coerceIn(0.05f, 0.95f)
+                val twinkleMod = sin(timeSec * star.twinkleSpeed * 2.0f + star.twinklePhase) * 0.12f
+                currentAlpha = (currentAlpha + twinkleMod).coerceIn(0.05f, 0.85f)
             }
 
-            // Subtle brightening when meteor passes nearby
-            if (meteorActive) {
-                val dist = hypot(x - mX, y - mY)
-                if (dist < excitationRadius) {
-                    val excitation = (1f - dist / excitationRadius) * 0.30f * (1f - meteorState.progress)
-                    currentAlpha = (currentAlpha + excitation).coerceAtMost(1.0f)
-                }
-            }
-
-            // Signature Star Halo
-            if (star.hasHalo && currentAlpha > 0.3f) {
-                val haloRadiusPx = radiusPx * star.haloRadiusFactor
-                drawCircle(
-                    color = star.color.copy(alpha = currentAlpha * 0.15f),
-                    radius = haloRadiusPx,
-                    center = Offset(x, y)
-                )
-            }
-
-            // Star Core
             drawCircle(
                 color = star.color.copy(alpha = currentAlpha),
                 radius = radiusPx,
@@ -261,120 +204,81 @@ fun StellarBackground(
             )
         }
 
-        // 4. Render Meteor (if active)
-        if (meteorActive) {
-            val progress = meteorState.progress
-            val startX = meteorState.startX
-            val startY = meteorState.startY
-            val currentX = meteorState.currentX
-            val currentY = meteorState.currentY
+        // 4. Render Meteors
+        for (i in meteorPool.indices) {
+            val meteor = meteorPool[i]
+            if (!meteor.active) continue
 
-            // Fade in at start, fade out at end
+            val progressRaw = (timeSec - meteor.startTimeSec) / meteor.durationSec
+            if (progressRaw >= 1.0f) {
+                meteor.reset()
+                continue
+            }
+
+            meteor.progress = FastOutSlowInEasing.transform(progressRaw.coerceIn(0f, 1f))
+            meteor.currentX = meteor.startX + (meteor.endX - meteor.startX) * meteor.progress
+            meteor.currentY = meteor.startY + (meteor.endY - meteor.startY) * meteor.progress
+
+            val progress = meteor.progress
+            val currentX = meteor.currentX
+            val currentY = meteor.currentY
+
             val alphaFade = when {
-                progress < 0.15f -> progress / 0.15f
-                progress > 0.82f -> (1.0f - progress) / 0.18f
+                progress < 0.20f -> progress / 0.20f
+                progress > 0.75f -> (1.0f - progress) / 0.25f
                 else -> 1.0f
-            }.coerceIn(0f, 1f)
+            }.coerceIn(0f, 1f) * meteor.maxAlpha
 
-            val dx = currentX - startX
-            val dy = currentY - startY
-            val tailLen = meteorState.tailLengthPx
+            val dx = currentX - meteor.startX
+            val dy = currentY - meteor.startY
             val distTravelled = hypot(dx, dy)
 
             if (distTravelled > 2f) {
                 val dirX = dx / distTravelled
                 val dirY = dy / distTravelled
 
-                val actualTailLen = tailLen.coerceAtMost(distTravelled)
+                val actualTailLen = meteor.tailLengthPx.coerceAtMost(distTravelled)
                 val tailStartX = currentX - dirX * actualTailLen
                 val tailStartY = currentY - dirY * actualTailLen
 
-                // Multi-layer tapered gradient tail
-                // Outer subtle glow trail
-                drawLinearGradientLine(
+                // Thin tapered fading tail
+                drawLine(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.White.copy(alpha = 0.15f * alphaFade),
+                            Color.White.copy(alpha = 0.85f * alphaFade)
+                        ),
+                        start = Offset(tailStartX, tailStartY),
+                        end = Offset(currentX, currentY)
+                    ),
                     start = Offset(tailStartX, tailStartY),
                     end = Offset(currentX, currentY),
-                    strokeWidth = 3.5f * density,
-                    colors = listOf(
-                        Color.Transparent,
-                        Color(0x33FFFFFF),
-                        Color(0xBBFFFFFF)
-                    ),
-                    alpha = alphaFade * 0.4f
-                )
-
-                // Inner sharp core trail
-                drawLinearGradientLine(
-                    start = Offset(tailStartX + dirX * actualTailLen * 0.3f, tailStartY + dirY * actualTailLen * 0.3f),
-                    end = Offset(currentX, currentY),
                     strokeWidth = 1.2f * density,
-                    colors = listOf(
-                        Color.Transparent,
-                        Color(0x88FFFFFF),
-                        Color(0xFFFFFFFF)
-                    ),
-                    alpha = alphaFade * 0.95f
+                    cap = StrokeCap.Round
                 )
 
-                // Soft circular halo around luminous core
+                // Soft subtle halo
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.35f * alphaFade),
-                            Color.White.copy(alpha = 0.08f * alphaFade),
+                            Color.White.copy(alpha = 0.25f * alphaFade),
                             Color.Transparent
                         ),
                         center = Offset(currentX, currentY),
-                        radius = meteorState.haloRadiusPx
+                        radius = meteor.haloRadiusPx
                     ),
                     center = Offset(currentX, currentY),
-                    radius = meteorState.haloRadiusPx
+                    radius = meteor.haloRadiusPx
                 )
 
-                // Luminous Core
+                // Tiny luminous head
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.98f * alphaFade),
-                    radius = meteorState.coreRadiusPx,
+                    color = Color.White.copy(alpha = 0.95f * alphaFade),
+                    radius = meteor.coreRadiusPx,
                     center = Offset(currentX, currentY)
                 )
-
-                // Microscopic trailing dust particles
-                val perpX = -dirY
-                val perpY = dirX
-                for (p in 0 until 4) {
-                    val pDist = meteorState.particleOffsets[p]
-                    if (distTravelled > pDist) {
-                        val px = currentX - dirX * pDist + perpX * meteorState.particleDrifts[p]
-                        val py = currentY - dirY * pDist + perpY * meteorState.particleDrifts[p]
-                        val pAlpha = ((1f - (pDist / (tailLen * 1.2f))) * alphaFade * 0.6f).coerceIn(0f, 1f)
-                        drawCircle(
-                            color = Color.White.copy(alpha = pAlpha),
-                            radius = meteorState.particleSizes[p],
-                            center = Offset(px, py)
-                        )
-                    }
-                }
             }
         }
     }
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLinearGradientLine(
-    start: Offset,
-    end: Offset,
-    strokeWidth: Float,
-    colors: List<Color>,
-    alpha: Float
-) {
-    drawLine(
-        brush = Brush.linearGradient(
-            colors = colors.map { it.copy(alpha = it.alpha * alpha) },
-            start = start,
-            end = end
-        ),
-        start = start,
-        end = end,
-        strokeWidth = strokeWidth,
-        cap = StrokeCap.Round
-    )
 }

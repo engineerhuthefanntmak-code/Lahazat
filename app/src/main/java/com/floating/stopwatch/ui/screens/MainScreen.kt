@@ -38,6 +38,7 @@ import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.components.DragAdjustField
 import com.floating.stopwatch.ui.components.AmbientDimOverlay
 import com.floating.stopwatch.ui.components.BackgroundAtmosphere
+import com.floating.stopwatch.ui.components.CompanionIndicator
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import java.util.Locale
@@ -79,6 +80,9 @@ fun MainScreen(
     val scaleCounter by settingsRepository.scaleCounter.collectAsState(initial = 1.0f)
     val scaleInterval by settingsRepository.scaleInterval.collectAsState(initial = 1.0f)
     val scaleLegacy by settingsRepository.scaleLegacy.collectAsState(initial = 1.0f)
+
+    val seamEnabled by settingsRepository.seamEnabled.collectAsState(initial = true)
+    val gravityEnabled by settingsRepository.gravityEnabled.collectAsState(initial = true)
 
     val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
     var settingsPresentationState by remember { mutableStateOf<SettingsPresentationState>(SettingsPresentationState.Closed) }
@@ -296,34 +300,71 @@ fun MainScreen(
                 )
             }
 
-            // Top Left Mode Header
+            // Top Left Mode Header & Floating Companion (SEAM / GRAVITY)
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(top = 16.dp)
                     .graphicsLayer { alpha = controlsAlpha }
-                    .clickable {
-                        resetAutoHideTimer()
-                        hapticController.trigger(hapticIntensity, "Lap")
-                        viewModel.cycleMode()
-                    }
-                    .padding(4.dp)
             ) {
-                Text(
-                    text = when (currentMode) {
-                        AppMode.Stopwatch -> "STOPWATCH ▾"
-                        AppMode.Countdown -> "COUNTDOWN ▾"
-                        AppMode.Counter -> "COUNTER ▾"
-                        AppMode.Intervals -> "INTERVALS ▾"
-                        AppMode.Legacy -> "LEGACY ▾"
-                    },
-                    style = TextStyle(
-                        color = currentTextColor,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.ExtraLight,
-                        letterSpacing = 4.sp
+                Column(
+                    modifier = Modifier
+                        .clickable {
+                            resetAutoHideTimer()
+                            hapticController.trigger(hapticIntensity, "Lap")
+                            viewModel.cycleMode()
+                        }
+                        .padding(4.dp)
+                ) {
+                    Text(
+                        text = when (currentMode) {
+                            AppMode.Stopwatch -> "STOPWATCH ▾"
+                            AppMode.Countdown -> "COUNTDOWN ▾"
+                            AppMode.Counter -> "COUNTER ▾"
+                            AppMode.Intervals -> "INTERVALS ▾"
+                            AppMode.Legacy -> "LEGACY ▾"
+                        },
+                        style = TextStyle(
+                            color = currentTextColor,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraLight,
+                            letterSpacing = 4.sp
+                        )
                     )
-                )
+                }
+
+                // Companion Indicator directly below mode header
+                if (currentMode == AppMode.Countdown) {
+                    val countdownInitialMs by viewModel.countdownInitialMs.collectAsState()
+                    val ratio = if (countdownInitialMs > 0L) (1f - (countdownRemainingMs.toFloat() / countdownInitialMs.toFloat())) else 0f
+                    CompanionIndicator(
+                        mode = currentMode,
+                        progressRatio = ratio,
+                        isEnabled = seamEnabled,
+                        accentColor = accentColor,
+                        grayColor = currentGrayColor,
+                        onToggle = {
+                            resetAutoHideTimer()
+                            scope.launch { settingsRepository.setSeamEnabled(!seamEnabled) }
+                        },
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                    )
+                } else if (currentMode == AppMode.Legacy) {
+                    val activeLegacy by legacyEngine.activeLegacy.collectAsState()
+                    val ratio = activeLegacy?.progressPercentage?.div(100f) ?: 0f
+                    CompanionIndicator(
+                        mode = currentMode,
+                        progressRatio = ratio,
+                        isEnabled = gravityEnabled,
+                        accentColor = accentColor,
+                        grayColor = currentGrayColor,
+                        onToggle = {
+                            resetAutoHideTimer()
+                            scope.launch { settingsRepository.setGravityEnabled(!gravityEnabled) }
+                        },
+                        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                    )
+                }
             }
 
             // Center Content Region

@@ -40,6 +40,20 @@ class SettingsRepository(private val context: Context) {
         val SCALE_INTERVAL = floatPreferencesKey("scale_interval")
         val SCALE_LEGACY = floatPreferencesKey("scale_legacy")
         val SCALE_FLOATING_WIDGET = floatPreferencesKey("scale_floating_widget")
+
+        val SEAM_ENABLED = booleanPreferencesKey("seam_enabled")
+        val GRAVITY_ENABLED = booleanPreferencesKey("gravity_enabled")
+    }
+
+    val seamEnabled: Flow<Boolean> = context.dataStore.data.map { it[SEAM_ENABLED] ?: true }
+    val gravityEnabled: Flow<Boolean> = context.dataStore.data.map { it[GRAVITY_ENABLED] ?: true }
+
+    suspend fun setSeamEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[SEAM_ENABLED] = enabled }
+    }
+
+    suspend fun setGravityEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[GRAVITY_ENABLED] = enabled }
     }
 
     val scaleStopwatch: Flow<Float> = context.dataStore.data.map { it[SCALE_STOPWATCH] ?: 1.0f }

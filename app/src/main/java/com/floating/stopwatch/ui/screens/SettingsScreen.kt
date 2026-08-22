@@ -109,7 +109,7 @@ fun SettingsOverlay(
 
     val categories = remember {
         listOf(
-            "APPEARANCE", "BACKGROUND ATMOSPHERE", "STOPWATCH", "COUNTDOWN", "COUNTER",
+            "APPEARANCE", "DIGIT SIZE", "BACKGROUND ATMOSPHERE", "STOPWATCH", "COUNTDOWN", "COUNTER",
             "INTERVAL", "SOUNDS & HAPTICS", "FLOATING WIDGETS", "ADVANCED"
         )
     }

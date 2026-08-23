@@ -166,27 +166,31 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 }
             }
 
-            if (!hasOverlayPermission) {
-                OverlayPermissionExplanationScreen(
-                    onGrantClick = {
-                        requestOverlayPermission()
-                    },
-                    onSkipClick = {
-                        hasOverlayPermission = true
-                    }
-                )
-            } else {
-                MainScreen(
-                    viewModel = mainViewModel,
-                    settingsRepository = settingsRepository,
-                    hapticController = hapticController,
-                    hapticIntensity = hapticIntensity,
-                    showCentiseconds = true,
-                    mainSize = mainDisplayScale,
-                    accentColor = accentColor,
-                    themeMode = themeMode,
-                    onNavigateToSettings = {}
-                )
+            MaterialTheme(
+                typography = com.floating.stopwatch.ui.theme.AppTypography
+            ) {
+                if (!hasOverlayPermission) {
+                    OverlayPermissionExplanationScreen(
+                        onGrantClick = {
+                            requestOverlayPermission()
+                        },
+                        onSkipClick = {
+                            hasOverlayPermission = true
+                        }
+                    )
+                } else {
+                    MainScreen(
+                        viewModel = mainViewModel,
+                        settingsRepository = settingsRepository,
+                        hapticController = hapticController,
+                        hapticIntensity = hapticIntensity,
+                        showCentiseconds = true,
+                        mainSize = mainDisplayScale,
+                        accentColor = accentColor,
+                        themeMode = themeMode,
+                        onNavigateToSettings = {}
+                    )
+                }
             }
         }
     }

@@ -649,7 +649,7 @@ private fun CountdownDisplay(
                 ) {
                     Text(
                         text = String.format(Locale.US, "%02d", hours),
-                        style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Light)
+                        style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily, fontWeight = FontWeight.Light)
                     )
                 }
 
@@ -677,7 +677,7 @@ private fun CountdownDisplay(
                 ) {
                     Text(
                         text = String.format(Locale.US, "%02d", minutes),
-                        style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Light)
+                        style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily, fontWeight = FontWeight.Light)
                     )
                 }
 
@@ -705,7 +705,7 @@ private fun CountdownDisplay(
                 ) {
                     Text(
                         text = String.format(Locale.US, "%02d", seconds),
-                        style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Light)
+                        style = TextStyle(color = textColor, fontSize = countdownDigitSize, fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily, fontWeight = FontWeight.Light)
                     )
                 }
             }
@@ -754,7 +754,7 @@ private fun CounterDisplay(
                 color = textColor,
                 fontSize = counterDigitSize,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
+                fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily
             ),
             modifier = Modifier.scale(scalePulse)
         )
@@ -1575,7 +1575,7 @@ fun LapRowItem(lap: Lap, textColor: Color, grayColor: Color) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = formattedLap,
-                style = TextStyle(color = textColor, fontSize = 14.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold)
+                style = TextStyle(color = textColor, fontSize = 14.sp, fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily, fontWeight = FontWeight.SemiBold)
             )
             if (lap.lapIndex > 1) {
                 Spacer(modifier = Modifier.width(12.dp))

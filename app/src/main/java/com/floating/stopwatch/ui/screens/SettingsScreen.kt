@@ -151,7 +151,7 @@ fun SettingsOverlay(
             modifier = Modifier.padding(8.dp)
         ) {
             Text(
-                text = "SETTINGS",
+                text = "الإعدادات",
                 style = TextStyle(
                     color = currentGrayColor,
                     fontSize = 12.sp,

@@ -166,9 +166,12 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 }
             }
 
-            MaterialTheme(
-                typography = com.floating.stopwatch.ui.theme.AppTypography
+            CompositionLocalProvider(
+                LocalTextStyle provides TextStyle(fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily)
             ) {
+                MaterialTheme(
+                    typography = com.floating.stopwatch.ui.theme.AppTypography
+                ) {
                 if (!hasOverlayPermission) {
                     OverlayPermissionExplanationScreen(
                         onGrantClick = {
@@ -191,6 +194,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                         onNavigateToSettings = {}
                     )
                 }
+            }
             }
         }
     }

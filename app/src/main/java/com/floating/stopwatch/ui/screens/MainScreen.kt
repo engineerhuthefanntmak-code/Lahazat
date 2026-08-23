@@ -207,11 +207,12 @@ fun MainScreen(
     var totalDragY by remember { mutableFloatStateOf(0f) }
     var totalDragX by remember { mutableFloatStateOf(0f) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        BackgroundAtmosphere(
-            atmosphere = if (isAmbientDimActive) "Pure Black" else backgroundAtmosphere,
-            modifier = Modifier.fillMaxSize()
-        )
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            BackgroundAtmosphere(
+                atmosphere = if (isAmbientDimActive) "Pure Black" else backgroundAtmosphere,
+                modifier = Modifier.fillMaxSize()
+            )
 
         Box(
             modifier = Modifier
@@ -269,17 +270,17 @@ fun MainScreen(
                 ) {
                     Text(
                         text = when (currentMode) {
-                            AppMode.Stopwatch -> "STOPWATCH ▾"
-                            AppMode.Countdown -> "COUNTDOWN ▾"
-                            AppMode.Counter -> "COUNTER ▾"
-                            AppMode.Intervals -> "INTERVALS ▾"
-                            AppMode.Legacy -> "LEGACY ▾"
+                            AppMode.Stopwatch -> "مؤقت الساعات ▾"
+                            AppMode.Countdown -> "العد التنازلي ▾"
+                            AppMode.Counter -> "العداد التراكمي ▾"
+                            AppMode.Intervals -> "المراحل الزمنية ▾"
+                            AppMode.Legacy -> "الأهداف والإنجازات ▾"
                         },
                         style = TextStyle(
                             color = currentTextColor,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.ExtraLight,
-                            letterSpacing = 4.sp
+                            letterSpacing = 2.sp
                         )
                     )
                 }
@@ -519,11 +520,11 @@ fun MainScreen(
             AppMode.Legacy -> 4
         }
         val modeName = when (currentMode) {
-            AppMode.Stopwatch -> "Stopwatch"
-            AppMode.Countdown -> "Countdown"
-            AppMode.Counter -> "Counter"
-            AppMode.Intervals -> "Intervals"
-            AppMode.Legacy -> "Legacy"
+            AppMode.Stopwatch -> "مؤقت الساعات"
+            AppMode.Countdown -> "العد التنازلي"
+            AppMode.Counter -> "العداد التراكمي"
+            AppMode.Intervals -> "المراحل الزمنية"
+            AppMode.Legacy -> "الأهداف والإنجازات"
         }
         FloatingModeConfigDialog(
             modeIndex = targetIndex,
@@ -532,6 +533,7 @@ fun MainScreen(
             accentColor = accentColor,
             onDismiss = { showFloatingConfigDialog = false }
         )
+    }
     }
 }
 
@@ -715,18 +717,18 @@ private fun CountdownDisplay(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
             ) {
-                Text(text = "HOURS", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp))
+                Text(text = "ساعات", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp))
                 Text(" : ", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light))
-                Text(text = "MINS", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp))
+                Text(text = "دقائق", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp))
                 Text(" : ", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light))
-                Text(text = "SECS", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp))
+                Text(text = "ثوانٍ", style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp))
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = if (!isCountdownRunning) "DRAG UP/DOWN TO ADJUST" else "FOCUS COUNTDOWN",
-                style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp),
+                text = if (!isCountdownRunning) "اسحب للأعلى/الأسفل للضبط" else "تركيز العد التنازلي",
+                style = TextStyle(color = grayColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp),
                 modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
             )
         }
@@ -760,12 +762,12 @@ private fun CounterDisplay(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "TAP COUNTER",
+            text = "العداد التراكمي",
             style = TextStyle(
                 color = grayColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Light,
-                letterSpacing = 3.sp
+                letterSpacing = 2.sp
             ),
             modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
         )
@@ -773,12 +775,12 @@ private fun CounterDisplay(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Ambient Dim Mode",
+            text = "نمط الإعتام الموفر",
             style = TextStyle(
                 color = accentColor,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                letterSpacing = 2.sp
+                letterSpacing = 1.sp
             ),
             modifier = Modifier
                 .graphicsLayer { alpha = secondaryAlpha }
@@ -952,7 +954,7 @@ private fun ModeActionButtons(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = if (currentStopwatchState == StopwatchState.Paused) "RESET" else "LAP",
+                            text = if (currentStopwatchState == StopwatchState.Paused) "إعادة ضبط" else "دورة",
                             style = TextStyle(color = textColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
                         )
                     }
@@ -988,7 +990,7 @@ private fun ModeActionButtons(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (currentStopwatchState == StopwatchState.Running) "STOP" else "START",
+                    text = if (currentStopwatchState == StopwatchState.Running) "إيقاف" else "بدء",
                     style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 )
             }
@@ -1033,7 +1035,7 @@ private fun ModeActionButtons(
                     border = BorderStroke(1.dp, if (isPressingCountdownReset) accentColor else grayColor)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("RESET", style = TextStyle(color = if (isPressingCountdownReset) accentColor else textColor, fontSize = 11.sp, letterSpacing = 1.sp))
+                        Text("إعادة ضبط", style = TextStyle(color = if (isPressingCountdownReset) accentColor else textColor, fontSize = 11.sp, letterSpacing = 1.sp))
                     }
                 }
             }
@@ -1057,7 +1059,7 @@ private fun ModeActionButtons(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (isCountdownRunning) "PAUSE" else "START",
+                    text = if (isCountdownRunning) "إيقاف مؤقت" else "بدء",
                     style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 )
             }
@@ -1097,7 +1099,7 @@ private fun ModeActionButtons(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            text = "RESET",
+                            text = "إعادة ضبط",
                             style = TextStyle(color = if (isPressingReset) accentColor else textColor, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
                         )
                     }
@@ -1163,7 +1165,7 @@ private fun ModeActionButtons(
                     border = BorderStroke(1.dp, grayColor)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("RESET", style = TextStyle(color = textColor, fontSize = 11.sp, letterSpacing = 1.sp))
+                        Text("إعادة ضبط", style = TextStyle(color = textColor, fontSize = 11.sp, letterSpacing = 1.sp))
                     }
                 }
             }
@@ -1188,7 +1190,7 @@ private fun ModeActionButtons(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (isRunning) "PAUSE" else "START",
+                    text = if (isRunning) "إيقاف مؤقت" else "بدء",
                     style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 )
             }
@@ -1234,7 +1236,7 @@ private fun ModeActionButtons(
                         border = BorderStroke(1.dp, if (isPressingDelete) Color(0xFFE53935) else Color(0xFFC94A4A))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text("DELETE", style = TextStyle(color = if (isPressingDelete) Color(0xFFE53935) else Color(0xFFC94A4A), fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold))
+                            Text("حذف", style = TextStyle(color = if (isPressingDelete) Color(0xFFE53935) else Color(0xFFC94A4A), fontSize = 11.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold))
                         }
                     }
                 }
@@ -1259,7 +1261,7 @@ private fun ModeActionButtons(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (isRunning) "PAUSE" else if (legacyState == LegacyState.PAUSED) "RESUME" else "START",
+                        text = if (isRunning) "إيقاف مؤقت" else if (legacyState == LegacyState.PAUSED) "استئناف" else "بدء",
                         style = TextStyle(color = LuxuryColors.WarmBlack, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     )
                 }

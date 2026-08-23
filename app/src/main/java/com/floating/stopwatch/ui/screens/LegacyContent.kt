@@ -57,7 +57,7 @@ fun LegacyContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "LEGACY",
+                text = "الأهداف والإنجازات",
                 style = TextStyle(
                     color = accentColor,
                     fontSize = 16.sp,
@@ -69,7 +69,7 @@ fun LegacyContent(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "No Legacies created yet",
+                text = "لم يتم إنشاء أهداف بعد",
                 style = TextStyle(
                     color = currentGrayColor,
                     fontSize = 13.sp,
@@ -91,7 +91,7 @@ fun LegacyContent(
                 shape = RoundedCornerShape(24.dp)
             ) {
                 Text(
-                    text = "+ CREATE LEGACY",
+                    text = "+ إنشاء هدف جديد",
                     style = TextStyle(
                         color = LuxuryColors.WarmBlack,
                         fontSize = 12.sp,
@@ -143,7 +143,7 @@ fun LegacyContent(
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "+ NEW",
+                    text = "+ جديد",
                     style = TextStyle(
                         color = currentGrayColor,
                         fontSize = 11.sp,
@@ -180,6 +180,11 @@ fun LegacyContent(
                 LegacyStatus.ON_PACE -> accentColor
                 LegacyStatus.BEHIND -> Color(0xFFC94A4A)
             }
+            val statusText = when (status) {
+                LegacyStatus.AHEAD -> "متقدم"
+                LegacyStatus.ON_PACE -> "ضمن المخطط"
+                LegacyStatus.BEHIND -> "متأخر"
+            }
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -192,7 +197,7 @@ fun LegacyContent(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = status.name.replace("_", " "),
+                    text = statusText,
                     style = TextStyle(
                         color = statusColor,
                         fontSize = 11.sp,
@@ -228,20 +233,20 @@ fun LegacyContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         MetricItem(
-                            label = "TARGET",
+                            label = "الهدف الكلي",
                             value = formatMsToHoursMinutes(legacy.targetDurationMs),
                             grayColor = currentGrayColor,
                             textColor = currentTextColor
                         )
                         MetricItem(
-                            label = "REMAINING",
+                            label = "المتبقي",
                             value = formatMsToHoursMinutes(legacy.remainingTimeMs),
                             grayColor = currentGrayColor,
                             textColor = currentTextColor
                         )
                         MetricItem(
-                            label = "REMAINING DAYS",
-                            value = "${legacy.getRemainingDays()} / ${legacy.totalTargetDays}d",
+                            label = "الأيام المتبقية",
+                            value = "${legacy.getRemainingDays()} / ${legacy.totalTargetDays}ي",
                             grayColor = currentGrayColor,
                             textColor = currentTextColor
                         )
@@ -255,19 +260,19 @@ fun LegacyContent(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         MetricItem(
-                            label = "TODAY TARGET",
+                            label = "هدف اليوم",
                             value = formatMsToHoursMinutes(legacy.dailyTargetMs),
                             grayColor = currentGrayColor,
                             textColor = currentTextColor
                         )
                         MetricItem(
-                            label = "TODAY DONE",
+                            label = "المُنجز اليوم",
                             value = formatMsToHoursMinutes(legacy.getTodayCompletedMs()),
                             grayColor = currentGrayColor,
                             textColor = accentColor
                         )
                         MetricItem(
-                            label = "MANUAL ADDED",
+                            label = "المُضاف يدوياً",
                             value = formatMsToHoursMinutes(legacy.manualTimeMs),
                             grayColor = currentGrayColor,
                             textColor = currentTextColor
@@ -284,7 +289,7 @@ fun LegacyContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "[+ MANUAL TIME]",
+                    text = "[+ إضافة وقت يدوياً]",
                     style = TextStyle(
                         color = accentColor,
                         fontSize = 11.sp,
@@ -300,7 +305,7 @@ fun LegacyContent(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(
-                    text = "[POSTPONE DATE]",
+                    text = "[تمديد الموعد]",
                     style = TextStyle(
                         color = currentGrayColor,
                         fontSize = 11.sp,
@@ -427,7 +432,7 @@ fun CreateLegacyDialog(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "CREATE LEGACY",
+                    text = "إنشاء هدف جديد",
                     style = TextStyle(color = LuxuryColors.AccentGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 )
 
@@ -436,7 +441,7 @@ fun CreateLegacyDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Legacy Name", color = LuxuryColors.WarmGray, fontSize = 10.sp) },
+                    label = { Text("اسم الهدف", color = LuxuryColors.WarmGray, fontSize = 10.sp) },
                     textStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -444,26 +449,26 @@ fun CreateLegacyDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 DragAdjustField(
-                    label = "TARGET DURATION (HOURS)",
+                    label = "المدة المستهدفة (ساعات)",
                     value = totalHours.toFloat(),
                     minValue = 1f,
                     maxValue = 10000f,
                     pixelsPerUnit = 2f,
                     accentColor = LuxuryColors.AccentGold,
-                    valueFormatter = { "${it.toInt()} Hours" },
+                    valueFormatter = { "${it.toInt()} ساعة" },
                     onValueChange = { totalHours = it.toInt().coerceIn(1, 10000) }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DragAdjustField(
-                    label = "NUMBER OF DAYS",
+                    label = "عدد الأيام",
                     value = days.toFloat(),
                     minValue = 1f,
                     maxValue = 365f,
                     pixelsPerUnit = 4f,
                     accentColor = LuxuryColors.AccentGold,
-                    valueFormatter = { "${it.toInt()} Days" },
+                    valueFormatter = { "${it.toInt()} يوم" },
                     onValueChange = { days = it.toInt().coerceIn(1, 365) }
                 )
 
@@ -471,7 +476,7 @@ fun CreateLegacyDialog(
 
                 val dailyMins = (totalHours * 60) / days.coerceAtLeast(1)
                 Text(
-                    text = "DAILY TARGET: ${dailyMins / 60}h ${dailyMins % 60}m / day",
+                    text = "الهدف اليومي: ${dailyMins / 60}س ${dailyMins % 60}د / يوم",
                     style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
                 )
 
@@ -482,7 +487,7 @@ fun CreateLegacyDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = "CANCEL",
+                        text = "إلغاء",
                         color = LuxuryColors.WarmGray,
                         fontSize = 11.sp,
                         modifier = Modifier
@@ -492,11 +497,11 @@ fun CreateLegacyDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            onCreate(name.ifBlank { "Legacy Goal" }, totalHours, days)
+                            onCreate(name.ifBlank { "هدف جديد" }, totalHours, days)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.AccentGold)
                     ) {
-                        Text("CREATE", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("إنشاء", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -527,33 +532,33 @@ fun ManualTimeDialog(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "ADD MANUAL TIME",
+                    text = "إضافة وقت يدوياً",
                     style = TextStyle(color = LuxuryColors.AccentGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 DragAdjustField(
-                    label = "HOURS",
+                    label = "ساعات",
                     value = hours.toFloat(),
                     minValue = 0f,
                     maxValue = 100f,
                     pixelsPerUnit = 4f,
                     accentColor = LuxuryColors.AccentGold,
-                    valueFormatter = { "${it.toInt()}h" },
+                    valueFormatter = { "${it.toInt()} س" },
                     onValueChange = { hours = it.toInt().coerceIn(0, 100) }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DragAdjustField(
-                    label = "MINUTES",
+                    label = "دقائق",
                     value = minutes.toFloat(),
                     minValue = 0f,
                     maxValue = 59f,
                     pixelsPerUnit = 4f,
                     accentColor = LuxuryColors.AccentGold,
-                    valueFormatter = { "${it.toInt()}m" },
+                    valueFormatter = { "${it.toInt()} د" },
                     onValueChange = { minutes = it.toInt().coerceIn(0, 59) }
                 )
 
@@ -564,7 +569,7 @@ fun ManualTimeDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = "CANCEL",
+                        text = "إلغاء",
                         color = LuxuryColors.WarmGray,
                         fontSize = 11.sp,
                         modifier = Modifier
@@ -576,7 +581,7 @@ fun ManualTimeDialog(
                         onClick = { onAdd(hours, minutes) },
                         colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.AccentGold)
                     ) {
-                        Text("ADD TIME", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("إضافة", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -606,27 +611,27 @@ fun PostponeDialog(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "POSTPONE TARGET DATE",
+                    text = "تمديد موعد الهدف",
                     style = TextStyle(color = LuxuryColors.AccentGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 DragAdjustField(
-                    label = "EXTRA DAYS",
+                    label = "أيام إضافية",
                     value = postponeDays.toFloat(),
                     minValue = 1f,
                     maxValue = 90f,
                     pixelsPerUnit = 4f,
                     accentColor = LuxuryColors.AccentGold,
-                    valueFormatter = { "+${it.toInt()} Days" },
+                    valueFormatter = { "+${it.toInt()} يوم" },
                     onValueChange = { postponeDays = it.toInt().coerceIn(1, 90) }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "All accumulated progress will be preserved.",
+                    text = "سيتم الاحتفاظ بجميع التقدم المحرز.",
                     style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 11.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp)
                 )
 
@@ -637,7 +642,7 @@ fun PostponeDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = "CANCEL",
+                        text = "إلغاء",
                         color = LuxuryColors.WarmGray,
                         fontSize = 11.sp,
                         modifier = Modifier
@@ -649,7 +654,7 @@ fun PostponeDialog(
                         onClick = { onPostpone(postponeDays) },
                         colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.AccentGold)
                     ) {
-                        Text("POSTPONE", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("تمديد", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -680,7 +685,7 @@ fun LegacySelectorDialog(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "SELECT LEGACY",
+                    text = "اختر الهدف",
                     style = TextStyle(color = LuxuryColors.AccentGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 )
 
@@ -710,7 +715,7 @@ fun LegacySelectorDialog(
                                 )
                             )
                             Text(
-                                text = "${String.format(Locale.US, "%.1f", item.progressPercentage)}% completed",
+                                text = "${String.format(Locale.US, "%.1f", item.progressPercentage)}% مكتمل",
                                 style = TextStyle(color = LuxuryColors.WarmGray, fontSize = 10.sp)
                             )
                         }
@@ -718,7 +723,7 @@ fun LegacySelectorDialog(
                             var isPressingItemDelete by remember { mutableStateOf(false) }
                             val scope = rememberCoroutineScope()
                             Text(
-                                text = "HOLD TO DELETE",
+                                text = "اضغط مطولاً للحذف",
                                 style = TextStyle(
                                     color = if (isPressingItemDelete) Color(0xFFE53935) else Color(0xFFC94A4A),
                                     fontSize = 10.sp,
@@ -755,7 +760,7 @@ fun LegacySelectorDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = "CLOSE",
+                        text = "إغلاق",
                         color = LuxuryColors.WarmGray,
                         fontSize = 11.sp,
                         modifier = Modifier

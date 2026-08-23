@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.getValue
 import com.floating.stopwatch.ui.theme.LuxuryColors
+import com.floating.stopwatch.ui.theme.DiwaniFontFamily
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 
@@ -98,7 +99,7 @@ fun TimeDisplay(
     val mainDigitStyle = if (gradientBrush != null) {
         baseStyle.copy(
             fontSize = scaledMainSize,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = DiwaniFontFamily,
             fontWeight = FontWeight.Bold,
             brush = gradientBrush,
             shadow = androidx.compose.ui.graphics.Shadow(
@@ -110,7 +111,7 @@ fun TimeDisplay(
     } else {
         baseStyle.copy(
             fontSize = scaledMainSize,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = DiwaniFontFamily,
             fontWeight = FontWeight.Bold,
             color = animatedFlashColor,
             shadow = androidx.compose.ui.graphics.Shadow(

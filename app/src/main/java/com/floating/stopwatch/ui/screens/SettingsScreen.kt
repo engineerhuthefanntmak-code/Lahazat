@@ -114,7 +114,7 @@ fun SettingsOverlay(
     val selectedSoundType by settingsRepository.selectedSoundType.collectAsState(initial = "Soft Click")
 
     val categories = remember {
-        listOf("APPEARANCE", "SOUNDS & HAPTICS", "ADVANCED")
+        listOf("المظهر البصري", "الصوت والاهتزاز", "إعدادات متقدمة")
     }
 
     val intensities = remember { listOf("Off", "Light", "Medium", "Strong") }
@@ -324,8 +324,8 @@ fun SettingsOverlay(
 
                             // Category Controls
                             when (categoryName) {
-                                "APPEARANCE" -> {
-                                    Text(text = "COLOR ACCENT", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                "المظهر البصري", "APPEARANCE" -> {
+                                    Text(text = "لون التمييز", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     OptionGridCompact(
                                         options = colorPresets,
@@ -336,7 +336,7 @@ fun SettingsOverlay(
 
                                     Spacer(modifier = Modifier.height(10.dp))
 
-                                    Text(text = "BACKGROUND ATMOSPHERE", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Text(text = "المظهر الخلفي", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     OptionGridCompact(
                                         options = atmospheres,
@@ -348,7 +348,7 @@ fun SettingsOverlay(
                                     Spacer(modifier = Modifier.height(10.dp))
 
                                     DragAdjustField(
-                                        label = "MAIN DISPLAY SIZE",
+                                        label = "حجم العرض الرئيسي",
                                         value = mainDisplayScale,
                                         minValue = 0.7f,
                                         maxValue = 1.3f,
@@ -360,11 +360,11 @@ fun SettingsOverlay(
 
                                     Spacer(modifier = Modifier.height(10.dp))
 
-                                    Text(text = "INDEPENDENT DIGIT SIZE SCALES", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Text(text = "أحجام الأرقام المستقلة", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
                                     Spacer(modifier = Modifier.height(6.dp))
 
                                     DragAdjustField(
-                                        label = "STOPWATCH",
+                                        label = "مؤقت الساعات",
                                         value = scaleStopwatch,
                                         minValue = 0.60f,
                                         maxValue = 2.00f,
@@ -377,7 +377,7 @@ fun SettingsOverlay(
                                     Spacer(modifier = Modifier.height(4.dp))
 
                                     DragAdjustField(
-                                        label = "COUNTDOWN",
+                                        label = "العد التنازلي",
                                         value = scaleCountdown,
                                         minValue = 0.60f,
                                         maxValue = 2.00f,
@@ -390,7 +390,7 @@ fun SettingsOverlay(
                                     Spacer(modifier = Modifier.height(4.dp))
 
                                     DragAdjustField(
-                                        label = "COUNTER",
+                                        label = "العداد",
                                         value = scaleCounter,
                                         minValue = 0.60f,
                                         maxValue = 2.00f,
@@ -403,7 +403,7 @@ fun SettingsOverlay(
                                     Spacer(modifier = Modifier.height(4.dp))
 
                                     DragAdjustField(
-                                        label = "INTERVAL",
+                                        label = "المراحل",
                                         value = scaleInterval,
                                         minValue = 0.60f,
                                         maxValue = 2.00f,
@@ -416,7 +416,7 @@ fun SettingsOverlay(
                                     Spacer(modifier = Modifier.height(4.dp))
 
                                     DragAdjustField(
-                                        label = "LEGACY",
+                                        label = "الأساسي",
                                         value = scaleLegacy,
                                         minValue = 0.60f,
                                         maxValue = 2.00f,
@@ -426,13 +426,13 @@ fun SettingsOverlay(
                                         onValueChange = { scope.launch { settingsRepository.setScaleLegacy(it) } }
                                     )
                                 }
-                                "SOUNDS & HAPTICS" -> {
+                                "الصوت والاهتزاز", "SOUNDS & HAPTICS" -> {
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(text = "MASTER SOUND", color = currentTextColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        Text(text = "الصوت الرئيسي", color = currentTextColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                         SlimLuxuryToggle(
                                             checked = masterSoundEnabled,
                                             onCheckedChange = { scope.launch { settingsRepository.setMasterSoundEnabled(it) } },
@@ -442,7 +442,7 @@ fun SettingsOverlay(
 
                                     Spacer(modifier = Modifier.height(8.dp))
 
-                                    Text(text = "NATURAL SOUND PRESET", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Text(text = "النغمة الصوتية", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     OptionGridCompact(
                                         options = soundTypes,
@@ -458,7 +458,7 @@ fun SettingsOverlay(
 
                                     Spacer(modifier = Modifier.height(10.dp))
 
-                                    Text(text = "HAPTIC FEEDBACK INTENSITY", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Text(text = "قوة الاهتزاز", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
                                     Spacer(modifier = Modifier.height(4.dp))
                                     OptionGridCompact(
                                         options = intensities,
@@ -467,13 +467,13 @@ fun SettingsOverlay(
                                         onOptionSelected = { intensity -> scope.launch { settingsRepository.setHapticIntensity(intensity) } }
                                     )
                                 }
-                                "ADVANCED" -> {
+                                "إعدادات متقدمة", "ADVANCED" -> {
                                     Row(
                                         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(text = "VOLUME KEYS COUNTER (SCREEN OFF)", color = currentTextColor, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        Text(text = "العد بأزرار الصوت (شاشة مغلقة)", color = currentTextColor, fontSize = 10.sp, modifier = Modifier.weight(1f))
                                         SlimLuxuryToggle(
                                             checked = volumeCounterScreenOffEnabled,
                                             onCheckedChange = { scope.launch { settingsRepository.setVolumeCounterScreenOffEnabled(it) } },
@@ -488,7 +488,7 @@ fun SettingsOverlay(
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(text = "VERTICAL DISPLAY ORIENTATION", color = currentTextColor, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        Text(text = "اتجاه العرض العمودي", color = currentTextColor, fontSize = 10.sp, modifier = Modifier.weight(1f))
                                         SlimLuxuryToggle(
                                             checked = layoutOrientation == "vertical",
                                             onCheckedChange = { scope.launch { settingsRepository.setLayoutOrientation(if (it) "vertical" else "horizontal") } },
@@ -552,14 +552,14 @@ fun FloatingModeConfigDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = "${modeName.uppercase()} FLOATING CONFIG",
+                    text = "إعدادات النافذة العائمة",
                     style = TextStyle(color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 DragAdjustField(
-                    label = "WIDTH",
+                    label = "العرض",
                     value = wWidth,
                     minValue = 1f,
                     maxValue = 320f,
@@ -572,7 +572,7 @@ fun FloatingModeConfigDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 DragAdjustField(
-                    label = "HEIGHT",
+                    label = "الارتفاع",
                     value = wHeight,
                     minValue = 1f,
                     maxValue = 120f,
@@ -585,7 +585,7 @@ fun FloatingModeConfigDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 DragAdjustField(
-                    label = "FONT SIZE SCALE",
+                    label = "حجم الخط",
                     value = fontSizeScale,
                     minValue = 0.5f,
                     maxValue = 2.0f,
@@ -598,7 +598,7 @@ fun FloatingModeConfigDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 DragAdjustField(
-                    label = "OPACITY",
+                    label = "الشفافية",
                     value = floatingOpacity,
                     minValue = 0.10f,
                     maxValue = 1.00f,
@@ -611,7 +611,7 @@ fun FloatingModeConfigDialog(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 DragAdjustField(
-                    label = "INTERNAL PADDING",
+                    label = "الهامش الداخلي",
                     value = floatingPadding,
                     minValue = 0f,
                     maxValue = 32f,
@@ -623,7 +623,7 @@ fun FloatingModeConfigDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Text(text = "SHAPE PRESET", color = LuxuryColors.WarmGray, fontSize = 9.sp, letterSpacing = 1.sp)
+                Text(text = "شكل النافذة", color = LuxuryColors.WarmGray, fontSize = 9.sp, letterSpacing = 1.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 OptionGridCompact(
                     options = shapes,
@@ -639,7 +639,7 @@ fun FloatingModeConfigDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "SAVE DIMENSIONS", color = LuxuryColors.CreamyWhite, fontSize = 10.sp)
+                    Text(text = "حفظ الأبعاد", color = LuxuryColors.CreamyWhite, fontSize = 10.sp)
                     SlimLuxuryToggle(
                         checked = saveDimensions,
                         onCheckedChange = { scope.launch { settingsRepository.setWidgetSaveDimensions(modeIndex, it) } },
@@ -654,7 +654,7 @@ fun FloatingModeConfigDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = "DONE",
+                        text = "تم",
                         color = accentColor,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,

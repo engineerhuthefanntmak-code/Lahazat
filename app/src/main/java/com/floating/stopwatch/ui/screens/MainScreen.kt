@@ -425,7 +425,7 @@ fun MainScreen(
                         .padding(8.dp)
                 ) {
                     Text(
-                        text = "VIEW LAPS (${laps.size})",
+                        text = "عرض دورات اللفات (${laps.size})",
                         style = TextStyle(
                             color = accentColor,
                             fontSize = 11.sp,
@@ -1293,7 +1293,7 @@ private fun LapsBottomSheet(
                 .padding(24.dp)
         ) {
             Text(
-                text = "LAP TIMES & INSIGHTS",
+                text = "سجل اللفات والتحليلات",
                 style = TextStyle(color = textColor, fontSize = 16.sp, fontWeight = FontWeight.ExtraLight, letterSpacing = 4.sp),
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -1321,10 +1321,10 @@ private fun LapsBottomSheet(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = "SESSION INSIGHTS", color = grayColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                            Text(text = "تحليلات الجلسة", color = grayColor, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                             val context = LocalContext.current
                             Text(
-                                text = "SHARE CARD",
+                                text = "مشاركة البطاقة",
                                 color = accentColor,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -1333,19 +1333,19 @@ private fun LapsBottomSheet(
                                     .clickable {
                                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
-                                            putExtra(Intent.EXTRA_SUBJECT, "Stopwatch Premium Session")
+                                            putExtra(Intent.EXTRA_SUBJECT, "بطاقة جلسة لحظات")
                                             putExtra(
                                                 Intent.EXTRA_TEXT,
-                                                "🏆 STOPWATCH PREMIUM SESSION CARD 🏆\n" +
+                                                "🏆 بطاقة ملخص الجلسة 🏆\n" +
                                                 "------------------------------\n" +
-                                                "• Average Lap Time: $formattedAvg\n" +
-                                                (if (fastestLap != null) "• Fastest Cycle: Lap ${fastestLap.lapIndex} (${fastestLap.lapTimeMs / 1000f}s)\n" else "") +
-                                                "• Total Laps Count: ${laps.size}\n" +
+                                                "• متوسط زمن اللفة: $formattedAvg\n" +
+                                                (if (fastestLap != null) "• أسرع لفة: اللفة ${fastestLap.lapIndex} (${fastestLap.lapTimeMs / 1000f} ث)\n" else "") +
+                                                "• إجمالي عدد اللفات: ${laps.size}\n" +
                                                 "------------------------------\n" +
-                                                "Luxury Minimalist Stopwatch System"
+                                                "تطبيق لحظات"
                                             )
                                         }
-                                        context.startActivity(Intent.createChooser(shareIntent, "Share Premium Session Info"))
+                                        context.startActivity(Intent.createChooser(shareIntent, "مشاركة معلومات الجلسة"))
                                     }
                                     .padding(4.dp)
                             )
@@ -1356,14 +1356,14 @@ private fun LapsBottomSheet(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text(text = "AVERAGE LAP", color = grayColor, fontSize = 11.sp)
+                                Text(text = "متوسط اللفة", color = grayColor, fontSize = 11.sp)
                                 Text(text = formattedAvg, color = textColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                             }
                             if (fastestLap != null) {
                                 Column {
-                                    Text(text = "FASTEST LAP", color = Color(0xFF4AC98F), fontSize = 11.sp)
+                                    Text(text = "أسرع لفة", color = Color(0xFF4AC98F), fontSize = 11.sp)
                                     val fS = fastestLap.lapTimeMs / 1000
-                                    Text(text = "LAP ${fastestLap.lapIndex} (${fS}s)", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(text = "اللفة ${fastestLap.lapIndex} (${fS}ث)", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -1563,7 +1563,7 @@ fun LapRowItem(lap: Lap, textColor: Color, grayColor: Color) {
     ) {
         Column {
             Text(
-                text = "LAP ${lap.lapIndex}",
+                text = "اللفة ${lap.lapIndex}",
                 style = TextStyle(color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             )
             Text(

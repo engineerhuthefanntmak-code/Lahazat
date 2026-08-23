@@ -9,10 +9,10 @@ import androidx.compose.ui.unit.sp
 import com.floating.stopwatch.R
 
 val DiwaniFontFamily = FontFamily(
-    Font(R.font.diwani_al_majd_2, FontWeight.Light),
-    Font(R.font.diwani_al_majd_2, FontWeight.Normal),
-    Font(R.font.diwani_al_majd_2, FontWeight.Medium),
-    Font(R.font.diwani_al_majd_2, FontWeight.Bold)
+    Font(R.font.hsn_naskh_farisi, FontWeight.Light),
+    Font(R.font.hsn_naskh_farisi, FontWeight.Normal),
+    Font(R.font.hsn_naskh_farisi, FontWeight.Medium),
+    Font(R.font.hsn_naskh_farisi, FontWeight.Bold)
 )
 
 object NumericTypographyTokens {

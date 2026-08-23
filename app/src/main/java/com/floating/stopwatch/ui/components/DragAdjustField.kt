@@ -119,7 +119,7 @@ fun DragAdjustField(
                 modifier = Modifier.scale(valueScale)
             )
             Text(
-                text = "DRAG UP/DOWN TO ADJUST",
+                text = "اسحب للأعلى/الأسفل للضبط",
                 color = LuxuryColors.WarmGray.copy(alpha = 0.7f),
                 fontSize = 9.sp,
                 letterSpacing = 1.2.sp

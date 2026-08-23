@@ -1043,7 +1043,7 @@ class StopwatchService : Service() {
                                     color = if (isVolumeActive) accentColor else accentColor,
                                     fontSize = (22.sp.value * fontSizeScale).sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
+                                    fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily
                                 )
                             )
                             if (isVolumeActive) {

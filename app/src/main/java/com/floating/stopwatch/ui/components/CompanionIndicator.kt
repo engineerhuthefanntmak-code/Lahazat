@@ -66,7 +66,7 @@ fun CompanionIndicator(
                 style = TextStyle(
                     color = accentColor,
                     fontSize = 9.sp,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily,
                     fontWeight = FontWeight.Bold
                 )
             )

@@ -212,7 +212,7 @@ fun LegacyContent(
                         color = currentTextColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily
                     )
                 )
             }
@@ -396,7 +396,7 @@ fun MetricItem(
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
-            style = TextStyle(color = textColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            style = TextStyle(color = textColor, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily)
         )
     }
 }

@@ -581,8 +581,13 @@ private fun StopwatchDisplay(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        val stateArabic = when (state) {
+            StopwatchState.Ready -> "جاهز"
+            StopwatchState.Running -> "قيد التشغيل"
+            StopwatchState.Paused -> "متوقف مؤقتاً"
+        }
         Text(
-            text = state.name.uppercase(),
+            text = stateArabic,
             style = TextStyle(
                 color = grayColor,
                 fontSize = 12.sp,
@@ -826,7 +831,7 @@ private fun IntervalsDisplay(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "[EDIT]",
+                    text = "[تعديل]",
                     style = TextStyle(color = grayColor, fontSize = 10.sp, fontWeight = FontWeight.Light, letterSpacing = 1.sp),
                     modifier = Modifier
                         .graphicsLayer { alpha = secondaryAlpha }
@@ -840,8 +845,14 @@ private fun IntervalsDisplay(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            val stageNameArabic = when (currentStage?.type) {
+                IntervalStageType.WORK -> "مرحلة العمل"
+                IntervalStageType.REST -> "مرحلة الراحة"
+                null -> "جاهز"
+            }
+
             Text(
-                text = currentStage?.name?.uppercase() ?: "READY",
+                text = stageNameArabic,
                 style = TextStyle(
                     color = if (currentStage?.type == IntervalStageType.WORK) accentColor else textColor,
                     fontSize = 20.sp,
@@ -864,7 +875,7 @@ private fun IntervalsDisplay(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "ROUND $currentRound / ${activeTemplate!!.repetitions}",
+                text = "الجولة $currentRound / ${activeTemplate!!.repetitions}",
                 style = TextStyle(color = grayColor, fontSize = 12.sp, fontWeight = FontWeight.Light, letterSpacing = 2.sp),
                 modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
             )
@@ -872,8 +883,9 @@ private fun IntervalsDisplay(
             if (nextStage != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 val nextSecs = nextStage.durationMs / 1000
+                val nextTypeArabic = if (nextStage.type == IntervalStageType.WORK) "العمل" else "الراحة"
                 Text(
-                    text = "NEXT: ${nextStage.name} (${nextSecs}s)",
+                    text = "التالي: $nextTypeArabic (${nextSecs} ث)",
                     style = TextStyle(color = grayColor.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Normal, letterSpacing = 1.sp),
                     modifier = Modifier.graphicsLayer { alpha = secondaryAlpha }
                 )
@@ -1433,7 +1445,7 @@ fun IntervalQuickEditDialog(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "INTERVAL CONFIGURATION",
+                    text = "إعدادات المراحل الزمنية",
                     style = TextStyle(color = LuxuryColors.AccentGold, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 )
 
@@ -1442,7 +1454,7 @@ fun IntervalQuickEditDialog(
                 OutlinedTextField(
                     value = templateName,
                     onValueChange = { templateName = it },
-                    label = { Text("Interval Name", color = LuxuryColors.WarmGray, fontSize = 10.sp) },
+                    label = { Text("اسم المكون", color = LuxuryColors.WarmGray, fontSize = 10.sp) },
                     textStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1450,7 +1462,7 @@ fun IntervalQuickEditDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 DragAdjustField(
-                    label = "WORK DURATION",
+                    label = "مدة العمل",
                     value = workSecs.toFloat(),
                     minValue = 1f,
                     maxValue = 18000f,
@@ -1463,7 +1475,7 @@ fun IntervalQuickEditDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DragAdjustField(
-                    label = "REST DURATION",
+                    label = "مدة الراحة",
                     value = restSecs.toFloat(),
                     minValue = 1f,
                     maxValue = 3600f,
@@ -1480,7 +1492,7 @@ fun IntervalQuickEditDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("ROUNDS: $repetitions", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
+                    Text("عدد الجولات: $repetitions", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
                     Row {
                         Box(
                             modifier = Modifier
@@ -1506,7 +1518,7 @@ fun IntervalQuickEditDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Text(
-                        text = "CANCEL",
+                        text = "إلغاء",
                         color = LuxuryColors.WarmGray,
                         fontSize = 11.sp,
                         modifier = Modifier
@@ -1518,7 +1530,7 @@ fun IntervalQuickEditDialog(
                         onClick = {
                             val updated = IntervalTemplate(
                                 id = initialTemplate.id,
-                                name = templateName.ifBlank { "HIT" },
+                                name = templateName.ifBlank { "تدريب" },
                                 workDurationMs = workSecs * 1000L,
                                 restDurationMs = restSecs * 1000L,
                                 repetitions = repetitions
@@ -1527,7 +1539,7 @@ fun IntervalQuickEditDialog(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = LuxuryColors.AccentGold)
                     ) {
-                        Text("SAVE", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("حفظ", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

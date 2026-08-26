@@ -106,7 +106,8 @@ fun TimeDisplay(
                 color = Color.Black.copy(alpha = 0.35f),
                 offset = androidx.compose.ui.geometry.Offset(2f, 2f),
                 blurRadius = 4f
-            )
+            ),
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
         )
     } else {
         baseStyle.copy(
@@ -118,7 +119,8 @@ fun TimeDisplay(
                 color = Color.Black.copy(alpha = 0.35f),
                 offset = androidx.compose.ui.geometry.Offset(2f, 2f),
                 blurRadius = 4f
-            )
+            ),
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
         )
     }
 

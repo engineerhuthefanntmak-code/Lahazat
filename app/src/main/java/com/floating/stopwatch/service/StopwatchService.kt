@@ -367,6 +367,10 @@ class StopwatchService : Service() {
             setViewTreeViewModelStoreOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
 
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(this) { _, _ ->
+                androidx.core.view.WindowInsetsCompat.CONSUMED
+            }
+
             setContent {
                 val state = widgetStates[index]
                 val type by state.type.collectAsState()
@@ -958,8 +962,6 @@ class StopwatchService : Service() {
             else -> 16.dp
         }
 
-        val safePadding = paddingDpValue.coerceAtLeast(0.0f)
-
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -1007,20 +1009,19 @@ class StopwatchService : Service() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .clip(RoundedCornerShape(finalCornerRadius))
                         .then(
                             if (stylePreset == "Glass Premium" || shapePreset == "glass") {
-                                Modifier
-                                    .background(Color.White.copy(alpha = 0.12f * opacity), RoundedCornerShape(finalCornerRadius))
-                                    .blur(16.dp)
+                                Modifier.background(Color.White.copy(alpha = 0.18f * opacity))
                             } else if (stylePreset == "Obsidian") {
-                                Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f * opacity), RoundedCornerShape(finalCornerRadius))
+                                Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f * opacity))
                             } else if (stylePreset == "Titanium") {
                                 val titaniumBrush = Brush.verticalGradient(
                                     colors = listOf(Color(0xFF2C2F33), Color(0xFF1E2124))
                                 )
-                                Modifier.background(titaniumBrush, RoundedCornerShape(finalCornerRadius))
+                                Modifier.background(titaniumBrush)
                             } else {
-                                Modifier.background(Color.Black.copy(alpha = opacity), RoundedCornerShape(finalCornerRadius))
+                                Modifier.background(Color.Black.copy(alpha = opacity))
                             }
                         )
                 )

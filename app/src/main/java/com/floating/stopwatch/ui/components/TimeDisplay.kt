@@ -107,7 +107,12 @@ fun TimeDisplay(
                 offset = androidx.compose.ui.geometry.Offset(2f, 2f),
                 blurRadius = 4f
             ),
-            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+            lineHeight = scaledMainSize,
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+            )
         )
     } else {
         baseStyle.copy(
@@ -120,7 +125,12 @@ fun TimeDisplay(
                 offset = androidx.compose.ui.geometry.Offset(2f, 2f),
                 blurRadius = 4f
             ),
-            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+            lineHeight = scaledMainSize,
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+            )
         )
     }
 
@@ -135,14 +145,26 @@ fun TimeDisplay(
         )
         mainDigitStyle.copy(
             fontSize = centiSize,
+            lineHeight = centiSize,
             fontWeight = FontWeight.Normal,
-            brush = centiBrush
+            brush = centiBrush,
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+            )
         )
     } else {
         mainDigitStyle.copy(
             fontSize = centiSize,
+            lineHeight = centiSize,
             fontWeight = FontWeight.Normal,
-            color = animatedFlashColor.copy(alpha = 0.7f)
+            color = animatedFlashColor.copy(alpha = 0.7f),
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+            )
         )
     }
 
@@ -180,7 +202,7 @@ fun TimeDisplay(
         } else {
             Row(
                 modifier = modifier,
-                verticalAlignment = Alignment.Bottom,
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
                 if (showHours) {

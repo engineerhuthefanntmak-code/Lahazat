@@ -1029,7 +1029,7 @@ class StopwatchService : Service() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(safePadding.dp),
+                        .padding(0.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
@@ -1107,7 +1107,7 @@ class StopwatchService : Service() {
                                 accentColor = accentColor,
                                 gradientGoldEnabled = gradientEnabled,
                                 isVertical = layoutOrientation == "vertical",
-                                modifier = Modifier.padding(vertical = 4.dp)
+                                modifier = Modifier
                             )
                         }
                     }

@@ -962,7 +962,7 @@ class StopwatchService : Service() {
 
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.TopCenter
+            contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
@@ -1030,9 +1030,10 @@ class StopwatchService : Service() {
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(0.dp),
-                    contentAlignment = Alignment.TopCenter
+                    contentAlignment = Alignment.Center
                 ) {
                     Row(
+                        modifier = Modifier.fillMaxSize(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {

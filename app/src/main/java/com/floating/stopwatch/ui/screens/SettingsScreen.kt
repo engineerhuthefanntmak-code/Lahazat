@@ -1,27 +1,29 @@
 package com.floating.stopwatch.ui.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.tween
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,486 +31,638 @@ import androidx.compose.ui.unit.sp
 import com.floating.stopwatch.data.SettingsRepository
 import com.floating.stopwatch.ui.components.DragAdjustField
 import com.floating.stopwatch.ui.theme.LuxuryColors
-import kotlinx.coroutines.delay
+import java.util.Locale
 import kotlinx.coroutines.launch
-import androidx.activity.compose.BackHandler
 
-@OptIn(ExperimentalMaterial3Api::class)
+sealed class SettingsPresentationState {
+    object Closed : SettingsPresentationState()
+    object Menu : SettingsPresentationState()
+    data class Panel(val category: String) : SettingsPresentationState()
+}
+
 @Composable
-fun SettingsScreen(
-    settingsRepository: SettingsRepository,
-    onBack: () -> Unit
+fun SlimLuxuryToggle(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    accentColor: Color,
+    modifier: Modifier = Modifier
 ) {
-    val scope = rememberCoroutineScope()
-    val detailSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    var activeDialogCategory by remember { mutableStateOf<String?>(null) }
-    var isClosing by remember { mutableStateOf(false) }
-
-    val stylePreset by settingsRepository.stylePreset.collectAsState(initial = "Glass Premium")
-    val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
-    val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
-    val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
-    val themeMode by settingsRepository.themeMode.collectAsState(initial = "Midnight")
-    val mainDisplayScale by settingsRepository.mainDisplayScale.collectAsState(initial = 1.0f)
-
-    var customR by remember { mutableFloatStateOf(201f) }
-    var customG by remember { mutableFloatStateOf(166f) }
-    var customB by remember { mutableFloatStateOf(107f) }
-
-    fun updateCustomColor() {
-        val hex = String.format("#%02X%02X%02X", customR.toInt(), customG.toInt(), customB.toInt())
-        scope.launch { settingsRepository.setCustomColorHex(hex) }
-    }
-
-    val shapes = listOf("rounded", "capsule", "circle", "sharp", "glass")
-    val themeModes = listOf("Midnight Dark", "Warm Paper Light", "Obsidian Dark", "Pure White Light")
-    val presets = listOf("Glass Premium", "Obsidian", "Titanium", "Ultra Minimal")
-    val intensities = listOf("Off", "Light", "Medium", "Strong")
-    val colorPresets = listOf("Gold", "Galaxy Blue", "Titanium", "Emerald", "Sapphire", "Violet", "Rose", "Ice", "Amber", "Pure White", "Custom")
-
-    val categories = listOf(
-        "Appearance", "Stopwatch", "Countdown", "Counter", "Interval",
-        "Sounds & Haptics", "Floating Widgets", "Advanced"
+    val thumbOffset by animateFloatAsState(
+        targetValue = if (checked) 16f else 0f,
+        animationSpec = tween(durationMillis = 150),
+        label = "SlimToggleOffset"
     )
 
-    fun dismissSettings() {
-        isClosing = true
+    Box(
+        modifier = modifier
+            .width(36.dp)
+            .height(18.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .background(if (checked) accentColor.copy(alpha = 0.25f) else Color(0xFF1E1E1E))
+            .border(
+                width = 1.dp,
+                color = if (checked) accentColor else LuxuryColors.WarmGray.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(9.dp)
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onCheckedChange(!checked) }
+            .padding(2.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = thumbOffset.dp)
+                .size(14.dp)
+                .clip(CircleShape)
+                .background(if (checked) accentColor else LuxuryColors.WarmGray)
+        )
+    }
+}
+
+@Composable
+fun SettingsOverlay(
+    settingsRepository: SettingsRepository,
+    accentColor: Color,
+    currentGrayColor: Color,
+    currentTextColor: Color,
+    presentationState: SettingsPresentationState,
+    onStateChange: (SettingsPresentationState) -> Unit,
+    onFloatClick: () -> Unit,
+    onFloatLongClick: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+
+    val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Champagne Gold")
+    val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
+    val mainDisplayScale by settingsRepository.mainDisplayScale.collectAsState(initial = 1.0f)
+    val volumeCounterScreenOffEnabled by settingsRepository.volumeCounterScreenOffEnabled.collectAsState(initial = false)
+    val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
+
+    val backgroundAtmosphere by settingsRepository.backgroundAtmosphere.collectAsState(initial = "Pure Black")
+    val atmospheres = remember {
+        listOf(
+            "Pure Black", "MIDNIGHT SILK", "CELESTIAL VEIL", "LIQUID SHADOW", "GOLDEN DUST",
+            "MOONLIT MIST", "OBSIDIAN FLOW", "DEEP OCEAN", "VELVET NIGHT", "AURORA VEIL",
+            "COSMIC DUST", "ABSTRACT GALLERY", "SILENT ARCHITECTURE", "AFTER RAIN", "ECLIPSE",
+            "NOCTURNAL GARDEN", "INK & LIGHT", "CHAMPAGNE DUSK", "PRIVATE SKY", "SILENT GALAXY", "MONOLITHIC LIGHT"
+        )
     }
 
-    LaunchedEffect(isClosing) {
-        if (isClosing) {
-            delay(180)
-            onBack()
+    val masterSoundEnabled by settingsRepository.masterSoundEnabled.collectAsState(initial = true)
+    val selectedSoundType by settingsRepository.selectedSoundType.collectAsState(initial = "Soft Click")
+
+    val categories = remember {
+        listOf("المظهر البصري", "الصوت والاهتزاز", "إعدادات متقدمة")
+    }
+
+    val intensities = remember { listOf("Off", "Light", "Medium", "Strong") }
+    val soundTypes = remember {
+        listOf(
+            "Premium Click", "Mechanical Click", "Soft Button Tap", "Fingertip Tap",
+            "Wood Knock", "Glass Tap", "Metal Tap", "Paper Tap",
+            "Light Rattle", "Soft Rattle", "Small Object Shake", "Tiny Bell",
+            "Water Drop", "Soft Chime", "Finger Snap", "Gentle Clap",
+            "Cat Meow", "Pigeon Coo", "Small Bird Chirp", "Nature Chirp"
+        )
+    }
+    val colorPresets = remember {
+        listOf(
+            "Champagne", "Antique Gold", "Brushed Gold", "Rose Gold", "Pale Gold",
+            "Platinum", "Titanium", "Pearl", "Ivory", "Porcelain",
+            "Sand", "Taupe", "Bronze", "Copper", "Dark Copper",
+            "Mocha", "Espresso", "Deep Olive", "Sage", "Emerald",
+            "Forest", "Slate", "Steel Blue", "Midnight Blue", "Royal Navy",
+            "Deep Burgundy", "Wine", "Plum", "Graphite", "Charcoal"
+        )
+    }
+
+    val scaleStopwatch by settingsRepository.scaleStopwatch.collectAsState(initial = 1.0f)
+    val scaleCountdown by settingsRepository.scaleCountdown.collectAsState(initial = 1.0f)
+    val scaleCounter by settingsRepository.scaleCounter.collectAsState(initial = 1.0f)
+    val scaleInterval by settingsRepository.scaleInterval.collectAsState(initial = 1.0f)
+    val scaleLegacy by settingsRepository.scaleLegacy.collectAsState(initial = 1.0f)
+
+    if (presentationState is SettingsPresentationState.Closed) {
+        // Closed state: SETTINGS and FLOAT visible in top end
+        Column(
+            horizontalAlignment = Alignment.End,
+            modifier = Modifier.padding(8.dp)
+        ) {
+            Text(
+                text = "الإعدادات",
+                style = TextStyle(
+                    color = currentGrayColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Light,
+                    letterSpacing = 2.sp
+                ),
+                modifier = Modifier
+                    .clickable { onStateChange(SettingsPresentationState.Menu) }
+                    .padding(8.dp)
+            )
+
+            Text(
+                text = "FLOAT ↗",
+                style = TextStyle(
+                    color = accentColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 2.sp
+                ),
+                modifier = Modifier
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { onFloatClick() },
+                            onLongPress = { onFloatLongClick() }
+                        )
+                    }
+                    .padding(8.dp)
+            )
+        }
+        return
+    }
+
+    // Intercept Back button
+    BackHandler {
+        when (presentationState) {
+            is SettingsPresentationState.Panel -> onStateChange(SettingsPresentationState.Menu)
+            is SettingsPresentationState.Menu -> onStateChange(SettingsPresentationState.Closed)
+            else -> {}
         }
     }
 
-    BackHandler(onBack = { dismissSettings() })
-
-    fun dismissCategory() {
-        scope.launch {
-            detailSheetState.hide()
-            activeDialogCategory = null
-        }
-    }
-
-    val activeAccentColor = if (colorPreset == "Custom") {
-        try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
-    } else {
-        LuxuryColors.fromName(colorPreset)
-    }
-
-    BoxWithConstraints(
+    // Full screen invisible touch blocker for dismiss on tap-outside
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.62f))
-    ) {
-        val panelMaxHeight = (maxHeight - 32.dp).coerceAtMost(680.dp)
-        AnimatedVisibility(
-            visible = !isClosing,
-            modifier = Modifier.align(Alignment.TopCenter),
-            enter = slideInVertically(
-                animationSpec = tween(180),
-                initialOffsetY = { -it }
-            ) + fadeIn(animationSpec = tween(150)),
-            exit = slideOutVertically(
-                animationSpec = tween(150),
-                targetOffsetY = { -it }
-            ) + fadeOut(animationSpec = tween(120))
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 720.dp)
-                    .padding(horizontal = 12.dp)
-                    .heightIn(max = panelMaxHeight)
-                    .wrapContentHeight()
-                    .statusBarsPadding()
-                    .imePadding(),
-                shape = RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp),
-                color = LuxuryColors.WarmBlack,
-                tonalElevation = 0.dp,
-                shadowElevation = 8.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .imePadding()
-                        .widthIn(max = 720.dp)
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 12.dp)
-                ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 2.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "SETTINGS",
-                        color = LuxuryColors.CreamyWhite,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Light,
-                        letterSpacing = 3.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "SETTINGS CATEGORIES",
-                        color = LuxuryColors.WarmGray,
-                        fontSize = 10.sp,
-                        letterSpacing = 2.sp
-                    )
-                }
-                Text(
-                    text = "CLOSE",
-                    color = LuxuryColors.WarmGray,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 1.5.sp,
-                    modifier = Modifier
-                        .clickable { dismissSettings() }
-                        .padding(10.dp)
+            .pointerInput(presentationState) {
+                detectTapGestures(
+                    onTap = {
+                        onStateChange(SettingsPresentationState.Closed)
+                    }
                 )
             }
+    ) {
+        // Top End Column: FLOAT + MENU / PANEL anchored near top end area
+        Column(
+            horizontalAlignment = Alignment.End,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 16.dp, end = 24.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { /* consume click inside menu/panel */ })
+                }
+        ) {
+            // FLOAT stays visible at top end
+            Text(
+                text = "FLOAT ↗",
+                style = TextStyle(
+                    color = accentColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 2.sp
+                ),
+                modifier = Modifier
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { onFloatClick() },
+                            onLongPress = { onFloatLongClick() }
+                        )
+                    }
+                    .padding(8.dp)
+            )
 
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 148.dp),
+            Spacer(modifier = Modifier.height(4.dp))
+
+            when (presentationState) {
+                is SettingsPresentationState.Menu -> {
+                    // Category List rendered with exact FLOAT visual language
+                    Column(
+                        horizontalAlignment = Alignment.End,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(
-                                min = 220.dp,
-                                max = (panelMaxHeight - 100.dp).coerceAtLeast(220.dp)
-                            ),
-                        horizontalArrangement = Arrangement.spacedBy(7.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp),
-                        contentPadding = PaddingValues(bottom = 4.dp)
+                            .wrapContentWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0A0A0A)) // Completely solid opaque
+                            .border(BorderStroke(1.dp, Color(0xFF222222)), RoundedCornerShape(10.dp))
+                            .padding(vertical = 4.dp)
                     ) {
-                        items(categories, key = { it }) { categoryName ->
-                            val isPriority = categoryName == "Appearance" || categoryName == "Stopwatch"
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isPriority) Color(0xFF151412) else Color(0xFF111111)
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (isPriority) activeAccentColor.copy(alpha = 0.2f)
-                                    else Color.White.copy(alpha = 0.08f)
+                        categories.forEach { category ->
+                            Text(
+                                text = category,
+                                style = TextStyle(
+                                    color = currentGrayColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    letterSpacing = 2.sp
                                 ),
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(72.dp)
-                                    .clickable { activeDialogCategory = categoryName }
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(horizontal = 10.dp, vertical = 9.dp),
-                                    verticalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .background(
-                                                activeAccentColor.copy(alpha = 0.8f),
-                                                RoundedCornerShape(3.dp)
-                                            )
-                                    )
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.Bottom
-                                    ) {
-                                        Text(
-                                            text = categoryName.uppercase(),
-                                            color = LuxuryColors.CreamyWhite,
-                                            fontSize = 11.sp,
-                                            lineHeight = 14.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            letterSpacing = 0.8.sp,
-                                            maxLines = 2,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(
-                                            text = "▸",
-                                            color = activeAccentColor.copy(alpha = 0.8f),
-                                            fontSize = 13.sp
-                                        )
-                                    }
-                                }
-                            }
+                                    .clickable { onStateChange(SettingsPresentationState.Panel(category)) }
+                                    .padding(horizontal = 14.dp, vertical = 6.dp)
+                            )
                         }
                     }
                 }
-            }
-        }
-    }
+                is SettingsPresentationState.Panel -> {
+                    val categoryName = presentationState.category
 
-    // Nested category panel
-    activeDialogCategory?.let { category ->
-        val activeAccentColor = if (colorPreset == "Custom") {
-            try { Color(android.graphics.Color.parseColor(customColorHex)) } catch (e: Exception) { LuxuryColors.AccentGold }
-        } else {
-            LuxuryColors.fromName(colorPreset)
-        }
-        ModalBottomSheet(
-            onDismissRequest = { dismissCategory() },
-            sheetState = detailSheetState,
-            shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-            containerColor = LuxuryColors.WarmBlack,
-            contentColor = LuxuryColors.CreamyWhite,
-            tonalElevation = 0.dp,
-            scrimColor = Color.Black.copy(alpha = 0.5f),
-            dragHandle = {
-                BottomSheetDefaults.DragHandle(color = LuxuryColors.WarmGray.copy(alpha = 0.55f))
-            }
-        ) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0A0A)),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, Color(0xFF2C2C2E)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 720.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .padding(horizontal = 12.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .imePadding()
-                        .padding(20.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // Compact, 100% OPAQUE panel surface anchored near upper area (never centered, never fullscreen)
+                    Surface(
+                        modifier = Modifier
+                            .widthIn(max = 320.dp)
+                            .wrapContentHeight(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF0A0A0A), // 100% Solid Opaque - no timer digits or stellar bg visible through panel
+                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.7f)), // Refined Luxury Minimal outline around selected category
+                        shadowElevation = 16.dp
                     ) {
-                        Text(
-                            text = category.uppercase(),
-                            style = TextStyle(color = activeAccentColor, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-                        )
-                        Text(
-                            text = "✕",
-                            color = LuxuryColors.WarmGray,
-                            fontSize = 16.sp,
-                            modifier = Modifier.clickable { dismissCategory() }.padding(4.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    when (category) {
-                        "Appearance" -> {
-                            Text(text = "ILLUMINATION MODE", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
-                            ResponsiveOptionGrid(
-                                options = themeModes,
-                                selectedOption = themeMode,
-                                accentColor = activeAccentColor,
-                                onOptionSelected = { mode -> scope.launch { settingsRepository.setThemeMode(mode) } }
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Text(text = "STYLE PRESET", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
-                            ResponsiveOptionGrid(
-                                options = presets,
-                                selectedOption = stylePreset,
-                                accentColor = activeAccentColor,
-                                onOptionSelected = { preset -> scope.launch { settingsRepository.setStylePreset(preset) } }
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Text(text = "COLOR ACCENT PRESET", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
-                            ResponsiveOptionGrid(
-                                options = colorPresets,
-                                selectedOption = colorPreset,
-                                accentColor = activeAccentColor,
-                                onOptionSelected = { color -> scope.launch { settingsRepository.setColorPreset(color) } }
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            DragAdjustField(
-                                label = "MAIN DISPLAY SIZE",
-                                value = mainDisplayScale,
-                                minValue = 0.7f,
-                                maxValue = 1.3f,
-                                pixelsPerUnit = 180f,
-                                accentColor = activeAccentColor,
-                                valueFormatter = { String.format("%.2fx", it) },
-                                onValueChange = { scope.launch { settingsRepository.setMainDisplayScale(it) } }
-                            )
-                        }
-                        "Stopwatch" -> WidgetCategorySettings(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
-                        "Countdown" -> WidgetCategorySettings(index = 1, widgetTitle = "COUNTDOWN", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
-                        "Counter" -> WidgetCategorySettings(index = 2, widgetTitle = "COUNTER", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
-                        "Interval" -> {
-                            val intervalName by settingsRepository.intervalName.collectAsState(initial = "HIT")
-                            val workMs by settingsRepository.intervalWorkMs.collectAsState(initial = 40000L)
-                            val restMs by settingsRepository.intervalRestMs.collectAsState(initial = 20000L)
-                            val rounds by settingsRepository.intervalRounds.collectAsState(initial = 8)
-
-                            var nameInput by remember(intervalName) { mutableStateOf(intervalName) }
-                            var workSecs by remember(workMs) { mutableIntStateOf((workMs / 1000).toInt()) }
-                            var restSecs by remember(restMs) { mutableIntStateOf((restMs / 1000).toInt()) }
-                            var roundsVal by remember(rounds) { mutableIntStateOf(rounds) }
-
-                            Text(text = "INTERVAL CONFIGURATION", color = LuxuryColors.WarmGray, fontSize = 10.sp, letterSpacing = 1.sp)
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            OutlinedTextField(
-                                value = nameInput,
-                                onValueChange = { nameInput = it },
-                                label = { Text("Interval Name", color = LuxuryColors.WarmGray, fontSize = 10.sp) },
-                                textStyle = TextStyle(color = LuxuryColors.CreamyWhite, fontSize = 12.sp),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            DragAdjustField(
-                                label = "WORK DURATION",
-                                value = workSecs.toFloat(),
-                                minValue = 1f,
-                                maxValue = 18000f,
-                                pixelsPerUnit = 4f,
-                                accentColor = activeAccentColor,
-                                valueFormatter = { formatSettingsDuration(it.toInt()) },
-                                onValueChange = { workSecs = it.toInt().coerceIn(1, 18000) }
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            DragAdjustField(
-                                label = "REST DURATION",
-                                value = restSecs.toFloat(),
-                                minValue = 1f,
-                                maxValue = 3600f,
-                                pixelsPerUnit = 4f,
-                                accentColor = activeAccentColor,
-                                valueFormatter = { formatSettingsDuration(it.toInt()) },
-                                onValueChange = { restSecs = it.toInt().coerceIn(1, 3600) }
-                            )
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            // Header Row: Thin Refined Outline around category + Back / Close
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("ROUNDS: $roundsVal", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                Row {
-                                    Box(modifier = Modifier.clickable { if (roundsVal > 1) roundsVal -= 1 }.padding(8.dp)) {
-                                        Text("-", color = activeAccentColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                    Box(modifier = Modifier.clickable { roundsVal += 1 }.padding(8.dp)) {
-                                        Text("+", color = activeAccentColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Button(
-                                onClick = {
-                                    scope.launch {
-                                        settingsRepository.setIntervalConfig(
-                                            name = nameInput.ifBlank { "HIT" },
-                                            workMs = workSecs * 1000L,
-                                            restMs = restSecs * 1000L,
-                                            rounds = roundsVal
+                                Box(
+                                    modifier = Modifier
+                                        .border(BorderStroke(1.dp, accentColor), RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = categoryName,
+                                        style = TextStyle(
+                                            color = accentColor,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 2.sp
                                         )
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = activeAccentColor),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("SAVE CONFIGURATION", color = LuxuryColors.WarmBlack, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    )
+                                }
+
+                                Text(
+                                    text = "‹ BACK",
+                                    style = TextStyle(
+                                        color = currentGrayColor,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        letterSpacing = 1.5.sp
+                                    ),
+                                    modifier = Modifier
+                                        .clickable { onStateChange(SettingsPresentationState.Menu) }
+                                        .padding(6.dp)
+                                )
                             }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            WidgetCategorySettings(index = 3, widgetTitle = "INTERVAL", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets)
-                        }
-                        "Floating Widgets" -> {
-                            val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
-                            val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
-                            val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
-
-                            Text(text = "SHAPE PRESET", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                            ResponsiveOptionGrid(
-                                options = shapes,
-                                selectedOption = shapePreset,
-                                accentColor = activeAccentColor,
-                                onOptionSelected = { shape -> scope.launch { settingsRepository.setShapePreset(shape) } },
-                                displayName = { it.uppercase() }
-                            )
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            DragAdjustField(
-                                label = "PADDING",
-                                value = floatingPadding,
-                                minValue = 0f,
-                                maxValue = 32f,
-                                pixelsPerUnit = 8f,
-                                accentColor = activeAccentColor,
-                                valueFormatter = { "${it.toInt()}dp" },
-                                onValueChange = { scope.launch { settingsRepository.setFloatingPadding(it) } }
-                            )
+                            // Category Controls
+                            when (categoryName) {
+                                "المظهر البصري", "APPEARANCE" -> {
+                                    Text(text = "لون التمييز", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OptionGridCompact(
+                                        options = colorPresets,
+                                        selectedOption = colorPreset,
+                                        accentColor = accentColor,
+                                        onOptionSelected = { color -> scope.launch { settingsRepository.setColorPreset(color) } }
+                                    )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(10.dp))
 
-                            DragAdjustField(
-                                label = "OPACITY",
-                                value = floatingOpacity,
-                                minValue = 0f,
-                                maxValue = 1f,
-                                pixelsPerUnit = 180f,
-                                accentColor = activeAccentColor,
-                                valueFormatter = { "${(it * 100).toInt()}%" },
-                                onValueChange = { scope.launch { settingsRepository.setFloatingOpacity(it) } }
-                            )
-                        }
-                        "Sounds & Haptics" -> {
-                            Text(text = "HAPTIC FEEDBACK INTENSITY", color = LuxuryColors.WarmGray, fontSize = 10.sp)
-                            ResponsiveOptionGrid(
-                                options = intensities,
-                                selectedOption = hapticIntensity,
-                                accentColor = activeAccentColor,
-                                onOptionSelected = { intensity -> scope.launch { settingsRepository.setHapticIntensity(intensity) } }
-                            )
-                        }
-                        "Advanced" -> {
-                            val volumeCounterScreenOffEnabled by settingsRepository.volumeCounterScreenOffEnabled.collectAsState(initial = false)
-                            val layoutOrientation by settingsRepository.layoutOrientation.collectAsState(initial = "horizontal")
+                                    Text(text = "المظهر الخلفي", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OptionGridCompact(
+                                        options = atmospheres,
+                                        selectedOption = backgroundAtmosphere,
+                                        accentColor = accentColor,
+                                        onOptionSelected = { atmosphere -> scope.launch { settingsRepository.setBackgroundAtmosphere(atmosphere) } }
+                                    )
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(text = "VOLUME KEYS COUNTER (SCREEN OFF)", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                Switch(checked = volumeCounterScreenOffEnabled, onCheckedChange = { scope.launch { settingsRepository.setVolumeCounterScreenOffEnabled(it) } }, colors = SwitchDefaults.colors(checkedThumbColor = activeAccentColor))
-                            }
+                                    Spacer(modifier = Modifier.height(10.dp))
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(text = "VERTICAL DISPLAY ORIENTATION", color = LuxuryColors.CreamyWhite, fontSize = 11.sp)
-                                Switch(checked = layoutOrientation == "vertical", onCheckedChange = { scope.launch { settingsRepository.setLayoutOrientation(if (it) "vertical" else "horizontal") } }, colors = SwitchDefaults.colors(checkedThumbColor = activeAccentColor))
+                                    DragAdjustField(
+                                        label = "حجم العرض الرئيسي",
+                                        value = mainDisplayScale,
+                                        minValue = 0.7f,
+                                        maxValue = 1.3f,
+                                        pixelsPerUnit = 180f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { String.format(Locale.US, "%.2fx", it) },
+                                        onValueChange = { scope.launch { settingsRepository.setMainDisplayScale(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Text(text = "أحجام الأرقام المستقلة", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    DragAdjustField(
+                                        label = "مؤقت الساعات",
+                                        value = scaleStopwatch,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleStopwatch(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    DragAdjustField(
+                                        label = "العد التنازلي",
+                                        value = scaleCountdown,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleCountdown(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    DragAdjustField(
+                                        label = "العداد",
+                                        value = scaleCounter,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleCounter(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    DragAdjustField(
+                                        label = "المراحل",
+                                        value = scaleInterval,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleInterval(it) } }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    DragAdjustField(
+                                        label = "الأساسي",
+                                        value = scaleLegacy,
+                                        minValue = 0.60f,
+                                        maxValue = 2.00f,
+                                        pixelsPerUnit = 120f,
+                                        accentColor = accentColor,
+                                        valueFormatter = { "${(it * 100).toInt()}%" },
+                                        onValueChange = { scope.launch { settingsRepository.setScaleLegacy(it) } }
+                                    )
+                                }
+                                "الصوت والاهتزاز", "SOUNDS & HAPTICS" -> {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = "الصوت الرئيسي", color = currentTextColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        SlimLuxuryToggle(
+                                            checked = masterSoundEnabled,
+                                            onCheckedChange = { scope.launch { settingsRepository.setMasterSoundEnabled(it) } },
+                                            accentColor = accentColor
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Text(text = "النغمة الصوتية", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OptionGridCompact(
+                                        options = soundTypes,
+                                        selectedOption = selectedSoundType,
+                                        accentColor = accentColor,
+                                        onOptionSelected = { sound ->
+                                            scope.launch {
+                                                settingsRepository.setSelectedSoundType(sound)
+                                                com.floating.stopwatch.domain.CompletionSoundPlayer.playSound(sound, masterSoundEnabled)
+                                            }
+                                        }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Text(text = "قوة الاهتزاز", color = currentGrayColor, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OptionGridCompact(
+                                        options = intensities,
+                                        selectedOption = hapticIntensity,
+                                        accentColor = accentColor,
+                                        onOptionSelected = { intensity -> scope.launch { settingsRepository.setHapticIntensity(intensity) } }
+                                    )
+                                }
+                                "إعدادات متقدمة", "ADVANCED" -> {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = "العد بأزرار الصوت (شاشة مغلقة)", color = currentTextColor, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        SlimLuxuryToggle(
+                                            checked = volumeCounterScreenOffEnabled,
+                                            onCheckedChange = { scope.launch { settingsRepository.setVolumeCounterScreenOffEnabled(it) } },
+                                            accentColor = accentColor
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(text = "اتجاه العرض العمودي", color = currentTextColor, fontSize = 10.sp, modifier = Modifier.weight(1f))
+                                        SlimLuxuryToggle(
+                                            checked = layoutOrientation == "vertical",
+                                            onCheckedChange = { scope.launch { settingsRepository.setLayoutOrientation(if (it) "vertical" else "horizontal") } },
+                                            accentColor = accentColor
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
+                }
+                else -> {}
+            }
+        }
+    }
+}
+
+@Composable
+fun FloatingModeConfigDialog(
+    modeIndex: Int,
+    modeName: String,
+    settingsRepository: SettingsRepository,
+    accentColor: Color,
+    onDismiss: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+
+    val wWidth by settingsRepository.getWidgetWidth(modeIndex).collectAsState(initial = 170.0f)
+    val wHeight by settingsRepository.getWidgetHeight(modeIndex).collectAsState(initial = 56.0f)
+    val fontSizeScale by settingsRepository.getWidgetFontSizeScale(modeIndex).collectAsState(initial = 1.0f)
+    val saveDimensions by settingsRepository.getWidgetSaveDimensions(modeIndex).collectAsState(initial = true)
+
+    val floatingOpacity by settingsRepository.floatingOpacity.collectAsState(initial = 0.85f)
+    val floatingPadding by settingsRepository.floatingPadding.collectAsState(initial = 6.0f)
+    val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
+
+    val shapes = remember { listOf("rounded", "capsule", "circle", "sharp", "glass") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) { detectTapGestures(onTap = { onDismiss() }) }
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFF0A0A0A),
+            border = BorderStroke(1.dp, accentColor),
+            shadowElevation = 16.dp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 48.dp, end = 24.dp)
+                .widthIn(max = 320.dp)
+                .wrapContentHeight()
+                .pointerInput(Unit) { detectTapGestures { /* consume click inside */ } }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = "إعدادات النافذة العائمة",
+                    style = TextStyle(color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                DragAdjustField(
+                    label = "العرض",
+                    value = wWidth,
+                    minValue = 1f,
+                    maxValue = 320f,
+                    pixelsPerUnit = 1.5f,
+                    accentColor = accentColor,
+                    valueFormatter = { "${it.toInt()}dp" },
+                    onValueChange = { scope.launch { settingsRepository.setWidgetWidth(modeIndex, it) } }
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DragAdjustField(
+                    label = "الارتفاع",
+                    value = wHeight,
+                    minValue = 1f,
+                    maxValue = 120f,
+                    pixelsPerUnit = 2.5f,
+                    accentColor = accentColor,
+                    valueFormatter = { "${it.toInt()}dp" },
+                    onValueChange = { scope.launch { settingsRepository.setWidgetHeight(modeIndex, it) } }
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DragAdjustField(
+                    label = "حجم الخط",
+                    value = fontSizeScale,
+                    minValue = 0.5f,
+                    maxValue = 2.0f,
+                    pixelsPerUnit = 120f,
+                    accentColor = accentColor,
+                    valueFormatter = { String.format(Locale.US, "%.2fx", it) },
+                    onValueChange = { scope.launch { settingsRepository.setWidgetFontSizeScale(modeIndex, it) } }
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DragAdjustField(
+                    label = "الشفافية",
+                    value = floatingOpacity,
+                    minValue = 0.10f,
+                    maxValue = 1.00f,
+                    pixelsPerUnit = 180f,
+                    accentColor = accentColor,
+                    valueFormatter = { "${(it * 100).toInt()}%" },
+                    onValueChange = { scope.launch { settingsRepository.setFloatingOpacity(it) } }
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                DragAdjustField(
+                    label = "الهامش الداخلي",
+                    value = floatingPadding,
+                    minValue = 0f,
+                    maxValue = 32f,
+                    pixelsPerUnit = 8f,
+                    accentColor = accentColor,
+                    valueFormatter = { "${it.toInt()}dp" },
+                    onValueChange = { scope.launch { settingsRepository.setFloatingPadding(it) } }
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(text = "شكل النافذة", color = LuxuryColors.WarmGray, fontSize = 9.sp, letterSpacing = 1.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                OptionGridCompact(
+                    options = shapes,
+                    selectedOption = shapePreset,
+                    accentColor = accentColor,
+                    onOptionSelected = { shape -> scope.launch { settingsRepository.setShapePreset(shape) } }
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "حفظ الأبعاد", color = LuxuryColors.CreamyWhite, fontSize = 10.sp)
+                    SlimLuxuryToggle(
+                        checked = saveDimensions,
+                        onCheckedChange = { scope.launch { settingsRepository.setWidgetSaveDimensions(modeIndex, it) } },
+                        accentColor = accentColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = "تم",
+                        color = accentColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier
+                            .clickable { onDismiss() }
+                            .padding(8.dp)
+                    )
                 }
             }
         }
@@ -516,218 +670,38 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun ResponsiveOptionGrid(
+private fun OptionGridCompact(
     options: List<String>,
     selectedOption: String,
     accentColor: Color,
-    onOptionSelected: (String) -> Unit,
-    displayName: (String) -> String = { it }
+    onOptionSelected: (String) -> Unit
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val gridGap = 8.dp
-        val minCardWidth = 148.dp
-        val columns = when {
-            maxWidth >= minCardWidth * 3 + gridGap * 2 -> 3
-            maxWidth >= minCardWidth * 2 + gridGap -> 2
-            else -> 1
-        }
-
-        Column(verticalArrangement = Arrangement.spacedBy(gridGap)) {
-            options.chunked(columns).forEach { rowOptions ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(gridGap)
-                ) {
-                    rowOptions.forEach { option ->
-                        val isSelected = selectedOption == option
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected) accentColor.copy(alpha = 0.12f) else Color(0xFF121212)
-                            ),
-                            border = BorderStroke(
-                                1.dp,
-                                if (isSelected) accentColor.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.07f)
-                            ),
-                            shape = RoundedCornerShape(9.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(60.dp)
-                                .clickable { onOptionSelected(option) }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 6.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = isSelected,
-                                    onClick = { onOptionSelected(option) },
-                                    colors = RadioButtonDefaults.colors(
-                                        selectedColor = accentColor,
-                                        unselectedColor = LuxuryColors.WarmGray.copy(alpha = 0.65f)
-                                    )
-                                )
-                                Text(
-                                    text = displayName(option),
-                                    color = if (isSelected) LuxuryColors.CreamyWhite else LuxuryColors.WarmGray,
-                                    fontSize = 10.sp,
-                                    lineHeight = 14.sp,
-                                    maxLines = 2,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                    repeat(columns - rowOptions.size) {
-                        Spacer(modifier = Modifier.weight(1f))
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        options.chunked(2).forEach { rowOptions ->
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                rowOptions.forEach { option ->
+                    val isSelected = selectedOption == option
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSelected) accentColor.copy(alpha = 0.18f) else Color(0xFF141414))
+                            .border(1.dp, if (isSelected) accentColor else Color(0xFF222222), RoundedCornerShape(6.dp))
+                            .clickable { onOptionSelected(option) }
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = option.uppercase(),
+                            color = if (isSelected) LuxuryColors.CreamyWhite else LuxuryColors.WarmGray,
+                            fontSize = 9.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
                     }
                 }
-            }
-        }
-    }
-}
-
-private fun formatSettingsDuration(totalSeconds: Int): String {
-    return String.format("%02d:%02d", totalSeconds / 3600, (totalSeconds % 3600) / 60)
-}
-
-@Composable
-fun WidgetCategorySettings(
-    index: Int,
-    widgetTitle: String,
-    settingsRepository: SettingsRepository,
-    scope: kotlinx.coroutines.CoroutineScope,
-    colorPresets: List<String>
-) {
-    val isWidgetActive by settingsRepository.isWidgetActive(index).collectAsState(initial = index == 0)
-    val wWidth by settingsRepository.getWidgetWidth(index).collectAsState(initial = 170.0f)
-    val wHeight by settingsRepository.getWidgetHeight(index).collectAsState(initial = 56.0f)
-    val saveDimensions by settingsRepository.getWidgetSaveDimensions(index).collectAsState(initial = true)
-    val fontSizeScale by settingsRepository.getWidgetFontSizeScale(index).collectAsState(initial = 1.0f)
-
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = "ENABLE $widgetTitle OVERLAY", color = LuxuryColors.CreamyWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        Switch(checked = isWidgetActive, onCheckedChange = { scope.launch { settingsRepository.setWidgetActive(index, it) } }, colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold))
-    }
-
-    if (isWidgetActive) {
-        Spacer(modifier = Modifier.height(8.dp))
-
-        DragAdjustField(
-            label = "WIDTH",
-            value = wWidth,
-            minValue = 1f,
-            maxValue = 320f,
-            pixelsPerUnit = 1.5f,
-            accentColor = LuxuryColors.AccentGold,
-            valueFormatter = { "${it.toInt()}dp" },
-            onValueChange = { scope.launch { settingsRepository.setWidgetWidth(index, it) } }
-        )
-
-        DragAdjustField(
-            label = "HEIGHT",
-            value = wHeight,
-            minValue = 1f,
-            maxValue = 120f,
-            pixelsPerUnit = 2.5f,
-            accentColor = LuxuryColors.AccentGold,
-            valueFormatter = { "${it.toInt()}dp" },
-            onValueChange = { scope.launch { settingsRepository.setWidgetHeight(index, it) } }
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "SAVE FLOATING DIMENSIONS", color = LuxuryColors.CreamyWhite, fontSize = 10.sp)
-            Switch(checked = saveDimensions, onCheckedChange = { scope.launch { settingsRepository.setWidgetSaveDimensions(index, it) } }, colors = SwitchDefaults.colors(checkedThumbColor = LuxuryColors.AccentGold))
-        }
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        DragAdjustField(
-            label = "FONT SIZE SCALE",
-            value = fontSizeScale,
-            minValue = 0.5f,
-            maxValue = 1.5f,
-            pixelsPerUnit = 180f,
-            accentColor = LuxuryColors.AccentGold,
-            valueFormatter = { String.format("%.2f", it) },
-            onValueChange = { scope.launch { settingsRepository.setWidgetFontSizeScale(index, it) } }
-        )
-
-    }
-}
-
-@Composable
-fun CountdownDurationPicker(
-    totalSeconds: Int,
-    onDurationChanged: (Int) -> Unit
-) {
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        TimeUnitBox("HOURS", hours, max = 23) { newHours ->
-            val validHours = newHours.coerceIn(0, 23)
-            val newTotal = validHours * 3600 + minutes * 60 + seconds
-            if (newTotal > 0) onDurationChanged(newTotal)
-        }
-        Text(":", color = LuxuryColors.WarmGray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        TimeUnitBox("MINS", minutes, max = 59) { newMins ->
-            val validMins = newMins.coerceIn(0, 59)
-            val newTotal = hours * 3600 + validMins * 60 + seconds
-            if (newTotal > 0) onDurationChanged(newTotal)
-        }
-        Text(":", color = LuxuryColors.WarmGray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        TimeUnitBox("SECS", seconds, max = 59) { newSecs ->
-            val validSecs = newSecs.coerceIn(0, 59)
-            val newTotal = hours * 3600 + minutes * 60 + validSecs
-            if (newTotal > 0) onDurationChanged(newTotal)
-        }
-    }
-}
-
-@Composable
-fun TimeUnitBox(
-    label: String,
-    value: Int,
-    max: Int,
-    onValueChange: (Int) -> Unit
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, color = LuxuryColors.WarmGray, fontSize = 9.sp, letterSpacing = 1.sp)
-        Spacer(modifier = Modifier.height(2.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.border(1.dp, LuxuryColors.WarmGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
-        ) {
-            Box(modifier = Modifier.clickable { onValueChange(if (value > 0) value - 1 else max) }.padding(horizontal = 6.dp, vertical = 2.dp)) {
-                Text("-", color = LuxuryColors.AccentGold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            }
-            Text(
-                text = String.format("%02d", value),
-                color = LuxuryColors.CreamyWhite,
-                fontSize = 14.sp,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 6.dp)
-            )
-            Box(modifier = Modifier.clickable { onValueChange(if (value < max) value + 1 else 0) }.padding(horizontal = 6.dp, vertical = 2.dp)) {
-                Text("+", color = LuxuryColors.AccentGold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                if (rowOptions.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }

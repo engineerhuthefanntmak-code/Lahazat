@@ -23,5 +23,10 @@ class CountdownEngineTest {
         engine.reset()
         assertEquals(90000L, engine.remainingTimeMs.value)
         assertFalse(engine.isRunning.value)
+
+        engine.resetToZero()
+        assertEquals(0L, engine.initialDurationMs.value)
+        assertEquals(0L, engine.remainingTimeMs.value)
+        assertFalse(engine.isRunning.value)
     }
 }

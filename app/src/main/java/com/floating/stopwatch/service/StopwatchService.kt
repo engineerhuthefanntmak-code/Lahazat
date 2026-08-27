@@ -367,6 +367,11 @@ class StopwatchService : Service() {
             setViewTreeViewModelStoreOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
 
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
+                android.util.Log.d("StopwatchService", "WindowInsets listener invoked for Floating Widget #$index")
+                androidx.core.view.WindowInsetsCompat.CONSUMED
+            }
+
             setContent {
                 val state = widgetStates[index]
                 val type by state.type.collectAsState()
@@ -498,10 +503,10 @@ class StopwatchService : Service() {
         }
 
         val params = WindowManager.LayoutParams(
-            170.dpToPx().coerceAtLeast(1),
-            56.dpToPx().coerceAtLeast(1),
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
             type,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -896,7 +901,7 @@ class StopwatchService : Service() {
         val mins = (totalSeconds % 3600) / 60
         val secs = totalSeconds % 60
         val cents = (ms % 1000) / 10
-        return String.format("%02d:%02d.%02d", mins, secs, cents)
+        return String.format(java.util.Locale.US, "%02d:%02d.%02d", mins, secs, cents)
     }
 
     private fun smartEdgeSnapAndClamp(lp: WindowManager.LayoutParams) {
@@ -958,15 +963,13 @@ class StopwatchService : Service() {
             else -> 16.dp
         }
 
-        val safePadding = paddingDpValue.coerceAtLeast(0.0f)
-
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.wrapContentSize(),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .wrapContentSize()
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = {
@@ -1003,47 +1006,49 @@ class StopwatchService : Service() {
                     },
                 contentAlignment = Alignment.Center
             ) {
-                // Backdrop
+                // Content wrapper with backdrop
+                val backdropShape = RoundedCornerShape(finalCornerRadius)
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .wrapContentSize()
+                        .clip(backdropShape)
                         .then(
                             if (stylePreset == "Glass Premium" || shapePreset == "glass") {
-                                Modifier
-                                    .background(Color.White.copy(alpha = 0.12f * opacity), RoundedCornerShape(finalCornerRadius))
-                                    .blur(16.dp)
+                                Modifier.background(Color.White.copy(alpha = 0.18f * opacity), shape = backdropShape)
                             } else if (stylePreset == "Obsidian") {
-                                Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f * opacity), RoundedCornerShape(finalCornerRadius))
+                                Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f * opacity), shape = backdropShape)
                             } else if (stylePreset == "Titanium") {
                                 val titaniumBrush = Brush.verticalGradient(
                                     colors = listOf(Color(0xFF2C2F33), Color(0xFF1E2124))
                                 )
-                                Modifier.background(titaniumBrush, RoundedCornerShape(finalCornerRadius))
+                                Modifier.background(titaniumBrush, shape = backdropShape)
                             } else {
-                                Modifier.background(Color.Black.copy(alpha = opacity), RoundedCornerShape(finalCornerRadius))
+                                Modifier.background(Color.Black.copy(alpha = opacity), shape = backdropShape)
                             }
                         )
-                )
-
-                // Content
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(safePadding.dp),
+                        .padding(horizontal = (4.dp.value * fontSizeScale).dp, vertical = (0.5.dp.value * fontSizeScale).dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
+                        modifier = Modifier.wrapContentSize(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         if (widgetType == "counter") {
+                            val counterFontSize = (22.sp.value * fontSizeScale).sp
                             Text(
                                 text = "$tapCount",
                                 style = TextStyle(
                                     color = if (isVolumeActive) accentColor else accentColor,
-                                    fontSize = (22.sp.value * fontSizeScale).sp,
+                                    fontSize = counterFontSize,
+                                    lineHeight = counterFontSize,
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
+                                    fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily,
+                                    platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                                    lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                                        alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                                        trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+                                    )
                                 )
                             )
                             if (isVolumeActive) {
@@ -1107,7 +1112,7 @@ class StopwatchService : Service() {
                                 accentColor = accentColor,
                                 gradientGoldEnabled = gradientEnabled,
                                 isVertical = layoutOrientation == "vertical",
-                                modifier = Modifier.padding(vertical = 4.dp)
+                                modifier = Modifier
                             )
                         }
                     }

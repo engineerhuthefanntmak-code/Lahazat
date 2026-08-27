@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -13,10 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.clipToBounds
 import com.floating.stopwatch.ui.theme.LuxuryColors
+import com.floating.stopwatch.ui.theme.DiwaniFontFamily
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 
@@ -33,17 +38,20 @@ fun RollingDigit(
             if (targetState > initialState) {
                 (slideInVertically { height -> height } + fadeIn(animationSpec = tween(180, easing = EaseOutQuint)))
                     .togetherWith(slideOutVertically { height -> -height } + fadeOut(animationSpec = tween(180, easing = EaseOutQuint)))
+                    .using(SizeTransform(clip = false))
             } else {
                 (slideInVertically { height -> -height } + fadeIn(animationSpec = tween(180, easing = EaseOutQuint)))
                     .togetherWith(slideOutVertically { height -> height } + fadeOut(animationSpec = tween(180, easing = EaseOutQuint)))
+                    .using(SizeTransform(clip = false))
             }
         },
+        contentAlignment = Alignment.Center,
+        modifier = modifier.clipToBounds(),
         label = "RollingDigit"
     ) { targetDigit ->
         Text(
             text = targetDigit.toString(),
-            style = style.copy(fontFeatureSettings = "tnum"),
-            modifier = modifier
+            style = style.copy(fontFeatureSettings = "tnum")
         )
     }
 }
@@ -65,10 +73,10 @@ fun TimeDisplay(
     val seconds = totalSeconds % 60
     val centiseconds = (elapsedTimeMs % 1000) / 10
 
-    val hourStr = String.format("%02d", hours)
-    val minuteStr = String.format("%02d", minutes)
-    val secondStr = String.format("%02d", seconds)
-    val centiStr = String.format("%02d", centiseconds)
+    val hourStr = String.format(Locale.US, "%02d", hours)
+    val minuteStr = String.format(Locale.US, "%02d", minutes)
+    val secondStr = String.format(Locale.US, "%02d", seconds)
+    val centiStr = String.format(Locale.US, "%02d", centiseconds)
 
     val showHours = hours > 0
 
@@ -97,25 +105,37 @@ fun TimeDisplay(
     val mainDigitStyle = if (gradientBrush != null) {
         baseStyle.copy(
             fontSize = scaledMainSize,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = DiwaniFontFamily,
             fontWeight = FontWeight.Bold,
             brush = gradientBrush,
             shadow = androidx.compose.ui.graphics.Shadow(
                 color = Color.Black.copy(alpha = 0.35f),
                 offset = androidx.compose.ui.geometry.Offset(2f, 2f),
                 blurRadius = 4f
+            ),
+            lineHeight = scaledMainSize,
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
             )
         )
     } else {
         baseStyle.copy(
             fontSize = scaledMainSize,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = DiwaniFontFamily,
             fontWeight = FontWeight.Bold,
             color = animatedFlashColor,
             shadow = androidx.compose.ui.graphics.Shadow(
                 color = Color.Black.copy(alpha = 0.35f),
                 offset = androidx.compose.ui.geometry.Offset(2f, 2f),
                 blurRadius = 4f
+            ),
+            lineHeight = scaledMainSize,
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
             )
         )
     }
@@ -131,14 +151,26 @@ fun TimeDisplay(
         )
         mainDigitStyle.copy(
             fontSize = centiSize,
+            lineHeight = centiSize,
             fontWeight = FontWeight.Normal,
-            brush = centiBrush
+            brush = centiBrush,
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+            )
         )
     } else {
         mainDigitStyle.copy(
             fontSize = centiSize,
+            lineHeight = centiSize,
             fontWeight = FontWeight.Normal,
-            color = animatedFlashColor.copy(alpha = 0.7f)
+            color = animatedFlashColor.copy(alpha = 0.7f),
+            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+            )
         )
     }
 
@@ -148,26 +180,26 @@ fun TimeDisplay(
         if (isVertical) {
             // Vertical layout presentation option (Section 2 - Item 6)
             Column(
-                modifier = modifier,
+                modifier = modifier.height(IntrinsicSize.Min),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 if (showHours) {
-                    Row {
+                    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                         RollingDigit(digit = hourStr[0], style = mainDigitStyle)
                         RollingDigit(digit = hourStr[1], style = mainDigitStyle)
                     }
                 }
-                Row {
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                     RollingDigit(digit = minuteStr[0], style = mainDigitStyle)
                     RollingDigit(digit = minuteStr[1], style = mainDigitStyle)
                 }
-                Row {
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                     RollingDigit(digit = secondStr[0], style = mainDigitStyle)
                     RollingDigit(digit = secondStr[1], style = mainDigitStyle)
                 }
                 if (showCentiseconds) {
-                    Row {
+                    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                         RollingDigit(digit = centiStr[0], style = centiDigitStyle)
                         RollingDigit(digit = centiStr[1], style = centiDigitStyle)
                     }
@@ -175,8 +207,8 @@ fun TimeDisplay(
             }
         } else {
             Row(
-                modifier = modifier,
-                verticalAlignment = Alignment.Bottom,
+                modifier = modifier.height(IntrinsicSize.Min),
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
                 if (showHours) {

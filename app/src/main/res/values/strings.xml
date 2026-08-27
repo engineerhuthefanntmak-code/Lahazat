@@ -1,3 +1,34 @@
 <resources>
     <string name="app_name">لحَظات</string>
+    <string name="mode_stopwatch">مؤقت الساعات ▾</string>
+    <string name="mode_countdown">العد التنازلي ▾</string>
+    <string name="mode_counter">العداد التراكمي ▾</string>
+    <string name="mode_intervals">المراحل الزمنية ▾</string>
+    <string name="mode_legacy">الأهداف والإنجازات ▾</string>
+
+    <string name="btn_start">بدء</string>
+    <string name="btn_stop">إيقاف</string>
+    <string name="btn_pause">إيقاف مؤقت</string>
+    <string name="btn_resume">استئناف</string>
+    <string name="btn_reset">إعادة ضبط</string>
+    <string name="btn_lap">دورة</string>
+    <string name="btn_delete">حذف</string>
+
+    <string name="title_settings">الإعدادات</string>
+    <string name="title_float">عائم ↗</string>
+
+    <string name="cat_appearance">المظهر البصري</string>
+    <string name="cat_sounds_haptics">الصوت والاهتزاز</string>
+    <string name="cat_advanced">إعدادات متقدمة</string>
+
+    <string name="label_color_accent">لون التمييز الفاخر</string>
+    <string name="label_bg_atmosphere">الخلفية التفاعلية</string>
+    <string name="label_main_display_size">حجم العرض الرئيسي</string>
+    <string name="label_digit_scales">أحجام أرقام الأوضاع</string>
+    <string name="label_master_sound">الصوت الرئيسي</string>
+    <string name="label_sound_preset">نغمة التنبيه</string>
+    <string name="label_haptic_intensity">قوة الاهتزاز</string>
+
+    <string name="view_laps">عرض الدورات والتحليلات</string>
+    <string name="ambient_dim_mode">نمط الإعتام الموفر</string>
 </resources>

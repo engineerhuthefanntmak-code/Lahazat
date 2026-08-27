@@ -24,14 +24,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
+import com.floating.stopwatch.data.LegacySerializer
 import com.floating.stopwatch.data.SettingsRepository
 import com.floating.stopwatch.domain.HapticController
+import com.floating.stopwatch.domain.LegacyEngine
 import com.floating.stopwatch.domain.StopwatchEngine
 import com.floating.stopwatch.service.StopwatchService
 import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.screens.MainScreen
-import com.floating.stopwatch.ui.screens.SettingsScreen
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -57,9 +58,30 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         mainViewModel = MainViewModel(
             engine = StopwatchService.getEngine(),
             countdownEngine = StopwatchService.getCountdownEngine(),
-            intervalEngine = StopwatchService.getIntervalEngine()
+            intervalEngine = StopwatchService.getIntervalEngine(),
+            legacyEngine = LegacyEngine()
         )
         hapticController = HapticController(applicationContext)
+
+        // Observe DataStore for persisted Legacy configuration
+        lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(
+                settingsRepository.legaciesJson,
+                settingsRepository.selectedLegacyId
+            ) { json, selectedId ->
+                Pair(json, selectedId)
+            }.collectLatest { (json, selectedId) ->
+                val list = LegacySerializer.jsonToLegacies(json)
+                mainViewModel.legacyEngine.loadLegacies(list, selectedId.ifBlank { null })
+            }
+        }
+
+        mainViewModel.legacyEngine.onLegacyDataChanged = { legacies, selectedId ->
+            lifecycleScope.launch {
+                val json = LegacySerializer.toJson(legacies)
+                settingsRepository.saveLegaciesData(json, selectedId ?: "")
+            }
+        }
 
         // Observe DataStore for persisted Interval configuration and update shared IntervalEngine
         lifecycleScope.launch {
@@ -99,24 +121,6 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         }
 
         setContent {
-            var currentScreen by remember {
-                mutableStateOf(
-                    if (intent?.getBooleanExtra("OPEN_SETTINGS", false) == true || pendingSettingsOpen) {
-                        "Settings"
-                    } else {
-                        "Main"
-                    }
-                )
-            }
-            var isUnlockedByBiometrics by remember { mutableStateOf(false) }
-
-            LaunchedEffect(pendingSettingsOpen) {
-                if (pendingSettingsOpen) {
-                    currentScreen = "Settings"
-                    pendingSettingsOpen = false
-                }
-            }
-
             val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
             val customColorHex by settingsRepository.customColorHex.collectAsState(initial = "#C9A66B")
             val hapticIntensity by settingsRepository.hapticIntensity.collectAsState(initial = "Medium")
@@ -162,34 +166,35 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 }
             }
 
-            if (!hasOverlayPermission) {
-                OverlayPermissionExplanationScreen(
-                    onGrantClick = {
-                        requestOverlayPermission()
-                    },
-                    onSkipClick = {
-                        hasOverlayPermission = true
-                    }
-                )
-            } else {
-                MainScreen(
-                    viewModel = mainViewModel,
-                    settingsRepository = settingsRepository,
-                    hapticController = hapticController,
-                    hapticIntensity = hapticIntensity,
-                    showCentiseconds = true,
-                    mainSize = mainDisplayScale,
-                    accentColor = accentColor,
-                    themeMode = themeMode,
-                    onNavigateToSettings = { currentScreen = "Settings" }
-                )
-
-                if (currentScreen == "Settings") {
-                    SettingsScreen(
+            CompositionLocalProvider(
+                LocalTextStyle provides TextStyle(fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily)
+            ) {
+                MaterialTheme(
+                    typography = com.floating.stopwatch.ui.theme.AppTypography
+                ) {
+                if (!hasOverlayPermission) {
+                    OverlayPermissionExplanationScreen(
+                        onGrantClick = {
+                            requestOverlayPermission()
+                        },
+                        onSkipClick = {
+                            hasOverlayPermission = true
+                        }
+                    )
+                } else {
+                    MainScreen(
+                        viewModel = mainViewModel,
                         settingsRepository = settingsRepository,
-                        onBack = { currentScreen = "Main" }
+                        hapticController = hapticController,
+                        hapticIntensity = hapticIntensity,
+                        showCentiseconds = true,
+                        mainSize = mainDisplayScale,
+                        accentColor = accentColor,
+                        themeMode = themeMode,
+                        onNavigateToSettings = {}
                     )
                 }
+            }
             }
         }
     }

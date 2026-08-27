@@ -1026,7 +1026,7 @@ class StopwatchService : Service() {
                                 Modifier.background(Color.Black.copy(alpha = opacity), shape = backdropShape)
                             }
                         )
-                        .padding(horizontal = (4.dp.value * fontSizeScale).dp, vertical = (1.dp.value * fontSizeScale).dp),
+                        .padding(horizontal = (4.dp.value * fontSizeScale).dp, vertical = (0.5.dp.value * fontSizeScale).dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(

@@ -503,8 +503,8 @@ class StopwatchService : Service() {
         }
 
         val params = WindowManager.LayoutParams(
-            170.dpToPx().coerceAtLeast(1),
-            56.dpToPx().coerceAtLeast(1),
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
@@ -964,12 +964,12 @@ class StopwatchService : Service() {
         }
 
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.wrapContentSize(),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .wrapContentSize()
                     .pointerInput(Unit) {
                         detectTapGestures(
                             onTap = {
@@ -1026,7 +1026,7 @@ class StopwatchService : Service() {
                                 Modifier.background(Color.Black.copy(alpha = opacity), shape = backdropShape)
                             }
                         )
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = (4.dp.value * fontSizeScale).dp, vertical = (1.dp.value * fontSizeScale).dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(

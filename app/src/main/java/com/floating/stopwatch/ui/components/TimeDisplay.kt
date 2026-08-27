@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -174,26 +176,26 @@ fun TimeDisplay(
         if (isVertical) {
             // Vertical layout presentation option (Section 2 - Item 6)
             Column(
-                modifier = modifier,
+                modifier = modifier.height(IntrinsicSize.Min),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 if (showHours) {
-                    Row {
+                    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                         RollingDigit(digit = hourStr[0], style = mainDigitStyle)
                         RollingDigit(digit = hourStr[1], style = mainDigitStyle)
                     }
                 }
-                Row {
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                     RollingDigit(digit = minuteStr[0], style = mainDigitStyle)
                     RollingDigit(digit = minuteStr[1], style = mainDigitStyle)
                 }
-                Row {
+                Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                     RollingDigit(digit = secondStr[0], style = mainDigitStyle)
                     RollingDigit(digit = secondStr[1], style = mainDigitStyle)
                 }
                 if (showCentiseconds) {
-                    Row {
+                    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                         RollingDigit(digit = centiStr[0], style = centiDigitStyle)
                         RollingDigit(digit = centiStr[1], style = centiDigitStyle)
                     }
@@ -201,7 +203,7 @@ fun TimeDisplay(
             }
         } else {
             Row(
-                modifier = modifier,
+                modifier = modifier.height(IntrinsicSize.Min),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {

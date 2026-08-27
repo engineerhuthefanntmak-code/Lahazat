@@ -1007,22 +1007,23 @@ class StopwatchService : Service() {
                 contentAlignment = Alignment.Center
             ) {
                 // Backdrop
+                val backdropShape = RoundedCornerShape(finalCornerRadius)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .clip(RoundedCornerShape(finalCornerRadius))
+                        .clip(backdropShape)
                         .then(
                             if (stylePreset == "Glass Premium" || shapePreset == "glass") {
-                                Modifier.background(Color.White.copy(alpha = 0.18f * opacity))
+                                Modifier.background(Color.White.copy(alpha = 0.18f * opacity), shape = backdropShape)
                             } else if (stylePreset == "Obsidian") {
-                                Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f * opacity))
+                                Modifier.background(Color(0xFF0A0A0A).copy(alpha = 0.88f * opacity), shape = backdropShape)
                             } else if (stylePreset == "Titanium") {
                                 val titaniumBrush = Brush.verticalGradient(
                                     colors = listOf(Color(0xFF2C2F33), Color(0xFF1E2124))
                                 )
-                                Modifier.background(titaniumBrush)
+                                Modifier.background(titaniumBrush, shape = backdropShape)
                             } else {
-                                Modifier.background(Color.Black.copy(alpha = opacity))
+                                Modifier.background(Color.Black.copy(alpha = opacity), shape = backdropShape)
                             }
                         )
                 )
@@ -1040,13 +1041,20 @@ class StopwatchService : Service() {
                         horizontalArrangement = Arrangement.Center
                     ) {
                         if (widgetType == "counter") {
+                            val counterFontSize = (22.sp.value * fontSizeScale).sp
                             Text(
                                 text = "$tapCount",
                                 style = TextStyle(
                                     color = if (isVolumeActive) accentColor else accentColor,
-                                    fontSize = (22.sp.value * fontSizeScale).sp,
+                                    fontSize = counterFontSize,
+                                    lineHeight = counterFontSize,
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily
+                                    fontFamily = com.floating.stopwatch.ui.theme.DiwaniFontFamily,
+                                    platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                                    lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                                        alignment = androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                                        trim = androidx.compose.ui.text.style.LineHeightStyle.Trim.Both
+                                    )
                                 )
                             )
                             if (isVolumeActive) {

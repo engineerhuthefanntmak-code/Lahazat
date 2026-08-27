@@ -19,6 +19,7 @@ import java.util.Locale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.clipToBounds
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import com.floating.stopwatch.ui.theme.DiwaniFontFamily
 import androidx.compose.ui.graphics.Color
@@ -37,17 +38,20 @@ fun RollingDigit(
             if (targetState > initialState) {
                 (slideInVertically { height -> height } + fadeIn(animationSpec = tween(180, easing = EaseOutQuint)))
                     .togetherWith(slideOutVertically { height -> -height } + fadeOut(animationSpec = tween(180, easing = EaseOutQuint)))
+                    .using(SizeTransform(clip = false))
             } else {
                 (slideInVertically { height -> -height } + fadeIn(animationSpec = tween(180, easing = EaseOutQuint)))
                     .togetherWith(slideOutVertically { height -> height } + fadeOut(animationSpec = tween(180, easing = EaseOutQuint)))
+                    .using(SizeTransform(clip = false))
             }
         },
+        contentAlignment = Alignment.Center,
+        modifier = modifier.clipToBounds(),
         label = "RollingDigit"
     ) { targetDigit ->
         Text(
             text = targetDigit.toString(),
-            style = style.copy(fontFeatureSettings = "tnum"),
-            modifier = modifier
+            style = style.copy(fontFeatureSettings = "tnum")
         )
     }
 }

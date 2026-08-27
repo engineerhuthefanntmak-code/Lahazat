@@ -367,7 +367,8 @@ class StopwatchService : Service() {
             setViewTreeViewModelStoreOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
 
-            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(this) { _, _ ->
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
+                android.util.Log.d("StopwatchService", "WindowInsets listener invoked for Floating Widget #$index")
                 androidx.core.view.WindowInsetsCompat.CONSUMED
             }
 
@@ -505,7 +506,7 @@ class StopwatchService : Service() {
             170.dpToPx().coerceAtLeast(1),
             56.dpToPx().coerceAtLeast(1),
             type,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START

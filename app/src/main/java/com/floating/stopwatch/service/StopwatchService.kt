@@ -455,7 +455,7 @@ class StopwatchService : Service() {
                         tapCount = tapCount,
                         isVolumeActive = isVolumeActive,
                         milestones = milestones,
-                        showCentiseconds = true,
+                        showCentiseconds = false,
                         stylePreset = stylePreset,
                         accentColor = accentColor,
                         shapePreset = shapePreset,

@@ -455,7 +455,7 @@ class StopwatchService : Service() {
                         tapCount = tapCount,
                         isVolumeActive = isVolumeActive,
                         milestones = milestones,
-                        showCentiseconds = false,
+                        showCentiseconds = true,
                         stylePreset = stylePreset,
                         accentColor = accentColor,
                         shapePreset = shapePreset,
@@ -1006,11 +1006,11 @@ class StopwatchService : Service() {
                     },
                 contentAlignment = Alignment.Center
             ) {
-                // Backdrop
+                // Content wrapper with backdrop
                 val backdropShape = RoundedCornerShape(finalCornerRadius)
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .wrapContentSize()
                         .clip(backdropShape)
                         .then(
                             if (stylePreset == "Glass Premium" || shapePreset == "glass") {
@@ -1026,17 +1026,11 @@ class StopwatchService : Service() {
                                 Modifier.background(Color.Black.copy(alpha = opacity), shape = backdropShape)
                             }
                         )
-                )
-
-                // Content
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(0.dp),
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.wrapContentSize(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
